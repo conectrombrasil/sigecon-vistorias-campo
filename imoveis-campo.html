@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"/>
+<title>Vistorias em Campo — SIGECON</title>
+<meta name="theme-color" content="#0B1929"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" href="icone.svg"/>
+<link rel="apple-touch-icon" href="icone.svg"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --navy:#0B1929; --navy2:#112236; --navy3:#1A3352;
+    --blue:#2E7BC4; --blue2:#3E8FD8; --orange:#F15A24; --orange-dark:#D9481A;
+    --text:#E8EDF2; --text2:#8AA5BE; --text3:#4D6B85;
+    --border:rgba(46,123,196,0.2); --green:#2ECC8A; --red:#E05555; --amber:#E0A830;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--navy);color:var(--text);
+    padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+    overscroll-behavior-y:contain;}
+  button,input,select,textarea{font-family:inherit;}
+  .tela{display:none;min-height:100%;flex-direction:column;}
+  .tela.ativa{display:flex;}
+
+  /* ===== Topo fixo ===== */
+  .topo{position:sticky;top:0;z-index:20;background:var(--navy2);border-bottom:1px solid var(--border);
+    padding:14px 16px;display:flex;align-items:center;gap:10px;padding-top:calc(14px + env(safe-area-inset-top,0px));}
+  .topo-voltar{background:none;border:none;color:var(--text);font-size:20px;padding:4px 8px;cursor:pointer;}
+  .topo-titulo{font-weight:700;font-size:16px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .topo-sub{font-size:11px;color:var(--text2);}
+
+  /* ===== Barra de status de conexão/fila ===== */
+  .status-barra{padding:9px 16px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;
+    transition:background .2s;}
+  .status-barra.offline{background:rgba(224,85,85,0.18);color:#ff9a9a;}
+  .status-barra.pendente{background:rgba(224,168,48,0.18);color:#ffd27a;}
+  .status-barra.ok{background:rgba(46,204,138,0.14);color:#7be8bc;}
+  .status-barra button{margin-left:auto;background:rgba(255,255,255,0.12);border:none;color:inherit;
+    padding:5px 12px;border-radius:7px;font-size:11.5px;font-weight:700;cursor:pointer;}
+
+  .conteudo{flex:1;padding:14px 16px 90px;overflow-y:auto;}
+
+  /* ===== Login ===== */
+  #tela-login .conteudo{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;padding:24px;}
+  .login-logo{width:76px;height:76px;border-radius:20px;background:var(--navy2);border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;margin-bottom:18px;}
+  .login-titulo{font-size:20px;font-weight:700;margin-bottom:4px;text-align:center;}
+  .login-sub{font-size:13px;color:var(--text2);margin-bottom:28px;text-align:center;}
+  .campo{width:100%;max-width:340px;margin-bottom:12px;}
+  .campo input{width:100%;background:var(--navy2);border:1px solid var(--border);border-radius:10px;
+    padding:13px 14px;color:var(--text);font-size:15px;}
+  .campo input:focus{outline:none;border-color:var(--blue);}
+  .btn{width:100%;max-width:340px;background:var(--orange);border:none;color:#fff;font-weight:700;
+    font-size:15px;padding:14px;border-radius:10px;cursor:pointer;}
+  .btn:active{background:var(--orange-dark);}
+  .btn:disabled{opacity:.55;}
+  .btn-secundario{background:var(--navy2);border:1px solid var(--border);color:var(--text);}
+  .erro-msg{color:#ff9a9a;font-size:12.5px;margin-bottom:10px;min-height:16px;text-align:center;}
+
+  /* ===== Cards de imóvel / vistoria ===== */
+  .card{background:var(--navy2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;}
+  .card:active{background:var(--navy3);}
+  .card-titulo{font-weight:700;font-size:14.5px;}
+  .card-sub{font-size:12px;color:var(--text2);margin-top:3px;}
+  .selo{display:inline-block;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.3px;}
+  .selo-rascunho{background:rgba(224,168,48,0.18);color:#ffd27a;}
+  .selo-finalizado{background:rgba(46,204,138,0.16);color:#7be8bc;}
+  .selo-pendente{background:rgba(224,85,85,0.18);color:#ff9a9a;}
+  .vazio{text-align:center;padding:40px 20px;color:var(--text3);font-size:13.5px;}
+
+  /* ===== Botão flutuante ===== */
+  .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;
+    background:var(--orange);color:#fff;border:none;border-radius:999px;padding:15px 22px;font-weight:700;
+    font-size:14px;box-shadow:0 8px 22px rgba(241,90,36,.4);cursor:pointer;}
+
+  /* ===== Cômodo ===== */
+  .comodo{background:var(--navy2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+  .comodo-cab{padding:13px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;}
+  .comodo-nome{font-weight:700;font-size:14px;flex:1;}
+  .estado-badge{padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:700;}
+  .estado-BOM{background:rgba(46,204,138,0.16);color:#7be8bc;}
+  .estado-REGULAR{background:rgba(224,168,48,0.18);color:#ffd27a;}
+  .estado-RUIM{background:rgba(224,85,85,0.18);color:#ff9a9a;}
+  .estado-NA{background:rgba(138,165,190,0.18);color:var(--text2);}
+  .comodo-corpo{display:none;padding:0 14px 14px;}
+  .comodo.aberto .comodo-corpo{display:block;}
+  .rotulo{font-size:11.5px;color:var(--text2);margin-bottom:5px;display:block;font-weight:600;}
+  .estados-linha{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+  .estado-btn{flex:1;min-width:70px;padding:9px 6px;border-radius:8px;border:1px solid var(--border);
+    background:var(--navy3);color:var(--text2);font-size:11.5px;font-weight:700;cursor:pointer;text-align:center;}
+  .estado-btn.sel-BOM{background:rgba(46,204,138,0.22);border-color:var(--green);color:#7be8bc;}
+  .estado-btn.sel-REGULAR{background:rgba(224,168,48,0.22);border-color:var(--amber);color:#ffd27a;}
+  .estado-btn.sel-RUIM{background:rgba(224,85,85,0.22);border-color:var(--red);color:#ff9a9a;}
+  .estado-btn.sel-NA{background:rgba(138,165,190,0.22);border-color:var(--text2);color:var(--text);}
+  textarea{width:100%;background:var(--navy3);border:1px solid var(--border);border-radius:8px;color:var(--text);
+    padding:10px;font-size:13px;min-height:64px;resize:vertical;margin-bottom:12px;}
+  .fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;margin-bottom:6px;}
+  .foto-mini{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--navy3);}
+  .foto-mini img{width:100%;height:100%;object-fit:cover;display:block;}
+  .foto-mini .foto-status{position:absolute;bottom:3px;right:3px;background:rgba(0,0,0,.6);border-radius:5px;
+    padding:1px 5px;font-size:9px;font-weight:700;}
+  .foto-add{aspect-ratio:1;border-radius:8px;border:2px dashed var(--border);display:flex;align-items:center;
+    justify-content:center;font-size:22px;color:var(--text3);cursor:pointer;}
+  .remover-comodo{background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:4px;}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--navy3);
+    border:1px solid var(--border);color:var(--text);padding:11px 18px;border-radius:10px;font-size:13px;
+    z-index:100;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:88vw;text-align:center;}
+  .toast.mostrar{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.erro{border-color:var(--red);}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:none;align-items:flex-end;}
+  .modal-overlay.aberto{display:flex;}
+  .modal{background:var(--navy2);width:100%;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));
+    max-height:76vh;overflow-y:auto;}
+  .modal-titulo{font-weight:700;font-size:15px;margin-bottom:14px;}
+  .opcao-lista button{width:100%;text-align:left;background:var(--navy3);border:1px solid var(--border);
+    color:var(--text);padding:13px 14px;border-radius:10px;margin-bottom:8px;font-size:14px;cursor:pointer;}
+  .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+    border-radius:50%;animation:girar .7s linear infinite;vertical-align:middle;}
+  @keyframes girar{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div class="tela ativa" id="tela-login">
+  <div class="conteudo">
+    <div class="login-logo">🏠</div>
+    <div class="login-titulo">Vistorias em Campo</div>
+    <div class="login-sub">SIGECON — funciona sem internet, sincroniza depois</div>
+    <div class="campo"><input type="email" id="login-email" placeholder="E-mail" autocomplete="username"/></div>
+    <div class="campo"><input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password"/></div>
+    <div class="erro-msg" id="login-erro"></div>
+    <button class="btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- ================= HOME: lista de imóveis ================= -->
+<div class="tela" id="tela-home">
+  <div class="topo">
+    <div class="topo-titulo">Vistorias em Campo</div>
+    <button class="topo-voltar" onclick="sair()" title="Sair">⏻</button>
+  </div>
+  <div class="status-barra" id="status-barra"></div>
+  <div class="conteudo" id="lista-imoveis"></div>
+</div>
+
+<!-- ================= IMÓVEL: lista de vistorias ================= -->
+<div class="tela" id="tela-imovel">
+  <div class="topo">
+    <button class="topo-voltar" onclick="mostrarTela('tela-home')">←</button>
+    <div>
+      <div class="topo-titulo" id="imovel-titulo"></div>
+      <div class="topo-sub" id="imovel-sub"></div>
+    </div>
+  </div>
+  <div class="status-barra" id="status-barra-2"></div>
+  <div class="conteudo" id="lista-vistorias"></div>
+  <button class="fab" onclick="abrirEscolhaTipoVistoria()">+ Nova vistoria</button>
+</div>
+
+<!-- ================= VISTORIA: cômodos ================= -->
+<div class="tela" id="tela-vistoria">
+  <div class="topo">
+    <button class="topo-voltar" onclick="mostrarTela('tela-imovel')">←</button>
+    <div>
+      <div class="topo-titulo" id="vistoria-titulo"></div>
+      <div class="topo-sub" id="vistoria-sub"></div>
+    </div>
+  </div>
+  <div class="conteudo" id="lista-comodos"></div>
+  <button class="fab" onclick="abrirEscolhaComodo()">+ Cômodo</button>
+</div>
+
+<!-- ================= Modal: escolher tipo de vistoria ================= -->
+<div class="modal-overlay" id="modal-tipo-vistoria">
+  <div class="modal">
+    <div class="modal-titulo">Tipo de vistoria</div>
+    <div class="opcao-lista">
+      <button onclick="criarVistoria('entrada')">Entrada</button>
+      <button onclick="criarVistoria('saida')">Saída</button>
+      <button onclick="criarVistoria('periodica')">Periódica</button>
+    </div>
+    <button class="btn btn-secundario" onclick="fecharModais()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ================= Modal: escolher cômodo ================= -->
+<div class="modal-overlay" id="modal-comodo">
+  <div class="modal">
+    <div class="modal-titulo">Adicionar cômodo</div>
+    <div class="opcao-lista" id="lista-comodos-comuns"></div>
+    <div class="campo"><input type="text" id="comodo-custom" placeholder="Outro nome..."/></div>
+    <button class="btn" onclick="confirmarComodoCustom()">Adicionar</button>
+    <button class="btn btn-secundario" style="margin-top:8px" onclick="fecharModais()">Cancelar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// Mesmas credenciais e constantes do módulo web — os dois falam
+// com o mesmo banco e o mesmo endpoint de upload de fotos
+// ══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://adfrybyxcamkuyewzyns.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkZnJ5Ynl4Y2Fta3V5ZXd6eW5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODQzNTcsImV4cCI6MjA5MTg2MDM1N30.DWzvf6tS-0TQ_zfXaq3MKE5eCwIz0gMyidAPBs-YuJ0';
+const DRIVE_GAS_URL = 'https://script.google.com/macros/s/AKfycbywWdSN8x1sq2K5lrwcveNKqgMvPODrP9ULtJpwo2pB4Gf-QoehBlaM08od_slvdM5j/exec';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+
+const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
+const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
+
+let sessaoAtual = null;
+let obrasIds = [];
+let imovelAtual = null;
+let vistoriaAtual = null;
+
+// ══════════════════════════════════════════════════════════════
+// IndexedDB — armazenamento local. Guarda tanto os dados de
+// referência (pra navegar offline) quanto a fila do que ainda
+// precisa subir pro Supabase quando a internet voltar.
+// ══════════════════════════════════════════════════════════════
+const DB_NOME = 'vistorias_campo_db';
+const DB_VERSAO = 1;
+let _dbPromise = null;
+
+function abrirDB() {
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NOME, DB_VERSAO);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('imoveis')) db.createObjectStore('imoveis', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('vistorias')) db.createObjectStore('vistorias', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('comodos')) db.createObjectStore('comodos', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('fotos')) db.createObjectStore('fotos', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('fila')) db.createObjectStore('fila', { keyPath: 'seq', autoIncrement: true });
+      if (!db.objectStoreNames.contains('sessao')) db.createObjectStore('sessao', { keyPath: 'chave' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return _dbPromise;
+}
+async function idbPegar(loja, chave) {
+  const db = await abrirDB();
+  return new Promise((resolve, reject) => {
+    const r = db.transaction(loja, 'readonly').objectStore(loja).get(chave);
+    r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error);
+  });
+}
+async function idbTodos(loja) {
+  const db = await abrirDB();
+  return new Promise((resolve, reject) => {
+    const r = db.transaction(loja, 'readonly').objectStore(loja).getAll();
+    r.onsuccess = () => resolve(r.result || []); r.onerror = () => reject(r.error);
+  });
+}
+async function idbSalvar(loja, valor) {
+  const db = await abrirDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(loja, 'readwrite');
+    tx.objectStore(loja).put(valor);
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbSalvarVarios(loja, valores) {
+  const db = await abrirDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(loja, 'readwrite');
+    const store = tx.objectStore(loja);
+    valores.forEach(v => store.put(v));
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbRemover(loja, chave) {
+  const db = await abrirDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(loja, 'readwrite');
+    tx.objectStore(loja).delete(chave);
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// Fila de sincronização — toda alteração passa por aqui, esteja a
+// pessoa online ou não. Isso simplifica o app inteiro: a tela nunca
+// precisa "se importar" se há internet, ela só grava local e tenta
+// sincronizar; se não der, fica pra próxima tentativa.
+// ══════════════════════════════════════════════════════════════
+async function enfileirar(tipo, payload) {
+  await idbSalvar('fila', { tipo, payload, criadoEm: Date.now(), tentativas: 0 });
+  atualizarBarraStatus();
+  tentarSincronizar(); // não espera — dispara em segundo plano
+}
+
+async function processarItemFila(item) {
+  const p = item.payload;
+  if (item.tipo === 'criar_vistoria') {
+    const { error } = await sb.from('imovel_vistorias').insert(p);
+    if (error) throw error;
+  } else if (item.tipo === 'atualizar_vistoria') {
+    const { error } = await sb.from('imovel_vistorias').update(p.campos).eq('id', p.id);
+    if (error) throw error;
+  } else if (item.tipo === 'criar_comodo') {
+    const { error } = await sb.from('vistoria_comodos').insert(p);
+    if (error) throw error;
+  } else if (item.tipo === 'atualizar_comodo') {
+    const { error } = await sb.from('vistoria_comodos').update(p.campos).eq('id', p.id);
+    if (error) throw error;
+  } else if (item.tipo === 'remover_comodo') {
+    const { error } = await sb.from('vistoria_comodos').delete().eq('id', p.id);
+    if (error) throw error;
+  } else if (item.tipo === 'foto_comodo') {
+    await enviarFotoParaServidor(p);
+  }
+}
+
+let _sincronizando = false;
+async function tentarSincronizar() {
+  if (_sincronizando) return; // evita duas sincronizações rodando ao mesmo tempo
+  if (!navigator.onLine) { atualizarBarraStatus(); return; }
+  _sincronizando = true;
+  try {
+    const db = await abrirDB();
+    // Processa em ORDEM (mais antigo primeiro) — importante porque um
+    // cômodo depende da vistoria já existir, e uma foto depende do
+    // cômodo já existir
+    while (true) {
+      const item = await new Promise((resolve, reject) => {
+        const r = db.transaction('fila', 'readonly').objectStore('fila').openCursor();
+        r.onsuccess = () => resolve(r.result ? { seq: r.result.key, ...r.result.value } : null);
+        r.onerror = () => reject(r.error);
+      });
+      if (!item) break; // fila vazia
+      try {
+        await processarItemFila(item);
+        await idbRemover('fila', item.seq);
+      } catch (e) {
+        // Marca a tentativa e para por aqui — tenta de novo depois, na
+        // ordem certa (não pula pro próximo, senão desrespeita a
+        // dependência entre vistoria → cômodo → foto)
+        item.tentativas = (item.tentativas || 0) + 1;
+        item.ultimoErro = e.message || String(e);
+        await idbSalvar('fila', item);
+        break;
+      }
+      atualizarBarraStatus();
+    }
+  } finally {
+    _sincronizando = false;
+    atualizarBarraStatus();
+  }
+}
+
+// MVP em fase de teste: a foto sobe direto pro Supabase Storage, sem
+// passar pelo GAS/Drive por enquanto — fica marcada como "fotos_campo"
+// pra facilmente identificar depois quais ainda precisam ser migradas
+// pro Drive numa etapa futura (quando isso for configurado).
+const BUCKET_FOTOS_CAMPO = 'vistorias-campo-fotos';
+
+function base64ParaBlob(base64, mimeType) {
+  const byteStr = atob(base64);
+  const bytes = new Uint8Array(byteStr.length);
+  for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType });
+}
+
+async function enviarFotoParaServidor(p) {
+  const caminho = `${p.comodoId}/${Date.now()}_${p.nomeArquivo}`;
+  const blob = base64ParaBlob(p.base64, p.mimeType);
+  const { error: errUpload } = await sb.storage.from(BUCKET_FOTOS_CAMPO).upload(caminho, blob, { contentType: p.mimeType, upsert: false });
+  if (errUpload) throw errUpload;
+
+  const { data: urlData } = sb.storage.from(BUCKET_FOTOS_CAMPO).getPublicUrl(caminho);
+  const { error } = await sb.from('documentos').insert({
+    modulo: 'vistoria_comodo', registro_id: p.comodoId, tipo: 'foto', descricao: p.nomeArquivo,
+    nome_arquivo: p.nomeArquivo, mime_type: p.mimeType, tamanho_bytes: p.tamanhoBytes,
+    // drive_id fica nulo de propósito — é o próprio sinal de "subiu pro
+    // Supabase mas ainda não foi migrado pro Drive" (sem precisar de
+    // nenhuma coluna nova na tabela)
+    drive_id: null, drive_url: null, download_url: urlData.publicUrl,
+    versao: 1, status: 'enviado', criado_por: p.usuarioId,
+  });
+  if (error) throw error;
+  // Sucesso: marca a foto local como sincronizada e libera o base64 da
+  // memória local (já subiu, não precisa mais guardar o arquivo inteiro)
+  const fotoLocal = await idbPegar('fotos', p.fotoLocalId);
+  if (fotoLocal) { fotoLocal.status = 'sincronizado'; fotoLocal.base64 = null; await idbSalvar('fotos', fotoLocal); }
+}
+
+window.addEventListener('online', () => { atualizarBarraStatus(); tentarSincronizar(); });
+window.addEventListener('offline', atualizarBarraStatus);
+
+async function atualizarBarraStatus() {
+  const fila = await idbTodos('fila');
+  const pendentes = fila.length;
+  const comErro = fila.filter(f => f.tentativas > 0).length;
+  ['status-barra', 'status-barra-2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!navigator.onLine) {
+      el.className = 'status-barra offline';
+      el.innerHTML = `📴 Sem internet — trabalhando offline${pendentes ? ` · ${pendentes} pendente${pendentes>1?'s':''}` : ''}`;
+    } else if (pendentes) {
+      el.className = 'status-barra pendente';
+      el.innerHTML = `${_sincronizando ? '<span class="spinner"></span>' : '🔄'} ${pendentes} pendente${pendentes>1?'s':''} de sincronizar${comErro ? ' (com erro, tentando de novo)' : ''}
+        <button onclick="tentarSincronizar()">Sincronizar agora</button>`;
+    } else {
+      el.className = 'status-barra ok';
+      el.innerHTML = `✅ Tudo sincronizado`;
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// Navegação entre telas
+// ══════════════════════════════════════════════════════════════
+function mostrarTela(id) {
+  document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
+  document.getElementById(id).classList.add('ativa');
+}
+function fecharModais() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('aberto')); }
+function mostrarToast(msg, tipo) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast mostrar' + (tipo === 'erro' ? ' erro' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('mostrar'), 3200);
+}
+
+// ══════════════════════════════════════════════════════════════
+// Login / sessão
+// ══════════════════════════════════════════════════════════════
+async function fazerLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const erroEl = document.getElementById('login-erro');
+  const btn = document.getElementById('btn-login');
+  erroEl.textContent = '';
+  if (!email || !senha) { erroEl.textContent = 'Preencha e-mail e senha.'; return; }
+  if (!navigator.onLine) { erroEl.textContent = 'É preciso estar online pra entrar da primeira vez.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if (error) { erroEl.textContent = 'E-mail ou senha incorretos.'; return; }
+  sessaoAtual = data.session;
+  await idbSalvar('sessao', { chave: 'usuario_id', valor: sessaoAtual.user.id });
+  await idbSalvar('sessao', { chave: 'usuario_email', valor: sessaoAtual.user.email });
+  await iniciarAppLogado();
+}
+
+function sair() {
+  if (!confirm('Sair? Se houver algo pendente de sincronizar, ele fica guardado no aparelho até você entrar de novo e a internet voltar.')) return;
+  sb.auth.signOut();
+  mostrarTela('tela-login');
+}
+
+async function iniciarAppLogado() {
+  // Sessão restaurada offline: o cliente do Supabase guarda o token
+  // localmente e não precisa de rede pra isso — só as CONSULTAS é que
+  // precisam. Se estiver online, atualiza a lista de imóveis; se não,
+  // usa o que já foi guardado da última vez.
+  if (navigator.onLine) {
+    try { await carregarImoveisDoServidor(); }
+    catch (e) { mostrarToast('Não deu pra atualizar a lista — usando os dados salvos.', 'erro'); }
+  }
+  mostrarTela('tela-home');
+  await renderizarListaImoveis();
+  atualizarBarraStatus();
+  tentarSincronizar();
+}
+
+async function carregarImoveisDoServidor() {
+  const { data: vinc } = await sb.from('usuario_obras').select('obra_id').eq('usuario_id', sessaoAtual.user.id);
+  obrasIds = (vinc || []).map(v => v.obra_id);
+  await idbSalvar('sessao', { chave: 'obras_ids', valor: obrasIds });
+  if (!obrasIds.length) { await idbSalvarVarios('imoveis', []); return; }
+
+  const { data: imoveis, error } = await sb.from('imoveis').select('id,logradouro,numero,bairro,cidade,obra_id').in('obra_id', obrasIds).order('logradouro');
+  if (error) throw error;
+  await idbSalvarVarios('imoveis', imoveis || []);
+
+  // Também traz as vistorias em rascunho (pra continuar) e as mais
+  // recentes de cada imóvel — offline, a pessoa só precisa ver o
+  // suficiente pra saber o que já existe, não o histórico inteiro
+  if (imoveis && imoveis.length) {
+    const ids = imoveis.map(i => i.id);
+    const { data: vistorias } = await sb.from('imovel_vistorias')
+      .select('id,imovel_id,tipo,status,data_vistoria,responsavel')
+      .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(200);
+    await idbSalvarVarios('vistorias', vistorias || []);
+    if (vistorias && vistorias.length) {
+      const idsVist = vistorias.map(v => v.id);
+      const { data: comodos } = await sb.from('vistoria_comodos').select('*').in('vistoria_id', idsVist);
+      await idbSalvarVarios('comodos', comodos || []);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Tela: lista de imóveis
+// ══════════════════════════════════════════════════════════════
+async function renderizarListaImoveis() {
+  const imoveis = await idbTodos('imoveis');
+  const el = document.getElementById('lista-imoveis');
+  if (!imoveis.length) {
+    el.innerHTML = `<div class="vazio">Nenhum imóvel disponível ainda.${navigator.onLine ? '' : ' Conecte à internet pelo menos uma vez pra carregar a lista.'}</div>`;
+    return;
+  }
+  el.innerHTML = imoveis.map(i => `
+    <div class="card" onclick="abrirImovel('${i.id}')">
+      <div class="card-titulo">${i.logradouro || '(sem endereço)'}${i.numero ? ', ' + i.numero : ''}</div>
+      <div class="card-sub">${[i.bairro, i.cidade].filter(Boolean).join(' — ') || '&nbsp;'}</div>
+    </div>`).join('');
+}
+
+async function abrirImovel(id) {
+  const imoveis = await idbTodos('imoveis');
+  imovelAtual = imoveis.find(i => i.id === id);
+  if (!imovelAtual) return;
+  document.getElementById('imovel-titulo').textContent = imovelAtual.logradouro || '(sem endereço)';
+  document.getElementById('imovel-sub').textContent = [imovelAtual.bairro, imovelAtual.cidade].filter(Boolean).join(' — ');
+  mostrarTela('tela-imovel');
+  await renderizarListaVistorias();
+}
+
+async function renderizarListaVistorias() {
+  const todas = await idbTodos('vistorias');
+  const doImovel = todas.filter(v => v.imovel_id === imovelAtual.id).sort((a, b) => (b.data_vistoria || '').localeCompare(a.data_vistoria || ''));
+  const el = document.getElementById('lista-vistorias');
+  if (!doImovel.length) { el.innerHTML = `<div class="vazio">Nenhuma vistoria ainda. Toque em "+ Nova vistoria" pra começar.</div>`; return; }
+  const fila = await idbTodos('fila');
+  el.innerHTML = doImovel.map(v => {
+    const pendente = fila.some(f => (f.tipo === 'criar_vistoria' && f.payload.id === v.id));
+    const selo = pendente ? '<span class="selo selo-pendente">Pendente</span>'
+      : v.status === 'finalizado' ? '<span class="selo selo-finalizado">Concluída</span>'
+      : '<span class="selo selo-rascunho">Em edição</span>';
+    return `<div class="card" onclick="abrirVistoria('${v.id}')">
+      <div class="card-titulo">${TIPO_LABEL[v.tipo] || v.tipo} — ${formatarDataBR(v.data_vistoria)}</div>
+      <div class="card-sub">${selo}</div>
+    </div>`;
+  }).join('');
+}
+
+function formatarDataBR(iso) {
+  if (!iso) return '';
+  const [a, m, d] = iso.split('-');
+  return `${d}/${m}/${a}`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Criar / abrir vistoria
+// ══════════════════════════════════════════════════════════════
+function abrirEscolhaTipoVistoria() { document.getElementById('modal-tipo-vistoria').classList.add('aberto'); }
+
+async function criarVistoria(tipo) {
+  fecharModais();
+  const id = crypto.randomUUID();
+  const hoje = new Date().toISOString().slice(0, 10);
+  const registro = {
+    id, imovel_id: imovelAtual.id, tipo, data_vistoria: hoje, status: 'rascunho',
+    responsavel: null, observacoes_gerais: null, contrato_id: null,
+    competencia: tipo === 'periodica' ? (hoje.slice(0, 7) + '-01') : null,
+    criado_por: sessaoAtual.user.id,
+  };
+  await idbSalvar('vistorias', registro);
+  await enfileirar('criar_vistoria', registro);
+  await abrirVistoria(id);
+  await renderizarListaVistorias();
+}
+
+async function abrirVistoria(id) {
+  const todas = await idbTodos('vistorias');
+  vistoriaAtual = todas.find(v => v.id === id);
+  if (!vistoriaAtual) return;
+  document.getElementById('vistoria-titulo').textContent = TIPO_LABEL[vistoriaAtual.tipo] || vistoriaAtual.tipo;
+  document.getElementById('vistoria-sub').textContent = formatarDataBR(vistoriaAtual.data_vistoria);
+  mostrarTela('tela-vistoria');
+  await renderizarComodos();
+}
+
+// ══════════════════════════════════════════════════════════════
+// Cômodos
+// ══════════════════════════════════════════════════════════════
+function abrirEscolhaComodo() {
+  document.getElementById('lista-comodos-comuns').innerHTML = COMODOS_COMUNS.map(n => `<button onclick="adicionarComodo('${n}')">${n}</button>`).join('');
+  document.getElementById('comodo-custom').value = '';
+  document.getElementById('modal-comodo').classList.add('aberto');
+}
+function confirmarComodoCustom() {
+  const nome = document.getElementById('comodo-custom').value.trim();
+  if (!nome) return;
+  adicionarComodo(nome);
+}
+async function adicionarComodo(nomeBase) {
+  fecharModais();
+  const existentes = await idbTodos('comodos');
+  const doAtual = existentes.filter(c => c.vistoria_id === vistoriaAtual.id);
+  let nome = nomeBase, n = 2;
+  while (doAtual.some(c => c.nome === nome)) { nome = `${nomeBase} ${n}`; n++; }
+  const registro = { id: crypto.randomUUID(), vistoria_id: vistoriaAtual.id, nome, estado: 'BOM', observacoes: null, ordem: doAtual.length };
+  await idbSalvar('comodos', registro);
+  await enfileirar('criar_comodo', registro);
+  await renderizarComodos();
+}
+
+async function renderizarComodos() {
+  const todos = await idbTodos('comodos');
+  const doAtual = todos.filter(c => c.vistoria_id === vistoriaAtual.id).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  const el = document.getElementById('lista-comodos');
+  if (!doAtual.length) { el.innerHTML = `<div class="vazio">Nenhum cômodo ainda. Toque em "+ Cômodo" pra adicionar.</div>`; return; }
+  const fotos = await idbTodos('fotos');
+  el.innerHTML = '';
+  for (const c of doAtual) {
+    const div = document.createElement('div');
+    div.className = 'comodo'; div.id = 'comodo-' + c.id;
+    const fotosDoComodo = fotos.filter(f => f.comodo_id === c.id);
+    div.innerHTML = `
+      <div class="comodo-cab" onclick="toggleComodo('${c.id}')">
+        <span class="comodo-nome">${c.nome}</span>
+        <span class="estado-badge estado-${c.estado}">${c.estado}</span>
+        <button class="remover-comodo" onclick="event.stopPropagation();removerComodo('${c.id}')">🗑️</button>
+      </div>
+      <div class="comodo-corpo">
+        <span class="rotulo">Estado de conservação</span>
+        <div class="estados-linha">
+          ${['BOM', 'REGULAR', 'RUIM', 'NA'].map(e => `<button class="estado-btn ${c.estado === e ? 'sel-' + e : ''}" onclick="mudarEstadoComodo('${c.id}','${e}')">${e}</button>`).join('')}
+        </div>
+        <span class="rotulo">Observações</span>
+        <textarea onblur="mudarObsComodo('${c.id}',this.value)" placeholder="Observações do cômodo...">${c.observacoes || ''}</textarea>
+        <span class="rotulo">Fotos</span>
+        <div class="fotos-grid" id="fotos-${c.id}">
+          <div class="foto-add" onclick="document.getElementById('foto-input-${c.id}').click()">📷</div>
+          ${fotosDoComodo.map(f => `<div class="foto-mini"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`).join('')}
+        </div>
+        <input type="file" id="foto-input-${c.id}" accept="image/*" capture="environment" style="display:none" onchange="tirarFotoComodo('${c.id}',this)"/>
+      </div>`;
+    el.appendChild(div);
+  }
+}
+
+function toggleComodo(id) { document.getElementById('comodo-' + id).classList.toggle('aberto'); }
+
+async function mudarEstadoComodo(id, estado) {
+  const c = await idbPegar('comodos', id);
+  c.estado = estado; await idbSalvar('comodos', c);
+  await enfileirar('atualizar_comodo', { id, campos: { estado } });
+  await renderizarComodos();
+  document.getElementById('comodo-' + id).classList.add('aberto');
+}
+async function mudarObsComodo(id, valor) {
+  const c = await idbPegar('comodos', id);
+  c.observacoes = valor.trim() || null; await idbSalvar('comodos', c);
+  await enfileirar('atualizar_comodo', { id, campos: { observacoes: c.observacoes } });
+}
+async function removerComodo(id) {
+  if (!confirm('Remover este cômodo e suas fotos?')) return;
+  await idbRemover('comodos', id);
+  await enfileirar('remover_comodo', { id });
+  await renderizarComodos();
+}
+
+// ══════════════════════════════════════════════════════════════
+// Fotos — guardadas localmente (comprimidas) até conseguir subir
+// ══════════════════════════════════════════════════════════════
+async function tirarFotoComodo(comodoId, input) {
+  const arquivo = input.files[0];
+  input.value = '';
+  if (!arquivo) return;
+  try {
+    const comprimida = await comprimirImagem(arquivo, 1280, 0.72);
+    const fotoLocalId = crypto.randomUUID();
+    await idbSalvar('fotos', {
+      id: fotoLocalId, comodo_id: comodoId, previewUrl: comprimida.dataUrl,
+      base64: comprimida.base64, mimeType: 'image/jpeg', status: 'pendente',
+    });
+    await enfileirar('foto_comodo', {
+      fotoLocalId, comodoId, nomeArquivo: (arquivo.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg',
+      mimeType: 'image/jpeg', base64: comprimida.base64, tamanhoBytes: comprimida.tamanho,
+      usuarioId: sessaoAtual.user.id,
+    });
+    await renderizarComodos();
+    document.getElementById('comodo-' + comodoId).classList.add('aberto');
+  } catch (e) {
+    mostrarToast('Erro ao processar a foto: ' + e.message, 'erro');
+  }
+}
+
+// Reduz a foto antes de guardar — essencial offline, senão o
+// armazenamento local do aparelho enche rápido e o envio depois
+// fica pesado demais numa conexão fraca
+function comprimirImagem(arquivo, larguraMax, qualidade) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const leitor = new FileReader();
+    leitor.onload = () => { img.src = leitor.result; };
+    leitor.onerror = reject;
+    img.onload = () => {
+      const escala = Math.min(1, larguraMax / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', qualidade);
+      const base64 = dataUrl.split(',')[1];
+      const tamanho = Math.round(base64.length * 0.75);
+      resolve({ dataUrl, base64, tamanho });
+    };
+    img.onerror = reject;
+    leitor.readAsDataURL(arquivo);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// Inicialização
+// ══════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    sessaoAtual = session;
+    await iniciarAppLogado();
+  } else {
+    mostrarTela('tela-login');
+  }
+});
+</script>
+</body>
+</html>
