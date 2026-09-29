@@ -1,0 +1,15 @@
+{
+  "name": "SIGECON — Vistorias em Campo",
+  "short_name": "Vistorias",
+  "description": "Vistorias de imóveis por cômodo, com funcionamento offline e sincronização automática",
+  "start_url": "./imoveis-campo.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0B1929",
+  "theme_color": "#0B1929",
+  "icons": [
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
