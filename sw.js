@@ -10,6 +10,8 @@ const ARQUIVOS_ESSENCIAIS = [
   './imoveis-campo.html',
   './manifest.json',
   './icone.svg',
+  './icone-180.png',
+  './icone-512.png',
 ];
 
 self.addEventListener('install', (evento) => {

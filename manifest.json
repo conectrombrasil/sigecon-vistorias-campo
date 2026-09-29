@@ -10,6 +10,7 @@
   "theme_color": "#0B1929",
   "icons": [
     { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icone-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
   ]
 }
