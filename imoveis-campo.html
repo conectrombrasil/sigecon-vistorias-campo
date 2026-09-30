@@ -643,6 +643,30 @@ async function iniciarAppLogado() {
   tentarSincronizar();
 }
 
+// Tira do armazenamento local qualquer vistoria que não devesse mais
+// estar visível pra esse usuário (ex: de outra pessoa, cacheada antes
+// desse filtro existir, ou de uma obra que ele perdeu acesso). Nunca
+// apaga uma vistoria que ainda está esperando pra sincronizar — isso
+// destruiria trabalho feito offline que o servidor ainda não viu.
+async function _removerVistoriasQueNaoDevemMaisAparecer(vistoriasDoServidor) {
+  const idsValidos = new Set(vistoriasDoServidor.map(v => v.id));
+  const fila = await idbTodos('fila');
+  const idsPendentes = new Set(fila.filter(f => f.tipo === 'criar_vistoria').map(f => f.payload.id));
+
+  const vistoriasLocais = await idbTodos('vistorias');
+  for (const v of vistoriasLocais) {
+    if (idsValidos.has(v.id) || idsPendentes.has(v.id)) continue;
+    await idbRemover('vistorias', v.id);
+    // Cômodos e fotos daquela vistoria também ficariam órfãos — limpa junto
+    const comodosOrfaos = (await idbTodos('comodos')).filter(c => c.vistoria_id === v.id);
+    for (const c of comodosOrfaos) {
+      await idbRemover('comodos', c.id);
+      const fotosOrfas = (await idbTodos('fotos')).filter(f => f.comodo_id === c.id);
+      for (const f of fotosOrfas) await idbRemover('fotos', f.id);
+    }
+  }
+}
+
 async function carregarImoveisDoServidor() {
   const { data: vinc } = await sb.from('usuario_obras').select('obra_id').eq('usuario_id', sessaoAtual.user.id);
   obrasIds = (vinc || []).map(v => v.obra_id);
@@ -679,6 +703,7 @@ async function carregarImoveisDoServidor() {
       .eq('criado_por', sessaoAtual.user.id)
       .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(200);
     await idbSalvarVarios('vistorias', vistorias || []);
+    await _removerVistoriasQueNaoDevemMaisAparecer(vistorias || []);
     if (vistorias && vistorias.length) {
       const idsVist = vistorias.map(v => v.id);
       const { data: comodos } = await sb.from('vistoria_comodos').select('*').in('vistoria_id', idsVist);
