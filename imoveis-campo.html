@@ -123,6 +123,12 @@
   .modal-titulo{font-weight:700;font-size:15px;margin-bottom:14px;}
   .opcao-lista button{width:100%;text-align:left;background:var(--navy3);border:1px solid var(--border);
     color:var(--text);padding:13px 14px;border-radius:10px;margin-bottom:8px;font-size:14px;cursor:pointer;}
+  .tipo-pessoa-toggle{display:flex;gap:8px;margin-bottom:12px;}
+  .tipo-pessoa-toggle button{flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--navy3);
+    color:var(--text2);font-weight:700;font-size:13px;cursor:pointer;}
+  .tipo-pessoa-toggle button.sel{background:rgba(241,90,36,0.2);border-color:var(--orange);color:#ffb98a;}
+  .link-add{background:none;border:none;color:var(--blue2);font-size:12.5px;font-weight:700;cursor:pointer;padding:0;margin-bottom:10px;}
+  .topo-acao{background:none;border:none;color:var(--text2);font-size:13px;padding:4px 8px;cursor:pointer;}
   .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
     border-radius:50%;animation:girar .7s linear infinite;vertical-align:middle;}
   @keyframes girar{to{transform:rotate(360deg);}}
@@ -158,10 +164,11 @@
 <div class="tela" id="tela-imovel">
   <div class="topo">
     <button class="topo-voltar" onclick="mostrarTela('tela-home')">←</button>
-    <div>
+    <div style="flex:1">
       <div class="topo-titulo" id="imovel-titulo"></div>
       <div class="topo-sub" id="imovel-sub"></div>
     </div>
+    <button class="topo-acao" onclick="abrirEditarImovel()">✏️ Editar</button>
   </div>
   <div class="status-barra" id="status-barra-2"></div>
   <div class="conteudo" id="lista-vistorias"></div>
@@ -172,13 +179,14 @@
 <div class="tela" id="tela-novo-imovel">
   <div class="topo">
     <button class="topo-voltar" onclick="mostrarTela('tela-home')">←</button>
-    <div class="topo-titulo">Novo imóvel</div>
+    <div class="topo-titulo" id="ni-titulo-tela">Novo imóvel</div>
   </div>
   <div class="conteudo">
     <span class="rotulo">Obra *</span>
     <div class="campo"><select id="ni-obra"></select></div>
     <span class="rotulo">Fornecedor</span>
     <div class="campo"><select id="ni-fornecedor"><option value="">(nenhum)</option></select></div>
+    <button class="link-add" onclick="abrirNovoFornecedor()">+ Cadastrar fornecedor novo (pessoa física ou jurídica)</button>
     <span class="rotulo">Logradouro *</span>
     <div class="campo"><input type="text" id="ni-logradouro" placeholder="Rua, avenida..."/></div>
     <div style="display:flex;gap:10px">
@@ -196,7 +204,7 @@
     <span class="rotulo">Capacidade de pessoas *</span>
     <div class="campo"><input type="number" id="ni-capacidade" min="1"/></div>
     <div class="erro-msg" id="ni-erro"></div>
-    <button class="btn" onclick="salvarNovoImovel()">Salvar imóvel</button>
+    <button class="btn" id="ni-btn-salvar" onclick="salvarNovoImovel()">Salvar imóvel</button>
   </div>
 </div>
 
@@ -233,6 +241,24 @@
     <div class="opcao-lista" id="lista-comodos-comuns"></div>
     <div class="campo"><input type="text" id="comodo-custom" placeholder="Outro nome..."/></div>
     <button class="btn" onclick="confirmarComodoCustom()">Adicionar</button>
+    <button class="btn btn-secundario" style="margin-top:8px" onclick="fecharModais()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ================= Modal: cadastro rápido de fornecedor ================= -->
+<div class="modal-overlay" id="modal-fornecedor">
+  <div class="modal">
+    <div class="modal-titulo">Novo fornecedor</div>
+    <div class="tipo-pessoa-toggle">
+      <button id="nf-btn-pf" onclick="_selecionarTipoPessoaFornecedor('PF')">Pessoa Física</button>
+      <button id="nf-btn-pj" onclick="_selecionarTipoPessoaFornecedor('PJ')">Pessoa Jurídica</button>
+    </div>
+    <span class="rotulo" id="nf-rotulo-nome">Nome</span>
+    <div class="campo"><input type="text" id="nf-nome"/></div>
+    <span class="rotulo" id="nf-rotulo-doc">CPF</span>
+    <div class="campo"><input type="text" id="nf-cpf-cnpj" placeholder="Só números"/></div>
+    <div class="erro-msg" id="nf-erro"></div>
+    <button class="btn" onclick="salvarNovoFornecedor()">Salvar fornecedor</button>
     <button class="btn btn-secundario" style="margin-top:8px" onclick="fecharModais()">Cancelar</button>
   </div>
 </div>
@@ -343,6 +369,12 @@ async function processarItemFila(item) {
   const p = item.payload;
   if (item.tipo === 'criar_imovel') {
     const { error } = await sb.from('imoveis').insert(p);
+    if (error) throw error;
+  } else if (item.tipo === 'atualizar_imovel') {
+    const { error } = await sb.from('imoveis').update(p.campos).eq('id', p.id);
+    if (error) throw error;
+  } else if (item.tipo === 'criar_fornecedor') {
+    const { error } = await sb.from('fornecedores').insert(p);
     if (error) throw error;
   } else if (item.tipo === 'criar_vistoria') {
     const { error } = await sb.from('imovel_vistorias').insert(p);
@@ -591,20 +623,47 @@ async function renderizarListaImoveis() {
     </div>`).join('');
 }
 
-async function abrirNovoImovel() {
+let _imovelEditandoId = null; // null = cadastrando novo; preenchido = editando este imóvel
+
+async function _preencherSelectsImovelForm() {
   const obras = await idbTodos('obras');
   const fornecedores = await idbTodos('fornecedores');
   const selObra = document.getElementById('ni-obra');
   const selFornecedor = document.getElementById('ni-fornecedor');
-  ['ni-logradouro', 'ni-numero', 'ni-complemento', 'ni-bairro', 'ni-cidade', 'ni-estado', 'ni-cep', 'ni-capacidade'].forEach(id => { document.getElementById(id).value = ''; });
-  document.getElementById('ni-erro').textContent = '';
-
   if (!obras.length) {
     selObra.innerHTML = '<option value="">Nenhuma obra disponível — conecte à internet pelo menos uma vez</option>';
   } else {
     selObra.innerHTML = obras.map(o => `<option value="${o.id}">${o.nome}</option>`).join('');
   }
   selFornecedor.innerHTML = '<option value="">(nenhum)</option>' + fornecedores.map(f => `<option value="${f.id}">${f.razao_social}</option>`).join('');
+}
+
+async function abrirNovoImovel() {
+  _imovelEditandoId = null;
+  document.getElementById('ni-titulo-tela').textContent = 'Novo imóvel';
+  document.getElementById('ni-btn-salvar').textContent = 'Salvar imóvel';
+  ['ni-logradouro', 'ni-numero', 'ni-complemento', 'ni-bairro', 'ni-cidade', 'ni-estado', 'ni-cep', 'ni-capacidade'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('ni-erro').textContent = '';
+  await _preencherSelectsImovelForm();
+  mostrarTela('tela-novo-imovel');
+}
+
+async function abrirEditarImovel() {
+  _imovelEditandoId = imovelAtual.id;
+  document.getElementById('ni-titulo-tela').textContent = 'Editar imóvel';
+  document.getElementById('ni-btn-salvar').textContent = 'Salvar alterações';
+  document.getElementById('ni-erro').textContent = '';
+  await _preencherSelectsImovelForm();
+  document.getElementById('ni-obra').value = imovelAtual.obra_id || '';
+  document.getElementById('ni-fornecedor').value = imovelAtual.fornecedor_id || '';
+  document.getElementById('ni-logradouro').value = imovelAtual.logradouro || '';
+  document.getElementById('ni-numero').value = imovelAtual.numero || '';
+  document.getElementById('ni-complemento').value = imovelAtual.complemento || '';
+  document.getElementById('ni-bairro').value = imovelAtual.bairro || '';
+  document.getElementById('ni-cidade').value = imovelAtual.cidade || '';
+  document.getElementById('ni-estado').value = imovelAtual.estado || '';
+  document.getElementById('ni-cep').value = imovelAtual.cep || '';
+  document.getElementById('ni-capacidade').value = imovelAtual.capacidade_pessoas || '';
   mostrarTela('tela-novo-imovel');
 }
 
@@ -618,8 +677,7 @@ async function salvarNovoImovel() {
   if (!obraId) { erroEl.textContent = 'Selecione a obra vinculada.'; return; }
   if (!capacidadeStr || parseInt(capacidadeStr, 10) < 1) { erroEl.textContent = 'Informe a capacidade de pessoas.'; return; }
 
-  const registro = {
-    id: crypto.randomUUID(),
+  const campos = {
     obra_id: obraId,
     fornecedor_id: document.getElementById('ni-fornecedor').value || null,
     logradouro,
@@ -631,11 +689,68 @@ async function salvarNovoImovel() {
     cep: document.getElementById('ni-cep').value.trim() || null,
     capacidade_pessoas: parseInt(capacidadeStr, 10),
   };
-  await idbSalvar('imoveis', registro);
-  await enfileirar('criar_imovel', registro);
-  mostrarToast('Imóvel cadastrado! Já dá pra fazer a vistoria.', 'sucesso');
-  await renderizarListaImoveis();
-  await abrirImovel(registro.id); // já entra direto nele — o objetivo é poder vistoriar na sequência, mesmo offline
+
+  if (_imovelEditandoId) {
+    const registro = await idbPegar('imoveis', _imovelEditandoId);
+    Object.assign(registro, campos);
+    await idbSalvar('imoveis', registro);
+    await enfileirar('atualizar_imovel', { id: _imovelEditandoId, campos });
+    mostrarToast('Imóvel atualizado!', 'sucesso');
+    await abrirImovel(_imovelEditandoId);
+  } else {
+    const registro = { id: crypto.randomUUID(), ...campos };
+    await idbSalvar('imoveis', registro);
+    await enfileirar('criar_imovel', registro);
+    mostrarToast('Imóvel cadastrado! Já dá pra fazer a vistoria.', 'sucesso');
+    await renderizarListaImoveis();
+    await abrirImovel(registro.id); // já entra direto nele — o objetivo é poder vistoriar na sequência, mesmo offline
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Cadastro rápido de fornecedor (pessoa física ou jurídica) — pra
+// não travar o cadastro do imóvel quando o fornecedor ainda não existe
+// ══════════════════════════════════════════════════════════════
+let _tipoPessoaFornecedorAtual = 'PJ';
+
+function abrirNovoFornecedor() {
+  _tipoPessoaFornecedorAtual = 'PJ';
+  document.getElementById('nf-nome').value = '';
+  document.getElementById('nf-cpf-cnpj').value = '';
+  document.getElementById('nf-erro').textContent = '';
+  _selecionarTipoPessoaFornecedor('PJ');
+  document.getElementById('modal-fornecedor').classList.add('aberto');
+}
+
+function _selecionarTipoPessoaFornecedor(tipo) {
+  _tipoPessoaFornecedorAtual = tipo;
+  document.getElementById('nf-btn-pf').classList.toggle('sel', tipo === 'PF');
+  document.getElementById('nf-btn-pj').classList.toggle('sel', tipo === 'PJ');
+  document.getElementById('nf-rotulo-nome').textContent = tipo === 'PF' ? 'Nome' : 'Razão Social';
+  document.getElementById('nf-rotulo-doc').textContent = tipo === 'PF' ? 'CPF' : 'CNPJ';
+}
+
+async function salvarNovoFornecedor() {
+  const erroEl = document.getElementById('nf-erro');
+  const nome = document.getElementById('nf-nome').value.trim();
+  const doc = document.getElementById('nf-cpf-cnpj').value.replace(/\D/g, '');
+  if (!nome) { erroEl.textContent = 'Informe o nome.'; return; }
+
+  const registro = {
+    id: crypto.randomUUID(), tipo_pessoa: _tipoPessoaFornecedorAtual,
+    razao_social: nome, cpf_cnpj: doc || null, ativo: true,
+    criado_por: sessaoAtual.user.id,
+  };
+  await idbSalvar('fornecedores', registro);
+  await enfileirar('criar_fornecedor', registro);
+  fecharModais();
+
+  // Já entra selecionado no formulário de imóvel que estava aberto —
+  // não precisa esperar sincronizar pra poder usar
+  const sel = document.getElementById('ni-fornecedor');
+  sel.innerHTML += `<option value="${registro.id}">${registro.razao_social}</option>`;
+  sel.value = registro.id;
+  mostrarToast('Fornecedor cadastrado e já selecionado.', 'sucesso');
 }
 
 async function abrirImovel(id) {
