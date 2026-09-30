@@ -169,6 +169,25 @@
   .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
     border-radius:50%;animation:girar .7s linear infinite;vertical-align:middle;}
   @keyframes girar{to{transform:rotate(360deg);}}
+
+  /* ===== Passo a passo ===== */
+  .passos{display:flex;align-items:flex-start;padding:12px 10px 10px;background:var(--navy2);border-bottom:1px solid var(--border);}
+  .passo{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;font-size:10.5px;color:var(--text3);text-align:center;font-weight:600;}
+  .passo::before{content:'';position:absolute;top:13px;left:-50%;width:100%;height:2px;background:var(--border);z-index:0;}
+  .passo:first-child::before{display:none;}
+  .passo .bola{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:var(--navy2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;z-index:1;}
+  .passo.feito{color:#7be8bc;}
+  .passo.feito .bola{background:var(--green);border-color:var(--green);color:#06281a;}
+  .passo.feito::before,.passo.atual::before{background:var(--green);}
+  .passo.atual{color:var(--text);}
+  .passo.atual .bola{border-color:var(--orange);color:#ffb98a;background:rgba(241,90,36,0.2);}
+  .selo-info{background:rgba(46,123,196,0.22);color:#8fc4f5;}
+  .selo-neutro{background:rgba(138,165,190,0.18);color:var(--text2);}
+  .card-linha{display:flex;align-items:flex-start;gap:8px;}
+  .btn-mini{background:rgba(46,204,138,0.16);border:1px solid var(--green);color:#7be8bc;border-radius:8px;padding:7px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .travada .comodo-corpo{pointer-events:none;opacity:.65;}
+  .travada .remover-comodo{display:none;}
+  .banner-ok{background:rgba(46,204,138,0.14);border:1px solid var(--green);color:#7be8bc;border-radius:10px;padding:12px;text-align:center;font-weight:700;font-size:13.5px;margin-bottom:10px;}
 </style>
 </head>
 <body>
@@ -194,39 +213,59 @@
   </div>
   <div class="status-barra" id="status-barra"></div>
   <div class="conteudo" id="lista-imoveis"></div>
-  <button class="fab" onclick="abrirNovoImovel()">+ Novo imóvel</button>
+  <button class="fab" onclick="abrirEscolhaFornecedor()">+ Novo imóvel</button>
 </div>
 
 <!-- ================= IMÓVEL: lista de vistorias ================= -->
 <div class="tela" id="tela-imovel">
   <div class="topo">
-    <button class="topo-voltar" onclick="mostrarTela('tela-home')">←</button>
+    <button class="topo-voltar" onclick="irParaHome()">←</button>
     <div style="flex:1">
       <div class="topo-titulo" id="imovel-titulo"></div>
       <div class="topo-sub" id="imovel-sub"></div>
     </div>
     <button class="topo-acao" onclick="abrirEditarImovel()">✏️ Editar</button>
+    <button class="topo-acao" onclick="deletarImovelLocal(imovelAtual.id)" title="Excluir do aparelho">🗑️</button>
   </div>
   <div class="status-barra" id="status-barra-2"></div>
+  <div class="passos" id="passos-imovel"></div>
   <div class="conteudo">
-    <button class="btn" style="margin-bottom:16px" onclick="abrirSolicitarContrato()">📄 Solicitar Contrato de Locação</button>
+    <div id="imovel-painel"></div>
+    <div class="rotulo" style="margin:4px 0 8px">Vistorias deste imóvel</div>
     <div id="lista-vistorias"></div>
   </div>
   <button class="fab" onclick="abrirEscolhaTipoVistoria()">+ Nova vistoria</button>
 </div>
 
+<!-- ================= PASSO 1: ESCOLHER FORNECEDOR ================= -->
+<div class="tela" id="tela-fornecedor-escolha">
+  <div class="topo">
+    <button class="topo-voltar" onclick="irParaHome()">←</button>
+    <div class="topo-titulo">Novo imóvel</div>
+  </div>
+  <div class="passos" id="passos-forn"></div>
+  <div class="conteudo">
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">Passo 1 — Escolha o fornecedor</div>
+    <div class="card-sub" style="margin:0 0 12px">Quem é o locador do imóvel? Escolha na lista ou cadastre um novo.</div>
+    <div class="campo" style="max-width:none"><input type="text" id="forn-busca" placeholder="Buscar por nome ou CPF/CNPJ" oninput="renderizarListaFornecedores()"/></div>
+    <button class="btn btn-secundario" style="max-width:none;margin-bottom:14px" onclick="abrirNovoFornecedor('escolha')">+ Cadastrar fornecedor novo</button>
+    <div id="forn-lista"></div>
+  </div>
+</div>
+
 <!-- ================= NOVO IMÓVEL ================= -->
 <div class="tela" id="tela-novo-imovel">
   <div class="topo">
-    <button class="topo-voltar" onclick="mostrarTela('tela-home')">←</button>
+    <button class="topo-voltar" onclick="voltarDoFormImovel()">←</button>
     <div class="topo-titulo" id="ni-titulo-tela">Novo imóvel</div>
   </div>
+  <div class="passos" id="passos-ni"></div>
   <div class="conteudo">
     <span class="rotulo">Obra *</span>
     <div class="campo"><select id="ni-obra"></select></div>
-    <span class="rotulo">Fornecedor</span>
-    <div class="campo"><select id="ni-fornecedor"><option value="">(nenhum)</option></select></div>
-    <button class="link-add" onclick="abrirNovoFornecedor()">+ Cadastrar fornecedor novo (pessoa física ou jurídica)</button>
+    <span class="rotulo">Fornecedor *</span>
+    <div class="campo"><select id="ni-fornecedor"><option value="">Selecione...</option></select></div>
+    <button class="link-add" onclick="abrirNovoFornecedor('imovel')">+ Cadastrar fornecedor novo (pessoa física ou jurídica)</button>
     <span class="rotulo">Logradouro *</span>
     <div class="campo"><input type="text" id="ni-logradouro" placeholder="Rua, avenida..."/></div>
     <div style="display:flex;gap:10px">
@@ -251,9 +290,10 @@
 <!-- ================= SOLICITAR CONTRATO (só online) ================= -->
 <div class="tela" id="tela-solicitar-contrato">
   <div class="topo">
-    <button class="topo-voltar" onclick="mostrarTela('tela-imovel')">←</button>
+    <button class="topo-voltar" onclick="abrirImovel(imovelAtual.id)">←</button>
     <div class="topo-titulo">Solicitar Contrato</div>
   </div>
+  <div class="passos" id="passos-sc"></div>
   <div class="conteudo">
     <div id="sc-bloqueio-offline" class="aviso-offline-bloqueio" style="display:none">
       📴 Essa etapa precisa de internet, pra garantir que o número do contrato seja gerado certo, sem risco de duplicar.<br/><br/>
@@ -304,7 +344,21 @@
         </div>
       </div>
 
-      <div class="secao-opcional aberta" id="sec-anexo">
+      <div class="secao-opcional aberta" id="sec-testemunha">
+        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-testemunha')">👤 Testemunha<span class="secao-opcional-seta">▶</span></div>
+        <div class="secao-opcional-corpo">
+          <span class="rotulo">Nome da testemunha *</span>
+          <div class="campo"><input type="text" id="sc-test-nome"/></div>
+          <div style="display:flex;gap:10px">
+            <div class="campo" style="flex:1"><span class="rotulo">Telefone</span><input type="tel" id="sc-test-tel"/></div>
+            <div class="campo" style="flex:1"><span class="rotulo">E-mail</span><input type="email" id="sc-test-email"/></div>
+          </div>
+          <div style="font-size:11.5px;color:var(--text3)">Informe pelo menos um contato: telefone ou e-mail.</div>
+        </div>
+      </div>
+
+      <!-- Anexo do relatório de vistoria: desligado por enquanto (fotos não saem no PDF). Ligue em ANEXAR_RELATORIO_VISTORIA no script. -->
+      <div class="secao-opcional aberta" id="sec-anexo" style="display:none">
         <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-anexo')">📎 Anexo<span class="secao-opcional-seta">▶</span></div>
         <div class="secao-opcional-corpo">
           <div id="sc-anexo-status" style="font-size:12.5px;color:var(--text2)">O relatório da vistoria mais recente será gerado em PDF e anexado automaticamente.</div>
@@ -313,6 +367,7 @@
 
       <div class="erro-msg" id="sc-erro"></div>
       <button class="btn" id="sc-btn-enviar" onclick="enviarSolicitacaoContrato()">Enviar Solicitação</button>
+      <button class="btn btn-secundario" id="sc-btn-voltar" style="display:none;margin-top:8px" onclick="abrirImovel(imovelAtual.id)">← Voltar ao imóvel</button>
     </div>
   </div>
 </div>
@@ -320,14 +375,15 @@
 <!-- ================= VISTORIA: cômodos ================= -->
 <div class="tela" id="tela-vistoria">
   <div class="topo">
-    <button class="topo-voltar" onclick="mostrarTela('tela-imovel')">←</button>
+    <button class="topo-voltar" onclick="abrirImovel(imovelAtual.id)">←</button>
     <div>
       <div class="topo-titulo" id="vistoria-titulo"></div>
       <div class="topo-sub" id="vistoria-sub"></div>
     </div>
   </div>
+  <div class="passos" id="passos-vistoria"></div>
   <div class="conteudo" id="lista-comodos"></div>
-  <button class="fab" onclick="abrirEscolhaComodo()">+ Cômodo</button>
+  <button class="fab" id="fab-comodo" onclick="abrirEscolhaComodo()">+ Cômodo</button>
 </div>
 
 <!-- ================= Modal: escolher tipo de vistoria ================= -->
@@ -357,9 +413,10 @@
 <!-- ================= NOVO FORNECEDOR ================= -->
 <div class="tela" id="tela-novo-fornecedor">
   <div class="topo">
-    <button class="topo-voltar" onclick="mostrarTela('tela-novo-imovel')">←</button>
+    <button class="topo-voltar" onclick="voltarDoFornecedor()">←</button>
     <div class="topo-titulo">Novo fornecedor</div>
   </div>
+  <div class="passos" id="passos-nf"></div>
   <div class="conteudo">
     <div class="tipo-pessoa-toggle">
       <button id="nf-btn-pf" onclick="_selecionarTipoPessoaFornecedor('PF')">Pessoa Física</button>
@@ -401,13 +458,13 @@
     </div>
 
     <div class="secao-opcional" id="sec-docs">
-      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-docs')">📁 Categorias e Documentos (opcional)<span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-docs')">📁 Documentos (anexe o que tiver)<span class="secao-opcional-seta">▶</span></div>
       <div class="secao-opcional-corpo" id="nf-categorias-lista"></div>
     </div>
 
     <div class="erro-msg" id="nf-erro"></div>
     <button class="btn" onclick="salvarNovoFornecedor()">Salvar fornecedor</button>
-    <button class="btn btn-secundario" style="margin-top:8px" onclick="mostrarTela('tela-novo-imovel')">Cancelar</button>
+    <button class="btn btn-secundario" style="margin-top:8px" onclick="voltarDoFornecedor()">Cancelar</button>
   </div>
 </div>
 
@@ -438,7 +495,7 @@ let vistoriaAtual = null;
 // precisa subir pro Supabase quando a internet voltar.
 // ══════════════════════════════════════════════════════════════
 const DB_NOME = 'vistorias_campo_db';
-const DB_VERSAO = 3; // v3: acrescenta 'categorias', 'tipos_documento' e 'docs_fornecedor' — não apaga nada do que já existia
+const DB_VERSAO = 4; // v4: acrescenta 'solicitacoes' (status do contrato por imóvel) — não apaga nada. v3: acrescenta 'categorias', 'tipos_documento' e 'docs_fornecedor' — não apaga nada do que já existia
 let _dbPromise = null;
 
 function abrirDB() {
@@ -458,6 +515,7 @@ function abrirDB() {
       if (!db.objectStoreNames.contains('categorias')) db.createObjectStore('categorias', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('tipos_documento')) db.createObjectStore('tipos_documento', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('docs_fornecedor')) db.createObjectStore('docs_fornecedor', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('solicitacoes')) db.createObjectStore('solicitacoes', { keyPath: 'imovel_id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -770,7 +828,7 @@ async function carregarImoveisDoServidor() {
   // formulário de "Novo Imóvel" offline — não precisa de mais nada deles
   const { data: obrasData } = await sb.from('obras').select('id,nome').in('id', obrasIds).order('nome');
   await idbSalvarVarios('obras', obrasData || []);
-  const { data: fornecedoresData } = await sb.from('fornecedores').select('id,razao_social').eq('ativo', true).order('razao_social');
+  const { data: fornecedoresData } = await sb.from('fornecedores').select('id,razao_social,tipo_pessoa,cpf_cnpj').eq('ativo', true).order('razao_social');
   await idbSalvarVarios('fornecedores', fornecedoresData || []);
 
   // Categorias de documento e o checklist de cada uma — pra dar pra
@@ -783,6 +841,7 @@ async function carregarImoveisDoServidor() {
   const { data: imoveis, error } = await sb.from('imoveis').select('id,logradouro,numero,complemento,bairro,cidade,estado,cep,capacidade_pessoas,obra_id,fornecedor_id').in('obra_id', obrasIds).order('logradouro');
   if (error) throw error;
   await idbSalvarVarios('imoveis', imoveis || []);
+  await _carregarSolicitacoesDoServidor(imoveis || []);
 
   // Também traz as vistorias em rascunho (pra continuar) e as mais
   // recentes de cada imóvel — offline, a pessoa só precisa ver o
@@ -827,18 +886,177 @@ async function carregarImoveisDoServidor() {
 // ══════════════════════════════════════════════════════════════
 // Tela: lista de imóveis
 // ══════════════════════════════════════════════════════════════
+function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function _normalizar(t) { return (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+
+// Passo a passo: 1 Fornecedor · 2 Imóvel · 3 Vistoria · 4 Contrato
+function renderPassos(containerId, atual, feitos) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const nomes = ['Fornecedor', 'Imóvel', 'Vistoria', 'Contrato'];
+  const f = feitos || [1, 2, 3, 4].filter(k => k < atual);
+  el.style.display = 'flex';
+  el.innerHTML = nomes.map((n, i) => {
+    const k = i + 1, cls = f.includes(k) ? 'feito' : (k === atual ? 'atual' : '');
+    return `<div class="passo ${cls}"><div class="bola">${f.includes(k) ? '✓' : k}</div>${n}</div>`;
+  }).join('');
+}
+
+function _numSolicitacao(s) { return `${String(s.numero_sequencial || 0).padStart(3, '0')}/${s.numero_ano || ''}`; }
+function _rotuloStatusSolicitacao(st) {
+  const x = (st || 'pendente').toLowerCase();
+  if (x === 'pendente') return { txt: 'Solicitação enviada', classe: 'selo-info' };
+  if (x.startsWith('aprov')) return { txt: 'Solicitação aprovada', classe: 'selo-finalizado' };
+  if (x.startsWith('conclu')) return { txt: 'Solicitação concluída', classe: 'selo-finalizado' };
+  if (x.startsWith('rejeit') || x.startsWith('recus') || x.startsWith('cancel')) return { txt: 'Solicitação ' + x.replace(/_/g, ' '), classe: 'selo-pendente' };
+  if (x.startsWith('em_')) return { txt: 'Solicitação ' + x.replace(/_/g, ' '), classe: 'selo-info' };
+  return { txt: 'Solicitação ' + x.replace(/_/g, ' '), classe: 'selo-info' };
+}
+
+// Situação do imóvel dentro do passo a passo
+function _calcEstado(im, vistorias, solicitacoes, fila) {
+  const v = vistorias.filter(x => x.imovel_id === im.id);
+  const concluida = v.some(x => x.status === 'finalizado');
+  const emEdicao = v.find(x => x.status !== 'finalizado');
+  const solicitacao = solicitacoes.find(x => x.imovel_id === im.id);
+  const naoSync = fila.some(f => f.tipo === 'criar_imovel' && f.payload.id === im.id);
+  let e = { concluida, emEdicao, solicitacao, naoSync };
+  if (solicitacao) {
+    const r = _rotuloStatusSolicitacao(solicitacao.status);
+    Object.assign(e, { rotulo: r.txt, classe: r.classe, proximo: 'Solicitação nº ' + _numSolicitacao(solicitacao), passoAtual: 4, feitos: [1, 2, 3, 4] });
+  } else if (concluida) {
+    Object.assign(e, { rotulo: 'Vistoria concluída', classe: 'selo-finalizado', proximo: 'Próximo: Passo 4 — solicitar o contrato', passoAtual: 4, feitos: [1, 2, 3] });
+  } else if (emEdicao) {
+    Object.assign(e, { rotulo: 'Vistoria em andamento', classe: 'selo-rascunho', proximo: 'Próximo: Passo 3 — concluir a vistoria', passoAtual: 3, feitos: [1, 2] });
+  } else {
+    Object.assign(e, { rotulo: 'Aguardando vistoria', classe: 'selo-neutro', proximo: 'Próximo: Passo 3 — fazer a vistoria', passoAtual: 3, feitos: [1, 2] });
+  }
+  return e;
+}
+
+async function _carregarSolicitacoesDoServidor(imoveis) {
+  try {
+    if (!imoveis.length) return;
+    const { data: itens, error } = await sb.from('solicitacao_itens').select('imovel_id,solicitacao_id').in('imovel_id', imoveis.map(i => i.id));
+    if (error || !itens || !itens.length) return;
+    const solIds = [...new Set(itens.map(i => i.solicitacao_id))];
+    const { data: sols, error: e2 } = await sb.from('solicitacoes_contratos').select('id,status,numero_sequencial,numero_ano').in('id', solIds);
+    if (e2 || !sols) return;
+    const porId = new Map(sols.map(x => [x.id, x]));
+    const peso = x => (x.numero_ano || 0) * 1e6 + (x.numero_sequencial || 0);
+    const melhor = new Map();
+    for (const it of itens) {
+      const sol = porId.get(it.solicitacao_id);
+      if (!sol) continue;
+      const atual = melhor.get(it.imovel_id);
+      if (!atual || peso(sol) > peso(atual)) melhor.set(it.imovel_id, sol);
+    }
+    await idbSalvarVarios('solicitacoes', [...melhor].map(([imovel_id, x]) => ({ imovel_id, solicitacao_id: x.id, status: x.status, numero_sequencial: x.numero_sequencial, numero_ano: x.numero_ano })));
+  } catch (e) { /* status da solicitação é um extra — se falhar, o app segue normal */ }
+}
+
+async function irParaHome() { await renderizarListaImoveis(); mostrarTela('tela-home'); }
+
 async function renderizarListaImoveis() {
   const imoveis = await idbTodos('imoveis');
   const el = document.getElementById('lista-imoveis');
   if (!imoveis.length) {
-    el.innerHTML = `<div class="vazio">Nenhum imóvel disponível ainda.${navigator.onLine ? '' : ' Conecte à internet pelo menos uma vez pra carregar a lista.'}</div>`;
+    el.innerHTML = `<div class="vazio">Nenhum imóvel ainda.<br/>Toque em "+ Novo imóvel" pra começar pelo Passo 1 (fornecedor).${navigator.onLine ? '' : '<br/>Conecte à internet pelo menos uma vez pra carregar a lista.'}</div>`;
     return;
   }
-  el.innerHTML = imoveis.map(i => `
-    <div class="card" onclick="abrirImovel('${i.id}')">
-      <div class="card-titulo">${i.logradouro || '(sem endereço)'}${i.numero ? ', ' + i.numero : ''}</div>
-      <div class="card-sub">${[i.bairro, i.cidade].filter(Boolean).join(' — ') || '&nbsp;'}</div>
-    </div>`).join('');
+  const [vist, sols, fila] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes'), idbTodos('fila')]);
+  el.innerHTML = imoveis.map(i => {
+    const e = _calcEstado(i, vist, sols, fila);
+    return `<div class="card" onclick="abrirImovel('${i.id}')">
+      <div class="card-linha">
+        <div style="flex:1;min-width:0">
+          <div class="card-titulo">${esc(i.logradouro) || '(sem endereço)'}${i.numero ? ', ' + esc(i.numero) : ''}</div>
+          <div class="card-sub">${esc([i.bairro, i.cidade].filter(Boolean).join(' — ')) || '&nbsp;'}</div>
+          <div style="margin-top:8px"><span class="selo ${e.classe}">${esc(e.rotulo)}</span>${e.naoSync ? ' <span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}</div>
+          <div class="card-sub" style="margin-top:6px">${esc(e.proximo)}</div>
+        </div>
+        <button class="remover-comodo" onclick="event.stopPropagation();deletarImovelLocal('${i.id}')" title="Excluir do aparelho">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Exclui o imóvel SÓ do aparelho. Se ele já estiver no sistema, volta a
+// aparecer na próxima atualização da lista. Se ainda nem subiu (está na
+// fila), é descartado de vez — inclusive o que estava esperando pra enviar.
+async function deletarImovelLocal(id) {
+  const imovel = await idbPegar('imoveis', id);
+  if (!imovel) return;
+  const fila = await idbTodos('fila');
+  const naoSubiu = fila.some(f => f.tipo === 'criar_imovel' && f.payload.id === id);
+  const msg = naoSubiu
+    ? 'Este imóvel ainda não foi enviado ao sistema. Excluir descarta ele de vez, com vistorias e fotos. Excluir?'
+    : 'Excluir este imóvel do aparelho? Se ele já estiver no sistema, volta a aparecer quando a lista for atualizada.';
+  if (!confirm(msg)) return;
+
+  const vistorias = (await idbTodos('vistorias')).filter(v => v.imovel_id === id);
+  const vIds = new Set(vistorias.map(v => v.id));
+  const comodos = (await idbTodos('comodos')).filter(c => vIds.has(c.vistoria_id));
+  const cIds = new Set(comodos.map(c => c.id));
+  const fotos = (await idbTodos('fotos')).filter(f => cIds.has(f.comodo_id));
+
+  for (const f of fotos) await idbRemover('fotos', f.id);
+  for (const c of comodos) await idbRemover('comodos', c.id);
+  for (const v of vistorias) await idbRemover('vistorias', v.id);
+  await idbRemover('solicitacoes', id);
+  await idbRemover('imoveis', id);
+
+  if (naoSubiu) {
+    const relacionado = f => {
+      const pl = f.payload;
+      switch (f.tipo) {
+        case 'criar_imovel': case 'atualizar_imovel': return pl.id === id;
+        case 'criar_vistoria': return pl.imovel_id === id;
+        case 'atualizar_vistoria': return vIds.has(pl.id);
+        case 'criar_comodo': return vIds.has(pl.vistoria_id);
+        case 'atualizar_comodo': case 'remover_comodo': return cIds.has(pl.id);
+        case 'foto_comodo': return cIds.has(pl.comodoId);
+        default: return false;
+      }
+    };
+    for (const f of fila.filter(relacionado)) await idbRemover('fila', f.seq);
+  }
+  imovelAtual = null; vistoriaAtual = null;
+  mostrarToast('Imóvel excluído do aparelho.');
+  atualizarBarraStatus();
+  await irParaHome();
+}
+
+// ── Passo 1: escolher fornecedor ──
+async function abrirEscolhaFornecedor() {
+  renderPassos('passos-forn', 1);
+  document.getElementById('forn-busca').value = '';
+  await renderizarListaFornecedores();
+  mostrarTela('tela-fornecedor-escolha');
+}
+async function renderizarListaFornecedores() {
+  const termo = _normalizar(document.getElementById('forn-busca').value);
+  const digitos = termo.replace(/\D/g, '');
+  const todos = (await idbTodos('fornecedores')).sort((a, b) => (a.razao_social || '').localeCompare(b.razao_social || '', 'pt-BR'));
+  const lista = !termo ? todos : todos.filter(f => _normalizar(f.razao_social).includes(termo) || (digitos && (f.cpf_cnpj || '').includes(digitos)));
+  const el = document.getElementById('forn-lista');
+  if (!lista.length) {
+    el.innerHTML = `<div class="vazio">${todos.length ? 'Nenhum fornecedor encontrado.' : 'Nenhum fornecedor carregado ainda.'}<br/>Cadastre um novo no botão acima.</div>`;
+    return;
+  }
+  el.innerHTML = lista.map(f => {
+    const tipo = f.tipo_pessoa === 'PF' ? 'Pessoa Física' : f.tipo_pessoa === 'PJ' ? 'Pessoa Jurídica' : '';
+    return `<div class="card" onclick="escolherFornecedor('${f.id}')">
+      <div class="card-titulo">${esc(f.razao_social)}</div>
+      <div class="card-sub">${esc([tipo, f.cpf_cnpj].filter(Boolean).join(' · ')) || '&nbsp;'}</div>
+    </div>`;
+  }).join('');
+}
+async function escolherFornecedor(id) { await abrirNovoImovel(id); }
+
+function voltarDoFormImovel() {
+  if (_imovelEditandoId) abrirImovel(_imovelEditandoId);
+  else mostrarTela('tela-fornecedor-escolha');
 }
 
 let _imovelEditandoId = null; // null = cadastrando novo; preenchido = editando este imóvel
@@ -853,22 +1071,25 @@ async function _preencherSelectsImovelForm() {
   } else {
     selObra.innerHTML = obras.map(o => `<option value="${o.id}">${o.nome}</option>`).join('');
   }
-  selFornecedor.innerHTML = '<option value="">(nenhum)</option>' + fornecedores.map(f => `<option value="${f.id}">${f.razao_social}</option>`).join('');
+  selFornecedor.innerHTML = '<option value="">Selecione...</option>' + fornecedores.map(f => `<option value="${f.id}">${f.razao_social}</option>`).join('');
 }
 
-async function abrirNovoImovel() {
+async function abrirNovoImovel(fornecedorId) {
   _imovelEditandoId = null;
   document.getElementById('ni-titulo-tela').textContent = 'Novo imóvel';
   document.getElementById('ni-btn-salvar').textContent = 'Salvar imóvel';
   ['ni-logradouro', 'ni-numero', 'ni-complemento', 'ni-bairro', 'ni-cidade', 'ni-estado', 'ni-cep', 'ni-capacidade'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('ni-erro').textContent = '';
   await _preencherSelectsImovelForm();
+  if (fornecedorId) document.getElementById('ni-fornecedor').value = fornecedorId;
+  renderPassos('passos-ni', 2);
   mostrarTela('tela-novo-imovel');
 }
 
 async function abrirEditarImovel() {
   _imovelEditandoId = imovelAtual.id;
   document.getElementById('ni-titulo-tela').textContent = 'Editar imóvel';
+  document.getElementById('passos-ni').style.display = 'none';
   document.getElementById('ni-btn-salvar').textContent = 'Salvar alterações';
   document.getElementById('ni-erro').textContent = '';
   await _preencherSelectsImovelForm();
@@ -893,6 +1114,7 @@ async function salvarNovoImovel() {
   const capacidadeStr = document.getElementById('ni-capacidade').value;
   if (!logradouro) { erroEl.textContent = 'Informe o logradouro.'; return; }
   if (!obraId) { erroEl.textContent = 'Selecione a obra vinculada.'; return; }
+  if (!_imovelEditandoId && !document.getElementById('ni-fornecedor').value) { erroEl.textContent = 'Escolha o fornecedor (Passo 1).'; return; }
   if (!capacidadeStr || parseInt(capacidadeStr, 10) < 1) { erroEl.textContent = 'Informe a capacidade de pessoas.'; return; }
 
   const campos = {
@@ -919,7 +1141,7 @@ async function salvarNovoImovel() {
     const registro = { id: crypto.randomUUID(), ...campos };
     await idbSalvar('imoveis', registro);
     await enfileirar('criar_imovel', registro);
-    mostrarToast('Imóvel cadastrado! Já dá pra fazer a vistoria.', 'sucesso');
+    mostrarToast('Imóvel cadastrado! Agora é o Passo 3: fazer a vistoria.', 'sucesso');
     await renderizarListaImoveis();
     await abrirImovel(registro.id); // já entra direto nele — o objetivo é poder vistoriar na sequência, mesmo offline
   }
@@ -938,17 +1160,26 @@ let _documentosAnexados = {};              // { tipoDocumentoId: {nomeArquivo,mi
 
 function toggleSecaoOpcional(id) { document.getElementById(id).classList.toggle('aberta'); }
 
-async function abrirNovoFornecedor() {
+let _origemNovoFornecedor = 'escolha'; // 'escolha' = vindo do Passo 1 · 'imovel' = vindo do formulário do imóvel
+
+async function abrirNovoFornecedor(origem) {
+  _origemNovoFornecedor = origem === 'imovel' ? 'imovel' : 'escolha';
   _tipoPessoaFornecedorAtual = 'PJ';
   _categoriasMarcadas = new Set();
   _documentosAnexados = {};
   ['nf-nome', 'nf-cpf-cnpj', 'nf-email', 'nf-telefone', 'nf-banco-nome', 'nf-banco-agencia', 'nf-banco-conta', 'nf-banco-titular', 'nf-banco-titular-doc', 'nf-banco-obs'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('nf-banco-tipo').value = 'corrente';
   document.getElementById('nf-erro').textContent = '';
-  document.querySelectorAll('#tela-novo-fornecedor .secao-opcional').forEach(s => s.classList.remove('aberta'));
+  document.querySelectorAll('#tela-novo-fornecedor .secao-opcional').forEach(sec => sec.classList.remove('aberta'));
+  document.getElementById('sec-docs').classList.add('aberta');
+  if (_origemNovoFornecedor === 'escolha') renderPassos('passos-nf', 1);
+  else document.getElementById('passos-nf').style.display = 'none';
   _selecionarTipoPessoaFornecedor('PJ');
   await renderizarCategoriasFornecedor();
   mostrarTela('tela-novo-fornecedor');
+}
+function voltarDoFornecedor() {
+  mostrarTela(_origemNovoFornecedor === 'escolha' ? 'tela-fornecedor-escolha' : 'tela-novo-imovel');
 }
 
 function _selecionarTipoPessoaFornecedor(tipo) {
@@ -960,37 +1191,37 @@ function _selecionarTipoPessoaFornecedor(tipo) {
   renderizarCategoriasFornecedor(); // o checklist de documentos muda conforme PF/PJ (aplica_pf / aplica_pj)
 }
 
-async function renderizarCategoriasFornecedor() {
+// Categorias fixas, sem escolher na lista: "Locação de Imóvel" pra todos +
+// "Documentos Gerais PF" (pessoa física) ou "Documentos Gerais PJ" (jurídica)
+async function _categoriasAutomaticas() {
   const categorias = await idbTodos('categorias');
   const tipos = await idbTodos('tipos_documento');
-  const lista = document.getElementById('nf-categorias-lista');
-  if (!categorias.length) { lista.innerHTML = '<div class="vazio" style="padding:12px 0">Nenhuma categoria disponível — conecte à internet pelo menos uma vez.</div>'; return; }
+  const pf = _tipoPessoaFornecedorAtual === 'PF';
+  const nomeGeral = pf ? 'documentos gerais pf' : 'documentos gerais pj';
+  const nomeDe = c => _normalizar(_nomeAmigavelCategoria(c.nome));
+  const locacao = categorias.find(c => nomeDe(c).startsWith('locacao de imove'));
+  const geral = categorias.find(c => nomeDe(c) === nomeGeral);
+  return [locacao, geral].filter(Boolean).map(c => ({ ...c, tipos: tipos.filter(t => t.categoria_id === c.id && (pf ? t.aplica_pf : t.aplica_pj)) }));
+}
 
-  lista.innerHTML = categorias.map(c => {
-    const marcada = _categoriasMarcadas.has(c.id);
-    const tiposDaCategoria = tipos.filter(t => t.categoria_id === c.id && (_tipoPessoaFornecedorAtual === 'PF' ? t.aplica_pf : t.aplica_pj));
-    return `<div class="cat-item ${marcada ? 'marcada' : ''}" id="cat-item-${c.id}">
-      <label class="cat-check">
-        <input type="checkbox" ${marcada ? 'checked' : ''} onchange="toggleCategoriaFornecedor('${c.id}', this.checked)"/>
-        ${_nomeAmigavelCategoria(c.nome)}
-      </label>
-      <div class="cat-docs">
-        ${!tiposDaCategoria.length ? '<div style="font-size:11.5px;color:var(--text3)">Nenhum documento cadastrado pra essa categoria.</div>' : tiposDaCategoria.map(t => {
+async function renderizarCategoriasFornecedor() {
+  const cats = await _categoriasAutomaticas();
+  const lista = document.getElementById('nf-categorias-lista');
+  if (!cats.length) { lista.innerHTML = '<div class="vazio" style="padding:12px 0">Categorias de documento indisponíveis — conecte à internet pelo menos uma vez.</div>'; return; }
+  lista.innerHTML = `<div style="font-size:11.5px;color:var(--text3);margin-bottom:10px">Categorias aplicadas automaticamente. Anexe os documentos que tiver agora.</div>` +
+    cats.map(c => `<div class="cat-item marcada">
+      <div class="cat-check" style="cursor:default">📂 ${esc(_nomeAmigavelCategoria(c.nome))}</div>
+      <div class="cat-docs" style="margin-left:4px">
+        ${!c.tipos.length ? '<div style="font-size:11.5px;color:var(--text3)">Nenhum documento cadastrado pra essa categoria.</div>' : c.tipos.map(t => {
           const anexado = _documentosAnexados[t.id];
           return `<div class="doc-tipo-linha">
-            <span class="doc-tipo-nome">${t.nome}${t.obrigatorio ? ' <span class="doc-tipo-obrig">*</span>' : ''}</span>
+            <span class="doc-tipo-nome">${esc(t.nome)}${t.obrigatorio ? ' <span class="doc-tipo-obrig">*</span>' : ''}</span>
             <button class="doc-tipo-btn ${anexado ? 'anexado' : ''}" onclick="document.getElementById('doc-input-${t.id}').click()">${anexado ? '✅ Anexado' : '📎 Anexar'}</button>
             <input type="file" id="doc-input-${t.id}" accept="image/*,.pdf" capture="environment" style="display:none" onchange="anexarDocumentoFornecedor(this,'${t.id}')"/>
           </div>`;
         }).join('')}
       </div>
-    </div>`;
-  }).join('');
-}
-
-function toggleCategoriaFornecedor(catId, marcada) {
-  if (marcada) _categoriasMarcadas.add(catId); else _categoriasMarcadas.delete(catId);
-  document.getElementById('cat-item-' + catId).classList.toggle('marcada', marcada);
+    </div>`).join('');
 }
 
 async function anexarDocumentoFornecedor(input, tipoId) {
@@ -1034,12 +1265,15 @@ async function salvarNovoFornecedor() {
   await idbSalvar('fornecedores', registro);
   await enfileirar('criar_fornecedor', registro);
 
-  // Vincula as categorias marcadas
-  for (const catId of _categoriasMarcadas) {
-    await enfileirar('vincular_categoria_fornecedor', { fornecedor_id: registro.id, categoria_id: catId, criado_por: sessaoAtual.user.id });
+  // Vincula as categorias automáticas (Locação de Imóvel + Geral PF/PJ)
+  const cats = await _categoriasAutomaticas();
+  for (const c of cats) {
+    await enfileirar('vincular_categoria_fornecedor', { fornecedor_id: registro.id, categoria_id: c.id, criado_por: sessaoAtual.user.id });
   }
-  // Sobe os documentos anexados
+  // Sobe os documentos anexados (só os que valem pro tipo de pessoa escolhido)
+  const idsPermitidos = new Set(cats.flatMap(c => c.tipos.map(t => t.id)));
   for (const [tipoId, doc2] of Object.entries(_documentosAnexados)) {
+    if (!idsPermitidos.has(tipoId)) continue;
     await enfileirar('enviar_documento_fornecedor', {
       fornecedorId: registro.id, documentoTipoId: tipoId,
       nomeArquivo: doc2.nomeArquivo, mimeType: doc2.mimeType, base64: doc2.base64, tamanhoBytes: doc2.tamanhoBytes,
@@ -1049,11 +1283,16 @@ async function salvarNovoFornecedor() {
 
   // Já entra selecionado no formulário de imóvel que estava aberto —
   // não precisa esperar sincronizar pra poder usar
-  const sel = document.getElementById('ni-fornecedor');
-  sel.innerHTML += `<option value="${registro.id}">${registro.razao_social}</option>`;
-  sel.value = registro.id;
-  mostrarTela('tela-novo-imovel');
-  mostrarToast('Fornecedor cadastrado e já selecionado.', 'sucesso');
+  if (_origemNovoFornecedor === 'escolha') {
+    mostrarToast('Fornecedor cadastrado! Agora cadastre o imóvel (Passo 2).', 'sucesso');
+    await abrirNovoImovel(registro.id);
+  } else {
+    const sel = document.getElementById('ni-fornecedor');
+    sel.innerHTML += `<option value="${registro.id}">${esc(registro.razao_social)}</option>`;
+    sel.value = registro.id;
+    mostrarTela('tela-novo-imovel');
+    mostrarToast('Fornecedor cadastrado e já selecionado.', 'sucesso');
+  }
 }
 
 async function abrirImovel(id) {
@@ -1066,22 +1305,70 @@ async function abrirImovel(id) {
   await renderizarListaVistorias();
 }
 
+async function _renderizarPainelImovel() {
+  const [vist, sols, fila] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes'), idbTodos('fila')]);
+  const e = _calcEstado(imovelAtual, vist, sols, fila);
+  renderPassos('passos-imovel', e.passoAtual, e.feitos);
+  const trava = '<div class="card-sub" style="margin-top:10px">🔒 O Passo 4 (contrato) libera quando você concluir a vistoria.</div>';
+  let cta;
+  if (e.solicitacao) cta = '<button class="btn btn-secundario" onclick="abrirSolicitarContrato()">📄 Enviar nova solicitação</button>';
+  else if (e.concluida) cta = '<button class="btn" onclick="abrirSolicitarContrato()">📄 Passo 4 — Solicitar contrato de locação</button>';
+  else if (e.emEdicao) cta = `<button class="btn" onclick="abrirVistoria('${e.emEdicao.id}')">📋 Passo 3 — Continuar vistoria</button>` + trava;
+  else cta = '<button class="btn" onclick="abrirEscolhaTipoVistoria()">📋 Passo 3 — Fazer vistoria</button>' + trava;
+  document.getElementById('imovel-painel').innerHTML = `<div class="card" style="cursor:default;margin-bottom:16px">
+    <div class="card-sub" style="margin:0 0 6px">Status do imóvel</div>
+    <span class="selo ${e.classe}">${esc(e.rotulo)}</span>${e.naoSync ? ' <span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}
+    <div class="card-sub" style="margin:8px 0 12px">${esc(e.proximo)}</div>
+    ${cta}
+  </div>`;
+}
+
 async function renderizarListaVistorias() {
+  await _renderizarPainelImovel();
   const todas = await idbTodos('vistorias');
   const doImovel = todas.filter(v => v.imovel_id === imovelAtual.id).sort((a, b) => (b.data_vistoria || '').localeCompare(a.data_vistoria || ''));
   const el = document.getElementById('lista-vistorias');
-  if (!doImovel.length) { el.innerHTML = `<div class="vazio">Nenhuma vistoria ainda. Toque em "+ Nova vistoria" pra começar.</div>`; return; }
+  if (!doImovel.length) { el.innerHTML = `<div class="vazio">Nenhuma vistoria ainda. Use o botão do Passo 3 acima.</div>`; return; }
   const fila = await idbTodos('fila');
   el.innerHTML = doImovel.map(v => {
     const pendente = fila.some(f => (f.tipo === 'criar_vistoria' && f.payload.id === v.id));
-    const selo = pendente ? '<span class="selo selo-pendente">Pendente</span>'
-      : v.status === 'finalizado' ? '<span class="selo selo-finalizado">Concluída</span>'
-      : '<span class="selo selo-rascunho">Em edição</span>';
+    const selo = v.status === 'finalizado' ? '<span class="selo selo-finalizado">Concluída</span>' : '<span class="selo selo-rascunho">Em edição</span>';
+    const sync = pendente ? ' <span class="selo selo-neutro">⏳ não sincronizado</span>' : '';
+    const concluir = v.status !== 'finalizado' ? `<button class="btn-mini" onclick="event.stopPropagation();concluirVistoria('${v.id}')">✅ Concluir</button>` : '';
     return `<div class="card" onclick="abrirVistoria('${v.id}')">
-      <div class="card-titulo">${TIPO_LABEL[v.tipo] || v.tipo} — ${formatarDataBR(v.data_vistoria)}</div>
-      <div class="card-sub">${selo}</div>
+      <div class="card-linha">
+        <div style="flex:1">
+          <div class="card-titulo">${TIPO_LABEL[v.tipo] || v.tipo} — ${formatarDataBR(v.data_vistoria)}</div>
+          <div class="card-sub">${selo}${sync}</div>
+        </div>${concluir}
+      </div>
     </div>`;
   }).join('');
+}
+
+// Concluir / reabrir vistoria — fica marcada no imóvel, sem precisar reenviar
+async function concluirVistoria(id, voltarParaImovel) {
+  const v = await idbPegar('vistorias', id);
+  if (!v) return;
+  const comodos = (await idbTodos('comodos')).filter(c => c.vistoria_id === id);
+  if (!comodos.length) { mostrarToast('Adicione pelo menos um cômodo antes de concluir.', 'erro'); return; }
+  if (!confirm('Concluir esta vistoria? Ela fica marcada como concluída no imóvel (sem precisar reenviar). Dá pra reabrir se precisar.')) return;
+  v.status = 'finalizado';
+  await idbSalvar('vistorias', v);
+  await enfileirar('atualizar_vistoria', { id, campos: { status: 'finalizado' } });
+  if (vistoriaAtual && vistoriaAtual.id === id) vistoriaAtual = v;
+  mostrarToast('Vistoria concluída! Agora é o Passo 4: solicitar o contrato.');
+  if (voltarParaImovel) await abrirImovel(v.imovel_id);
+  else await renderizarListaVistorias();
+}
+async function reabrirVistoria(id) {
+  const v = await idbPegar('vistorias', id);
+  if (!v) return;
+  v.status = 'rascunho';
+  await idbSalvar('vistorias', v);
+  await enfileirar('atualizar_vistoria', { id, campos: { status: 'rascunho' } });
+  vistoriaAtual = v;
+  await renderizarComodos();
 }
 
 function formatarDataBR(iso) {
@@ -1117,6 +1404,7 @@ async function abrirVistoria(id) {
   if (!vistoriaAtual) return;
   document.getElementById('vistoria-titulo').textContent = TIPO_LABEL[vistoriaAtual.tipo] || vistoriaAtual.tipo;
   document.getElementById('vistoria-sub').textContent = formatarDataBR(vistoriaAtual.data_vistoria);
+  renderPassos('passos-vistoria', 3);
   mostrarTela('tela-vistoria');
   await renderizarComodos();
 }
@@ -1150,6 +1438,9 @@ async function renderizarComodos() {
   const todos = await idbTodos('comodos');
   const doAtual = todos.filter(c => c.vistoria_id === vistoriaAtual.id).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
   const el = document.getElementById('lista-comodos');
+  const travada = vistoriaAtual.status === 'finalizado';
+  el.classList.toggle('travada', travada);
+  document.getElementById('fab-comodo').style.display = travada ? 'none' : '';
   if (!doAtual.length) { el.innerHTML = `<div class="vazio">Nenhum cômodo ainda. Toque em "+ Cômodo" pra adicionar.</div>`; return; }
   const fotos = await idbTodos('fotos');
   el.innerHTML = '';
@@ -1182,6 +1473,12 @@ async function renderizarComodos() {
       </div>`;
     el.appendChild(div);
   }
+  const rodape = document.createElement('div');
+  rodape.style.cssText = 'margin-top:14px';
+  rodape.innerHTML = travada
+    ? `<div class="banner-ok">✅ Vistoria concluída</div><button class="btn btn-secundario" onclick="reabrirVistoria('${vistoriaAtual.id}')">Reabrir para editar</button>`
+    : `<button class="btn" onclick="concluirVistoria('${vistoriaAtual.id}', true)">✅ Concluir vistoria</button><div class="card-sub" style="margin-top:8px;text-align:center">Ao concluir, o Passo 4 (contrato) é liberado.</div>`;
+  el.appendChild(rodape);
 }
 
 function toggleComodo(id) {
@@ -1289,6 +1586,10 @@ function comprimirImagem(arquivo, larguraMax, qualidade) {
 // Nada aqui passa pela fila offline — ou vai direto e confirmado, ou
 // mostra erro claro e não fica "pendente" escondido em lugar nenhum.
 // ══════════════════════════════════════════════════════════════
+// Relatório de vistoria em PDF como anexo da solicitação: DESLIGADO por
+// enquanto (as fotos não saem no PDF). Quando resolver, troque pra true.
+const ANEXAR_RELATORIO_VISTORIA = false;
+
 const RESPONSABILIDADES_LOCACAO_IMOVEL = [
   { item: 'Pagamento do Aluguel', resp: 'Contratante' },
   { item: 'Conservação do Imóvel', resp: 'Contratante' },
@@ -1301,7 +1602,13 @@ const OPCOES_RESP = ['Contratante', 'Contratado', 'Ambos', 'Contratante/Contrata
 let _responsabilidadesAtuais = [];  // [{item, resp}] — começa com o padrão, mas dá pra adicionar/remover livremente
 let _planilhaAtual = [];             // [{descricao, unidade, quantidade, precoUnitario}] — planilha de preços, toda opcional
 
-function abrirSolicitarContrato() {
+async function abrirSolicitarContrato() {
+  if (!imovelAtual.fornecedor_id) { mostrarToast('Este imóvel está sem fornecedor. Toque em Editar e escolha um (Passo 1).', 'erro'); return; }
+  const [vist, sols] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes')]);
+  if (!vist.some(v => v.imovel_id === imovelAtual.id && v.status === 'finalizado')) { mostrarToast('Conclua a vistoria antes (Passo 3).', 'erro'); return; }
+  const jaEnviada = sols.find(x => x.imovel_id === imovelAtual.id);
+  if (jaEnviada && !confirm(`Este imóvel já tem a solicitação nº ${_numSolicitacao(jaEnviada)}. Enviar outra mesmo assim?`)) return;
+  renderPassos('passos-sc', 4);
   const bloqueio = document.getElementById('sc-bloqueio-offline');
   const form = document.getElementById('sc-formulario');
   if (!navigator.onLine) {
@@ -1316,10 +1623,12 @@ function abrirSolicitarContrato() {
   document.getElementById('sc-erro').textContent = '';
   document.getElementById('sc-btn-enviar').disabled = false;
   document.getElementById('sc-btn-enviar').textContent = 'Enviar Solicitação';
+  document.getElementById('sc-btn-enviar').style.display = '';
+  document.getElementById('sc-btn-voltar').style.display = 'none';
 
   const endereco = [imovelAtual.logradouro, imovelAtual.numero].filter(Boolean).join(', ');
   document.getElementById('sc-objeto').value = `Locação do imóvel situado em ${endereco || '(endereço a confirmar)'}.`;
-  ['sc-valor', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-dia-aluguel'].forEach(id => { document.getElementById(id).value = ''; });
+  ['sc-valor', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-dia-aluguel', 'sc-test-nome', 'sc-test-tel', 'sc-test-email'].forEach(id => { document.getElementById(id).value = ''; });
 
   // Cópia do template — editar aqui não mexe na constante original,
   // então toda vez que abrir de novo volta ao padrão
@@ -1444,6 +1753,10 @@ async function enviarSolicitacaoContrato() {
 
   const objeto = document.getElementById('sc-objeto').value.trim();
   if (!objeto) { erroEl.textContent = 'Descreva o objeto da locação.'; return; }
+  const testNome = document.getElementById('sc-test-nome').value.trim();
+  const testTel = document.getElementById('sc-test-tel').value.trim();
+  const testEmail = document.getElementById('sc-test-email').value.trim();
+  if (!testNome || (!testTel && !testEmail)) { erroEl.textContent = 'Informe a testemunha: nome e pelo menos um contato (telefone ou e-mail).'; return; }
 
   const btn = document.getElementById('sc-btn-enviar');
   btn.disabled = true; btn.textContent = 'Enviando...';
@@ -1459,6 +1772,7 @@ async function enviarSolicitacaoContrato() {
       caucao_valor: document.getElementById('sc-caucao-valor').value ? parseFloat(document.getElementById('sc-caucao-valor').value) : null,
       data_pgto_caucao: document.getElementById('sc-caucao-data').value || null,
       dia_pgto_aluguel: document.getElementById('sc-dia-aluguel').value ? parseInt(document.getElementById('sc-dia-aluguel').value, 10) : null,
+      testemunha: { nome: testNome, telefone: testTel || null, email: testEmail || null },
     };
 
     const { data: sol, error: erroSol } = await sb.from('solicitacoes_contratos').insert({
@@ -1510,7 +1824,7 @@ async function enviarSolicitacaoContrato() {
     // (nessa etapa já estamos garantidamente online, não precisa do
     // "trampolim" pelo Supabase)
     const anexoStatus = document.getElementById('sc-anexo-status');
-    const pdfVistoria = await _gerarPdfVistoriaRecente();
+    const pdfVistoria = ANEXAR_RELATORIO_VISTORIA ? await _gerarPdfVistoriaRecente() : null;
     if (pdfVistoria) {
       anexoStatus.textContent = 'Enviando o PDF da vistoria...';
       try {
@@ -1537,18 +1851,20 @@ async function enviarSolicitacaoContrato() {
       } catch (e) {
         anexoStatus.textContent = '⚠️ A solicitação foi criada, mas o PDF da vistoria não subiu: ' + e.message + '. Pode anexar depois pelo módulo web.';
       }
-    } else {
+    } else if (ANEXAR_RELATORIO_VISTORIA) {
       anexoStatus.textContent = 'Nenhuma vistoria encontrada pra esse imóvel — solicitação enviada sem anexo.';
     }
 
     await sb.from('solicitacoes_mensagens').insert({
       solicitacao_id: sol.id, autor_id: sessaoAtual.user.id, tipo: 'sistema',
-      conteudo: `📋 Solicitação criada pelo app de campo em ${new Date().toLocaleString('pt-BR')}.`,
+      conteudo: `📋 Solicitação criada pelo app de campo em ${new Date().toLocaleString('pt-BR')}.\n👤 Testemunha: ${testNome}${testTel ? ' · Tel: ' + testTel : ''}${testEmail ? ' · E-mail: ' + testEmail : ''}`,
     });
 
     document.getElementById('sc-numero-gerado').style.display = 'block';
     document.getElementById('sc-numero-gerado').textContent = `Solicitação nº ${String(numeroSequencial).padStart(3, '0')}/${numeroAno} criada com sucesso!`;
     btn.style.display = 'none';
+    document.getElementById('sc-btn-voltar').style.display = '';
+    await idbSalvar('solicitacoes', { imovel_id: imovelAtual.id, solicitacao_id: sol.id, status: 'pendente', numero_sequencial: numeroSequencial, numero_ano: numeroAno });
     mostrarToast('Solicitação de contrato enviada!', 'sucesso');
   } catch (e) {
     erroEl.textContent = e.message;
