@@ -129,6 +129,22 @@
   .tipo-pessoa-toggle button.sel{background:rgba(241,90,36,0.2);border-color:var(--orange);color:#ffb98a;}
   .link-add{background:none;border:none;color:var(--blue2);font-size:12.5px;font-weight:700;cursor:pointer;padding:0;margin-bottom:10px;}
   .topo-acao{background:none;border:none;color:var(--text2);font-size:13px;padding:4px 8px;cursor:pointer;}
+  .secao-opcional{border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;}
+  .secao-opcional-cab{padding:12px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--navy2);font-weight:700;font-size:13.5px;}
+  .secao-opcional-seta{margin-left:auto;font-size:12px;color:var(--text3);transition:transform .2s;}
+  .secao-opcional.aberta .secao-opcional-seta{transform:rotate(90deg);}
+  .secao-opcional-corpo{display:none;padding:12px 14px;}
+  .secao-opcional.aberta .secao-opcional-corpo{display:block;}
+  .cat-item{margin-bottom:10px;}
+  .cat-check{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;cursor:pointer;}
+  .cat-docs{margin:8px 0 0 26px;display:none;}
+  .cat-item.marcada .cat-docs{display:block;}
+  .doc-tipo-linha{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:12.5px;border-bottom:1px solid var(--border);}
+  .doc-tipo-nome{flex:1;}
+  .doc-tipo-obrig{color:var(--amber);font-size:10.5px;}
+  .doc-tipo-btn{background:var(--navy3);border:1px solid var(--border);color:var(--text2);border-radius:7px;
+    padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .doc-tipo-btn.anexado{background:rgba(46,204,138,0.18);border-color:var(--green);color:#7be8bc;}
   .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
     border-radius:50%;animation:girar .7s linear infinite;vertical-align:middle;}
   @keyframes girar{to{transform:rotate(360deg);}}
@@ -245,10 +261,13 @@
   </div>
 </div>
 
-<!-- ================= Modal: cadastro rápido de fornecedor ================= -->
-<div class="modal-overlay" id="modal-fornecedor">
-  <div class="modal">
-    <div class="modal-titulo">Novo fornecedor</div>
+<!-- ================= NOVO FORNECEDOR ================= -->
+<div class="tela" id="tela-novo-fornecedor">
+  <div class="topo">
+    <button class="topo-voltar" onclick="mostrarTela('tela-novo-imovel')">←</button>
+    <div class="topo-titulo">Novo fornecedor</div>
+  </div>
+  <div class="conteudo">
     <div class="tipo-pessoa-toggle">
       <button id="nf-btn-pf" onclick="_selecionarTipoPessoaFornecedor('PF')">Pessoa Física</button>
       <button id="nf-btn-pj" onclick="_selecionarTipoPessoaFornecedor('PJ')">Pessoa Jurídica</button>
@@ -257,9 +276,45 @@
     <div class="campo"><input type="text" id="nf-nome"/></div>
     <span class="rotulo" id="nf-rotulo-doc">CPF</span>
     <div class="campo"><input type="text" id="nf-cpf-cnpj" placeholder="Só números"/></div>
+
+    <div class="secao-opcional" id="sec-contato">
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-contato')">📞 Contato (opcional)<span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-corpo">
+        <span class="rotulo">E-mail</span>
+        <div class="campo"><input type="email" id="nf-email"/></div>
+        <span class="rotulo">Telefone</span>
+        <div class="campo"><input type="text" id="nf-telefone"/></div>
+      </div>
+    </div>
+
+    <div class="secao-opcional" id="sec-banco">
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-banco')">🏦 Dados Bancários (opcional)<span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-corpo">
+        <span class="rotulo">Banco</span>
+        <div class="campo"><input type="text" id="nf-banco-nome"/></div>
+        <div style="display:flex;gap:10px">
+          <div class="campo" style="flex:1"><span class="rotulo">Agência</span><input type="text" id="nf-banco-agencia"/></div>
+          <div class="campo" style="flex:1"><span class="rotulo">Conta</span><input type="text" id="nf-banco-conta"/></div>
+        </div>
+        <span class="rotulo">Tipo de conta</span>
+        <div class="campo"><select id="nf-banco-tipo"><option value="corrente">Conta Corrente</option><option value="poupanca">Conta Poupança</option><option value="pagamento">Conta Pagamento</option></select></div>
+        <span class="rotulo">Titular</span>
+        <div class="campo"><input type="text" id="nf-banco-titular"/></div>
+        <span class="rotulo">CPF/CNPJ do titular</span>
+        <div class="campo"><input type="text" id="nf-banco-titular-doc"/></div>
+        <span class="rotulo">Observações</span>
+        <div class="campo"><textarea id="nf-banco-obs" style="min-height:50px"></textarea></div>
+      </div>
+    </div>
+
+    <div class="secao-opcional" id="sec-docs">
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-docs')">📁 Categorias e Documentos (opcional)<span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-corpo" id="nf-categorias-lista"></div>
+    </div>
+
     <div class="erro-msg" id="nf-erro"></div>
     <button class="btn" onclick="salvarNovoFornecedor()">Salvar fornecedor</button>
-    <button class="btn btn-secundario" style="margin-top:8px" onclick="fecharModais()">Cancelar</button>
+    <button class="btn btn-secundario" style="margin-top:8px" onclick="mostrarTela('tela-novo-imovel')">Cancelar</button>
   </div>
 </div>
 
@@ -290,7 +345,7 @@ let vistoriaAtual = null;
 // precisa subir pro Supabase quando a internet voltar.
 // ══════════════════════════════════════════════════════════════
 const DB_NOME = 'vistorias_campo_db';
-const DB_VERSAO = 2; // v2: acrescenta 'obras' e 'fornecedores' (pra cadastrar imóvel offline) — não apaga nada do que já existia
+const DB_VERSAO = 3; // v3: acrescenta 'categorias', 'tipos_documento' e 'docs_fornecedor' — não apaga nada do que já existia
 let _dbPromise = null;
 
 function abrirDB() {
@@ -307,11 +362,23 @@ function abrirDB() {
       if (!db.objectStoreNames.contains('sessao')) db.createObjectStore('sessao', { keyPath: 'chave' });
       if (!db.objectStoreNames.contains('obras')) db.createObjectStore('obras', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('fornecedores')) db.createObjectStore('fornecedores', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('categorias')) db.createObjectStore('categorias', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('tipos_documento')) db.createObjectStore('tipos_documento', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('docs_fornecedor')) db.createObjectStore('docs_fornecedor', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
   return _dbPromise;
+}
+
+// Categoria "Documentos Gerais PF/PJ" fica gravada com um código interno
+// no banco (__GERAL_PF__/__GERAL_PJ__) — é assim que o módulo web também
+// mostra um nome amigável em vez do código cru
+function _nomeAmigavelCategoria(nome) {
+  if (nome === '__GERAL_PJ__') return 'Documentos Gerais PJ';
+  if (nome === '__GERAL_PF__') return 'Documentos Gerais PF';
+  return nome;
 }
 async function idbPegar(loja, chave) {
   const db = await abrirDB();
@@ -376,6 +443,11 @@ async function processarItemFila(item) {
   } else if (item.tipo === 'criar_fornecedor') {
     const { error } = await sb.from('fornecedores').insert(p);
     if (error) throw error;
+  } else if (item.tipo === 'vincular_categoria_fornecedor') {
+    const { error } = await sb.from('fornecedor_categorias_vinculo').insert(p);
+    if (error) throw error;
+  } else if (item.tipo === 'enviar_documento_fornecedor') {
+    await enviarDocumentoFornecedorParaServidor(p);
   } else if (item.tipo === 'criar_vistoria') {
     const { error } = await sb.from('imovel_vistorias').insert(p);
     if (error) throw error;
@@ -467,6 +539,27 @@ async function enviarFotoParaServidor(p) {
   // memória local (já subiu, não precisa mais guardar o arquivo inteiro)
   const fotoLocal = await idbPegar('fotos', p.fotoLocalId);
   if (fotoLocal) { fotoLocal.status = 'sincronizado'; fotoLocal.base64 = null; await idbSalvar('fotos', fotoLocal); }
+}
+
+// Mesmo modelo "trampolim" das fotos de vistoria: documento de
+// fornecedor sobe pro Supabase Storage por enquanto — migrar pro Drive
+// fica pra uma etapa futura, quando isso for configurado
+const BUCKET_DOCS_FORNECEDOR = 'fornecedores-campo-docs';
+
+async function enviarDocumentoFornecedorParaServidor(p) {
+  const caminho = `${p.fornecedorId}/${Date.now()}_${p.nomeArquivo}`;
+  const blob = base64ParaBlob(p.base64, p.mimeType);
+  const { error: errUpload } = await sb.storage.from(BUCKET_DOCS_FORNECEDOR).upload(caminho, blob, { contentType: p.mimeType, upsert: false });
+  if (errUpload) throw errUpload;
+
+  const { data: urlData } = sb.storage.from(BUCKET_DOCS_FORNECEDOR).getPublicUrl(caminho);
+  const { error } = await sb.from('documentos').insert({
+    modulo: 'fornecedores', registro_id: p.fornecedorId, tipo: 'exigido', documento_tipo_id: p.documentoTipoId,
+    nome_arquivo: p.nomeArquivo, mime_type: p.mimeType, tamanho_bytes: p.tamanhoBytes,
+    drive_id: null, drive_url: null, download_url: urlData.publicUrl,
+    versao: 1, status: 'enviado', criado_por: p.usuarioId,
+  });
+  if (error) throw error;
 }
 
 window.addEventListener('online', () => { atualizarBarraStatus(); tentarSincronizar(); });
@@ -562,6 +655,13 @@ async function carregarImoveisDoServidor() {
   await idbSalvarVarios('obras', obrasData || []);
   const { data: fornecedoresData } = await sb.from('fornecedores').select('id,razao_social').eq('ativo', true).order('razao_social');
   await idbSalvarVarios('fornecedores', fornecedoresData || []);
+
+  // Categorias de documento e o checklist de cada uma — pra dar pra
+  // vincular categoria e já anexar o documento no cadastro rápido offline
+  const { data: categoriasData } = await sb.from('fornecedor_categorias').select('id,nome').eq('ativo', true).order('nome');
+  await idbSalvarVarios('categorias', categoriasData || []);
+  const { data: tiposDocData } = await sb.from('documento_tipos').select('id,categoria_id,nome,obrigatorio,tem_validade,aplica_pf,aplica_pj').eq('ativo', true).order('nome');
+  await idbSalvarVarios('tipos_documento', tiposDocData || []);
 
   const { data: imoveis, error } = await sb.from('imoveis').select('id,logradouro,numero,complemento,bairro,cidade,estado,cep,capacidade_pessoas,obra_id,fornecedor_id').in('obra_id', obrasIds).order('logradouro');
   if (error) throw error;
@@ -709,17 +809,28 @@ async function salvarNovoImovel() {
 
 // ══════════════════════════════════════════════════════════════
 // Cadastro rápido de fornecedor (pessoa física ou jurídica) — pra
-// não travar o cadastro do imóvel quando o fornecedor ainda não existe
+// não travar o cadastro do imóvel quando o fornecedor ainda não existe.
+// Contato e Dados Bancários são simples (só texto). Categorias e
+// Documentos usam o checklist de verdade (documento_tipos), com anexo
+// de arquivo — tudo opcional, o fornecedor salva mesmo sem preencher nada disso.
 // ══════════════════════════════════════════════════════════════
 let _tipoPessoaFornecedorAtual = 'PJ';
+let _categoriasMarcadas = new Set();      // ids de fornecedor_categorias marcadas
+let _documentosAnexados = {};              // { tipoDocumentoId: {nomeArquivo,mimeType,base64,tamanhoBytes} }
 
-function abrirNovoFornecedor() {
+function toggleSecaoOpcional(id) { document.getElementById(id).classList.toggle('aberta'); }
+
+async function abrirNovoFornecedor() {
   _tipoPessoaFornecedorAtual = 'PJ';
-  document.getElementById('nf-nome').value = '';
-  document.getElementById('nf-cpf-cnpj').value = '';
+  _categoriasMarcadas = new Set();
+  _documentosAnexados = {};
+  ['nf-nome', 'nf-cpf-cnpj', 'nf-email', 'nf-telefone', 'nf-banco-nome', 'nf-banco-agencia', 'nf-banco-conta', 'nf-banco-titular', 'nf-banco-titular-doc', 'nf-banco-obs'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('nf-banco-tipo').value = 'corrente';
   document.getElementById('nf-erro').textContent = '';
+  document.querySelectorAll('#tela-novo-fornecedor .secao-opcional').forEach(s => s.classList.remove('aberta'));
   _selecionarTipoPessoaFornecedor('PJ');
-  document.getElementById('modal-fornecedor').classList.add('aberto');
+  await renderizarCategoriasFornecedor();
+  mostrarTela('tela-novo-fornecedor');
 }
 
 function _selecionarTipoPessoaFornecedor(tipo) {
@@ -728,6 +839,58 @@ function _selecionarTipoPessoaFornecedor(tipo) {
   document.getElementById('nf-btn-pj').classList.toggle('sel', tipo === 'PJ');
   document.getElementById('nf-rotulo-nome').textContent = tipo === 'PF' ? 'Nome' : 'Razão Social';
   document.getElementById('nf-rotulo-doc').textContent = tipo === 'PF' ? 'CPF' : 'CNPJ';
+  renderizarCategoriasFornecedor(); // o checklist de documentos muda conforme PF/PJ (aplica_pf / aplica_pj)
+}
+
+async function renderizarCategoriasFornecedor() {
+  const categorias = await idbTodos('categorias');
+  const tipos = await idbTodos('tipos_documento');
+  const lista = document.getElementById('nf-categorias-lista');
+  if (!categorias.length) { lista.innerHTML = '<div class="vazio" style="padding:12px 0">Nenhuma categoria disponível — conecte à internet pelo menos uma vez.</div>'; return; }
+
+  lista.innerHTML = categorias.map(c => {
+    const marcada = _categoriasMarcadas.has(c.id);
+    const tiposDaCategoria = tipos.filter(t => t.categoria_id === c.id && (_tipoPessoaFornecedorAtual === 'PF' ? t.aplica_pf : t.aplica_pj));
+    return `<div class="cat-item ${marcada ? 'marcada' : ''}" id="cat-item-${c.id}">
+      <label class="cat-check">
+        <input type="checkbox" ${marcada ? 'checked' : ''} onchange="toggleCategoriaFornecedor('${c.id}', this.checked)"/>
+        ${_nomeAmigavelCategoria(c.nome)}
+      </label>
+      <div class="cat-docs">
+        ${!tiposDaCategoria.length ? '<div style="font-size:11.5px;color:var(--text3)">Nenhum documento cadastrado pra essa categoria.</div>' : tiposDaCategoria.map(t => {
+          const anexado = _documentosAnexados[t.id];
+          return `<div class="doc-tipo-linha">
+            <span class="doc-tipo-nome">${t.nome}${t.obrigatorio ? ' <span class="doc-tipo-obrig">*</span>' : ''}</span>
+            <button class="doc-tipo-btn ${anexado ? 'anexado' : ''}" onclick="document.getElementById('doc-input-${t.id}').click()">${anexado ? '✅ Anexado' : '📎 Anexar'}</button>
+            <input type="file" id="doc-input-${t.id}" accept="image/*,.pdf" capture="environment" style="display:none" onchange="anexarDocumentoFornecedor(this,'${t.id}')"/>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCategoriaFornecedor(catId, marcada) {
+  if (marcada) _categoriasMarcadas.add(catId); else _categoriasMarcadas.delete(catId);
+  document.getElementById('cat-item-' + catId).classList.toggle('marcada', marcada);
+}
+
+async function anexarDocumentoFornecedor(input, tipoId) {
+  const arquivo = input.files[0];
+  input.value = '';
+  if (!arquivo) return;
+  try {
+    let base64, mimeType, tamanhoBytes;
+    if (arquivo.type.startsWith('image/')) {
+      const comprimida = await comprimirImagem(arquivo, 1600, 0.78); // documento precisa ficar mais legível que foto de cômodo
+      base64 = comprimida.base64; mimeType = 'image/jpeg'; tamanhoBytes = comprimida.tamanho;
+    } else {
+      base64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(arquivo); });
+      mimeType = arquivo.type || 'application/octet-stream'; tamanhoBytes = arquivo.size;
+    }
+    _documentosAnexados[tipoId] = { nomeArquivo: arquivo.name, mimeType, base64, tamanhoBytes };
+    await renderizarCategoriasFornecedor();
+  } catch (e) { mostrarToast('Erro ao processar o arquivo: ' + e.message, 'erro'); }
 }
 
 async function salvarNovoFornecedor() {
@@ -739,17 +902,39 @@ async function salvarNovoFornecedor() {
   const registro = {
     id: crypto.randomUUID(), tipo_pessoa: _tipoPessoaFornecedorAtual,
     razao_social: nome, cpf_cnpj: doc || null, ativo: true,
+    email: document.getElementById('nf-email').value.trim() || null,
+    telefone: document.getElementById('nf-telefone').value.trim() || null,
+    banco_nome: document.getElementById('nf-banco-nome').value.trim() || null,
+    banco_agencia: document.getElementById('nf-banco-agencia').value.trim() || null,
+    banco_conta: document.getElementById('nf-banco-conta').value.trim() || null,
+    banco_tipo: document.getElementById('nf-banco-tipo').value || null,
+    banco_titular: document.getElementById('nf-banco-titular').value.trim() || null,
+    banco_titular_doc: document.getElementById('nf-banco-titular-doc').value.trim() || null,
+    banco_obs: document.getElementById('nf-banco-obs').value.trim() || null,
     criado_por: sessaoAtual.user.id,
   };
   await idbSalvar('fornecedores', registro);
   await enfileirar('criar_fornecedor', registro);
-  fecharModais();
+
+  // Vincula as categorias marcadas
+  for (const catId of _categoriasMarcadas) {
+    await enfileirar('vincular_categoria_fornecedor', { fornecedor_id: registro.id, categoria_id: catId, criado_por: sessaoAtual.user.id });
+  }
+  // Sobe os documentos anexados
+  for (const [tipoId, doc2] of Object.entries(_documentosAnexados)) {
+    await enfileirar('enviar_documento_fornecedor', {
+      fornecedorId: registro.id, documentoTipoId: tipoId,
+      nomeArquivo: doc2.nomeArquivo, mimeType: doc2.mimeType, base64: doc2.base64, tamanhoBytes: doc2.tamanhoBytes,
+      usuarioId: sessaoAtual.user.id,
+    });
+  }
 
   // Já entra selecionado no formulário de imóvel que estava aberto —
   // não precisa esperar sincronizar pra poder usar
   const sel = document.getElementById('ni-fornecedor');
   sel.innerHTML += `<option value="${registro.id}">${registro.razao_social}</option>`;
   sel.value = registro.id;
+  mostrarTela('tela-novo-imovel');
   mostrarToast('Fornecedor cadastrado e já selecionado.', 'sucesso');
 }
 
