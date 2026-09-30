@@ -307,7 +307,7 @@
     </div>
     <datalist id="dl-planilha-desc"><option value="Aluguel"><option value="Caução"><option value="Condomínio"><option value="IPTU"></datalist>
     <datalist id="dl-planilha-un"><option value="mês"><option value="un"><option value="dia"><option value="ano"><option value="m²"><option value="vb"></datalist>
-    <div id="sc-formulario">
+    <div id="sc-formulario" oninput="salvarRascunhoSolicitacao()" onchange="salvarRascunhoSolicitacao()">
       <div class="selo-numero" id="sc-numero-gerado" style="display:none"></div>
 
       <span class="rotulo">Objeto / Descrição</span>
@@ -794,6 +794,7 @@ async function iniciarAppLogado() {
   // precisam. Se estiver online, atualiza a lista de imóveis; se não,
   // usa o que já foi guardado da última vez.
   if (navigator.onLine) {
+    await _carregarNomeUsuario();
     try { await carregarImoveisDoServidor(); }
     catch (e) { mostrarToast('Não deu pra atualizar a lista — usando os dados salvos.', 'erro'); }
   }
@@ -943,6 +944,27 @@ async function _mesclarFotosDoServidor(docs, campoPai) { // campoPai: 'comodo_id
 // ══════════════════════════════════════════════════════════════
 // Tela: lista de imóveis
 // ══════════════════════════════════════════════════════════════
+function hojeLocalISO() { // data de hoje no fuso do aparelho (toISOString usaria UTC e viraria o dia cedo demais à noite)
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+async function _carregarNomeUsuario() {
+  let nome = null;
+  try {
+    const { data } = await sb.from('usuarios').select('*').eq('id', sessaoAtual.user.id).single();
+    nome = data && ['nome', 'nome_completo', 'full_name', 'name', 'nome_usuario'].map(k => data[k]).find(v => v && String(v).trim());
+    if (!nome) { const m = sessaoAtual.user.user_metadata || {}; nome = m.nome || m.full_name || m.name; }
+  } catch (e) { /* segue com o que já estava guardado */ return; }
+  if (nome) await idbSalvar('sessao', { chave: 'usuario_nome', valor: String(nome).trim() });
+  else await idbRemover('sessao', 'usuario_nome');
+}
+async function _nomeUsuario() {
+  const r = await idbPegar('sessao', 'usuario_nome');
+  if (r && r.valor) return r.valor;
+  const em = sessaoAtual && sessaoAtual.user && sessaoAtual.user.email;
+  return em ? em.split('@')[0] : null;
+}
+
 function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function _normalizar(t) { return (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
 
@@ -1400,7 +1422,7 @@ async function renderizarListaVistorias() {
       <div class="card-linha">
         <div style="flex:1">
           <div class="card-titulo">${TIPO_LABEL[v.tipo] || v.tipo} — ${formatarDataBR(v.data_vistoria)}</div>
-          <div class="card-sub">${selo}${sync}</div>
+          <div class="card-sub">${selo}${sync}${v.responsavel ? ' · ' + esc(v.responsavel) : ''}</div>
         </div>${concluir}
       </div>
     </div>`;
@@ -1414,9 +1436,13 @@ async function concluirVistoria(id, voltarParaImovel) {
   const comodos = (await idbTodos('comodos')).filter(c => c.vistoria_id === id);
   if (!comodos.length) { mostrarToast('Adicione pelo menos um cômodo antes de concluir.', 'erro'); return; }
   if (!confirm('Concluir esta vistoria? Ela fica marcada como concluída no imóvel (sem precisar reenviar). Dá pra reabrir se precisar.')) return;
+  // A data da vistoria passa a ser o dia em que ela foi de fato concluída
   v.status = 'finalizado';
+  v.data_vistoria = hojeLocalISO();
+  v.finalizado_em = new Date().toISOString();
+  if (!v.responsavel) v.responsavel = await _nomeUsuario();
   await idbSalvar('vistorias', v);
-  await enfileirar('atualizar_vistoria', { id, campos: { status: 'finalizado' } });
+  await enfileirar('atualizar_vistoria', { id, campos: { status: 'finalizado', data_vistoria: v.data_vistoria, finalizado_em: v.finalizado_em, responsavel: v.responsavel } });
   if (vistoriaAtual && vistoriaAtual.id === id) vistoriaAtual = v;
   mostrarToast('Vistoria concluída! Agora é o Passo 4: solicitar o contrato.');
   if (voltarParaImovel) await abrirImovel(v.imovel_id);
@@ -1426,8 +1452,9 @@ async function reabrirVistoria(id) {
   const v = await idbPegar('vistorias', id);
   if (!v) return;
   v.status = 'rascunho';
+  v.finalizado_em = null;
   await idbSalvar('vistorias', v);
-  await enfileirar('atualizar_vistoria', { id, campos: { status: 'rascunho' } });
+  await enfileirar('atualizar_vistoria', { id, campos: { status: 'rascunho', finalizado_em: null } });
   vistoriaAtual = v;
   await renderizarComodos();
 }
@@ -1446,10 +1473,10 @@ function abrirEscolhaTipoVistoria() { document.getElementById('modal-tipo-vistor
 async function criarVistoria(tipo) {
   fecharModais();
   const id = crypto.randomUUID();
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocalISO();
   const registro = {
     id, imovel_id: imovelAtual.id, tipo, data_vistoria: hoje, status: 'rascunho',
-    responsavel: null, observacoes_gerais: null, contrato_id: null,
+    responsavel: await _nomeUsuario(), observacoes_gerais: null, contrato_id: null,
     competencia: tipo === 'periodica' ? (hoje.slice(0, 7) + '-01') : null,
     criado_por: sessaoAtual.user.id,
   };
@@ -1464,7 +1491,7 @@ async function abrirVistoria(id) {
   vistoriaAtual = todas.find(v => v.id === id);
   if (!vistoriaAtual) return;
   document.getElementById('vistoria-titulo').textContent = TIPO_LABEL[vistoriaAtual.tipo] || vistoriaAtual.tipo;
-  document.getElementById('vistoria-sub').textContent = formatarDataBR(vistoriaAtual.data_vistoria);
+  document.getElementById('vistoria-sub').textContent = [formatarDataBR(vistoriaAtual.data_vistoria), vistoriaAtual.responsavel].filter(Boolean).join(' · ');
   renderPassos('passos-vistoria', 3);
   mostrarTela('tela-vistoria');
   await renderizarComodos();
@@ -1763,10 +1790,30 @@ async function abrirSolicitarContrato() {
   // então toda vez que abrir de novo volta ao padrão
   _responsabilidadesAtuais = RESPONSABILIDADES_LOCACAO_IMOVEL.map(r => ({ ...r }));
   _planilhaAtual = PLANILHA_PADRAO_LOCACAO.map(it => ({ ...it }));
+  await _restaurarRascunhoSolicitacao();
   _renderizarResponsabilidades();
   _renderizarPlanilha();
 
   mostrarTela('tela-solicitar-contrato');
+}
+
+// Rascunho: o que foi digitado na solicitação fica guardado por imóvel, pra
+// não precisar redigitar se sair da tela. Some quando a solicitação é enviada.
+const CAMPOS_RASCUNHO_SC = ['sc-objeto', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-dia-aluguel', 'sc-test-nome', 'sc-test-tel', 'sc-test-email'];
+function _chaveRascunhoSc() { return 'rascunho_sc_' + imovelAtual.id; }
+function salvarRascunhoSolicitacao() {
+  if (!imovelAtual) return;
+  const campos = {};
+  CAMPOS_RASCUNHO_SC.forEach(id => { campos[id] = document.getElementById(id).value; });
+  idbSalvar('sessao', { chave: _chaveRascunhoSc(), valor: { campos, responsabilidades: _responsabilidadesAtuais, planilha: _planilhaAtual } }).catch(() => {});
+}
+async function _restaurarRascunhoSolicitacao() {
+  const r = await idbPegar('sessao', _chaveRascunhoSc());
+  if (!r || !r.valor) return;
+  const d = r.valor;
+  CAMPOS_RASCUNHO_SC.forEach(id => { if (d.campos && d.campos[id] != null) document.getElementById(id).value = d.campos[id]; });
+  if (Array.isArray(d.responsabilidades)) _responsabilidadesAtuais = d.responsabilidades;
+  if (Array.isArray(d.planilha)) _planilhaAtual = d.planilha;
 }
 
 function _renderizarResponsabilidades() {
@@ -1783,10 +1830,12 @@ function _renderizarResponsabilidades() {
 function adicionarLinhaResponsabilidade() {
   _responsabilidadesAtuais.push({ item: '', resp: 'A definir' });
   _renderizarResponsabilidades();
+  salvarRascunhoSolicitacao();
 }
 function removerLinhaResponsabilidade(i) {
   _responsabilidadesAtuais.splice(i, 1);
   _renderizarResponsabilidades();
+  salvarRascunhoSolicitacao();
 }
 
 function _renderizarPlanilha() {
@@ -1807,10 +1856,12 @@ function _renderizarPlanilha() {
 function adicionarLinhaPlanilha() {
   _planilhaAtual.push({ descricao: '', unidade: '', quantidade: '', precoUnitario: '' });
   _renderizarPlanilha();
+  salvarRascunhoSolicitacao();
 }
 function removerLinhaPlanilha(i) {
   _planilhaAtual.splice(i, 1);
   _renderizarPlanilha();
+  salvarRascunhoSolicitacao();
 }
 function _fmtMoedaSimples(v) { return 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function _recalcularTotalPlanilha() {
@@ -1995,6 +2046,7 @@ async function enviarSolicitacaoContrato() {
     document.getElementById('sc-numero-gerado').textContent = `Solicitação nº ${String(numeroSequencial).padStart(3, '0')}/${numeroAno} criada com sucesso!`;
     btn.style.display = 'none';
     document.getElementById('sc-btn-voltar').style.display = '';
+    await idbRemover('sessao', _chaveRascunhoSc());
     await idbSalvar('solicitacoes', { imovel_id: imovelAtual.id, solicitacao_id: sol.id, status: 'pendente', numero_sequencial: numeroSequencial, numero_ano: numeroAno });
     mostrarToast('Solicitação de contrato enviada!', 'sucesso');
   } catch (e) {
