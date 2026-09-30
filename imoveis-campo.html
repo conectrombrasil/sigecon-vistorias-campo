@@ -382,6 +382,7 @@
     </div>
   </div>
   <div class="passos" id="passos-vistoria"></div>
+  <div id="fotos-gerais-sec" style="padding:14px 16px 0"></div>
   <div class="conteudo" id="lista-comodos"></div>
   <button class="fab" id="fab-comodo" onclick="abrirEscolhaComodo()">+ Cômodo</button>
 </div>
@@ -614,7 +615,7 @@ async function processarItemFila(item) {
   } else if (item.tipo === 'remover_comodo') {
     const { error } = await sb.from('vistoria_comodos').delete().eq('id', p.id);
     if (error) throw error;
-  } else if (item.tipo === 'foto_comodo') {
+  } else if (item.tipo === 'foto_comodo' || item.tipo === 'foto_geral') {
     await enviarFotoParaServidor(p);
   }
 }
@@ -670,14 +671,14 @@ function base64ParaBlob(base64, mimeType) {
 }
 
 async function enviarFotoParaServidor(p) {
-  const caminho = `${p.comodoId}/${Date.now()}_${p.nomeArquivo}`;
+  const caminho = p.comodoId ? `${p.comodoId}/${Date.now()}_${p.nomeArquivo}` : `geral/${p.vistoriaId}/${Date.now()}_${p.nomeArquivo}`;
   const blob = base64ParaBlob(p.base64, p.mimeType);
   const { error: errUpload } = await sb.storage.from(BUCKET_FOTOS_CAMPO).upload(caminho, blob, { contentType: p.mimeType, upsert: false });
   if (errUpload) throw errUpload;
 
   const { data: urlData } = sb.storage.from(BUCKET_FOTOS_CAMPO).getPublicUrl(caminho);
   const { error } = await sb.from('documentos').insert({
-    modulo: 'vistoria_comodo', registro_id: p.comodoId, tipo: 'foto', descricao: p.nomeArquivo,
+    modulo: p.comodoId ? 'vistoria_comodo' : 'vistoria_geral', registro_id: p.comodoId || p.vistoriaId, tipo: 'foto', descricao: p.nomeArquivo,
     nome_arquivo: p.nomeArquivo, mime_type: p.mimeType, tamanho_bytes: p.tamanhoBytes,
     // drive_id fica nulo de propósito — é o próprio sinal de "subiu pro
     // Supabase mas ainda não foi migrado pro Drive" (sem precisar de
@@ -815,6 +816,7 @@ async function _removerVistoriasQueNaoDevemMaisAparecer(vistoriasDoServidor) {
       const fotosOrfas = (await idbTodos('fotos')).filter(f => f.comodo_id === c.id);
       for (const f of fotosOrfas) await idbRemover('fotos', f.id);
     }
+    for (const f of (await idbTodos('fotos')).filter(x => x.vistoria_id === v.id)) await idbRemover('fotos', f.id);
   }
 }
 
@@ -861,6 +863,11 @@ async function carregarImoveisDoServidor() {
       const { data: comodos } = await sb.from('vistoria_comodos').select('*').in('vistoria_id', idsVist);
       await idbSalvarVarios('comodos', comodos || []);
 
+      // Fotos gerais do imóvel (fachada etc.) — ficam no nível da vistoria
+      const { data: docsGerais } = await sb.from('documentos').select('id,registro_id,drive_id,download_url,mime_type,nome_arquivo,descricao')
+        .eq('modulo', 'vistoria_geral').in('registro_id', idsVist);
+      await _mesclarFotosDoServidor(docsGerais, 'vistoria_id');
+
       // Fotos que já existiam antes (tiradas pelo módulo web, ou por essa
       // pessoa em outro aparelho/sessão) — só a METADADO por enquanto; a
       // imagem em si (quando é do Drive) só é buscada quando o cômodo é
@@ -869,18 +876,37 @@ async function carregarImoveisDoServidor() {
         const idsComodos = comodos.map(c => c.id);
         const { data: docs } = await sb.from('documentos').select('id,registro_id,drive_id,download_url,mime_type,nome_arquivo,descricao')
           .eq('modulo', 'vistoria_comodo').in('registro_id', idsComodos);
-        const jaSalvas = new Set((await idbTodos('fotos')).map(f => f.id));
-        const novas = (docs || []).filter(d => !jaSalvas.has(d.id)).map(d => ({
-          id: d.id, comodo_id: d.registro_id, status: 'sincronizado', existente: true,
-          driveId: d.drive_id || null, mimeType: d.mime_type || 'image/jpeg',
-          // Foto do Supabase Storage já tem URL pronta pra usar direto;
-          // foto do Drive só ganha previewUrl quando o cômodo for aberto
-          previewUrl: d.drive_id ? null : d.download_url,
-        }));
-        if (novas.length) await idbSalvarVarios('fotos', novas);
+        await _mesclarFotosDoServidor(docs, 'comodo_id');
       }
     }
   }
+}
+
+// A lista do servidor é a verdade pras fotos já enviadas. A cópia local de uma
+// foto que ESTE aparelho enviou (id diferente do registro no servidor) é
+// trocada pela do servidor, senão a foto apareceria duas vezes. Foto ainda
+// pendente de envio nunca é mexida.
+async function _mesclarFotosDoServidor(docs, campoPai) { // campoPai: 'comodo_id' (cômodo) | 'vistoria_id' (gerais)
+  docs = docs || [];
+  const locais = await idbTodos('fotos');
+  const paisComDoc = new Set(docs.map(d => d.registro_id));
+  for (const f of locais) {
+    if (f.status === 'sincronizado' && !f.existente && f[campoPai] && paisComDoc.has(f[campoPai])) await idbRemover('fotos', f.id);
+  }
+  const jaSalvas = new Set((await idbTodos('fotos')).map(f => f.id));
+  const novas = docs.filter(d => !jaSalvas.has(d.id)).map(d => {
+    const base = {
+      id: d.id, status: 'sincronizado', existente: true,
+      driveId: d.drive_id || null, mimeType: d.mime_type || 'image/jpeg',
+      // Foto do Supabase Storage já tem URL pronta; foto do Drive só ganha
+      // previewUrl quando a tela for aberta
+      previewUrl: d.drive_id ? null : d.download_url,
+    };
+    if (campoPai === 'comodo_id') base.comodo_id = d.registro_id;
+    else { base.vistoria_id = d.registro_id; base.comodo_id = null; }
+    return base;
+  });
+  if (novas.length) await idbSalvarVarios('fotos', novas);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1001,7 +1027,7 @@ async function deletarImovelLocal(id) {
   const vIds = new Set(vistorias.map(v => v.id));
   const comodos = (await idbTodos('comodos')).filter(c => vIds.has(c.vistoria_id));
   const cIds = new Set(comodos.map(c => c.id));
-  const fotos = (await idbTodos('fotos')).filter(f => cIds.has(f.comodo_id));
+  const fotos = (await idbTodos('fotos')).filter(f => cIds.has(f.comodo_id) || vIds.has(f.vistoria_id));
 
   for (const f of fotos) await idbRemover('fotos', f.id);
   for (const c of comodos) await idbRemover('comodos', c.id);
@@ -1019,6 +1045,7 @@ async function deletarImovelLocal(id) {
         case 'criar_comodo': return vIds.has(pl.vistoria_id);
         case 'atualizar_comodo': case 'remover_comodo': return cIds.has(pl.id);
         case 'foto_comodo': return cIds.has(pl.comodoId);
+        case 'foto_geral': return vIds.has(pl.vistoriaId);
         default: return false;
       }
     };
@@ -1410,6 +1437,7 @@ async function abrirVistoria(id) {
   renderPassos('passos-vistoria', 3);
   mostrarTela('tela-vistoria');
   await renderizarComodos();
+  carregarFotosGeraisDoDrive();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1444,6 +1472,7 @@ async function renderizarComodos() {
   const travada = vistoriaAtual.status === 'finalizado';
   el.classList.toggle('travada', travada);
   document.getElementById('fab-comodo').style.display = travada ? 'none' : '';
+  await renderizarFotosGerais();
   if (!doAtual.length) { el.innerHTML = `<div class="vazio">Nenhum cômodo ainda. Toque em "+ Cômodo" pra adicionar.</div>`; return; }
   const fotos = await idbTodos('fotos');
   el.innerHTML = '';
@@ -1482,6 +1511,67 @@ async function renderizarComodos() {
     ? `<div class="banner-ok">✅ Vistoria concluída</div><button class="btn btn-secundario" onclick="reabrirVistoria('${vistoriaAtual.id}')">Reabrir para editar</button>`
     : `<button class="btn" onclick="concluirVistoria('${vistoriaAtual.id}', true)">✅ Concluir vistoria</button><div class="card-sub" style="margin-top:8px;text-align:center">Ao concluir, o Passo 4 (contrato) é liberado.</div>`;
   el.appendChild(rodape);
+}
+
+// ── Fotos gerais do imóvel (fachada, vista externa...) — nível da vistoria ──
+async function renderizarFotosGerais() {
+  const el = document.getElementById('fotos-gerais-sec');
+  const travada = vistoriaAtual.status === 'finalizado';
+  const fotos = (await idbTodos('fotos')).filter(f => f.vistoria_id === vistoriaAtual.id && !f.comodo_id);
+  el.innerHTML = `<div class="comodo" style="padding:13px 14px">
+    <div class="comodo-nome" style="margin-bottom:2px">📷 Fotos gerais do imóvel</div>
+    <div class="card-sub" style="margin:0 0 10px">Fachada, vista externa, etc.</div>
+    <div class="fotos-grid">
+      ${travada ? '' : `<div class="foto-add" onclick="document.getElementById('foto-geral-input').click()">📷</div>`}
+      ${fotos.map(f => f.previewUrl
+        ? `<div class="foto-mini"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`
+        : `<div class="foto-mini" style="display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text3)">📷</div>`
+      ).join('')}
+    </div>
+    <input type="file" id="foto-geral-input" accept="image/*" capture="environment" style="display:none" onchange="tirarFotoGeral(this)"/>
+  </div>`;
+}
+
+async function tirarFotoGeral(input) {
+  const arquivo = input.files[0];
+  input.value = '';
+  if (!arquivo) return;
+  try {
+    const comprimida = await comprimirImagem(arquivo, 1280, 0.72);
+    const fotoLocalId = crypto.randomUUID();
+    await idbSalvar('fotos', {
+      id: fotoLocalId, vistoria_id: vistoriaAtual.id, comodo_id: null, previewUrl: comprimida.dataUrl,
+      base64: comprimida.base64, mimeType: 'image/jpeg', status: 'pendente',
+    });
+    await enfileirar('foto_geral', {
+      fotoLocalId, vistoriaId: vistoriaAtual.id, nomeArquivo: (arquivo.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg',
+      mimeType: 'image/jpeg', base64: comprimida.base64, tamanhoBytes: comprimida.tamanho,
+      usuarioId: sessaoAtual.user.id,
+    });
+    await renderizarFotosGerais();
+  } catch (e) {
+    mostrarToast('Erro ao processar a foto: ' + e.message, 'erro');
+  }
+}
+
+// Fotos gerais que já estavam no Drive (feitas no módulo web): busca a imagem ao abrir a vistoria
+async function carregarFotosGeraisDoDrive() {
+  if (!navigator.onLine || !vistoriaAtual) return;
+  const vid = vistoriaAtual.id;
+  const pendentes = (await idbTodos('fotos')).filter(f => f.vistoria_id === vid && !f.comodo_id && f.existente && f.driveId && !f.previewUrl);
+  let mudou = false;
+  for (const f of pendentes) {
+    try {
+      const token = btoa(sessaoAtual.user.id + ':' + Date.now() + ':sigecon');
+      const resp = await fetch(DRIVE_GAS_URL + '?acao=base64&driveId=' + f.driveId + '&token=' + token);
+      const json = await resp.json();
+      if (!json.sucesso) continue;
+      f.previewUrl = `data:${json.mimeType || f.mimeType};base64,${json.base64}`;
+      await idbSalvar('fotos', f);
+      mudou = true;
+    } catch (e) { /* tenta de novo na próxima vez que abrir */ }
+  }
+  if (mudou && vistoriaAtual && vistoriaAtual.id === vid) await renderizarFotosGerais();
 }
 
 function toggleComodo(id) {
