@@ -188,6 +188,12 @@
   .travada .comodo-corpo{pointer-events:none;opacity:.65;}
   .travada .remover-comodo{display:none;}
   .banner-ok{background:rgba(46,204,138,0.14);border:1px solid var(--green);color:#7be8bc;border-radius:10px;padding:12px;text-align:center;font-weight:700;font-size:13.5px;margin-bottom:10px;}
+
+  .resp-linha{flex-wrap:wrap;gap:8px;}
+  .resp-linha .resp-item-input{flex:1 1 100%;}
+  .resp-linha .resp-select{flex:1;min-width:0;}
+  .resp-linha .btn-remover-linha{font-size:12px;font-weight:700;padding:7px 10px;border:1px solid var(--red);border-radius:7px;white-space:nowrap;}
+  input[readonly].campo-soma{background:var(--navy3);color:var(--text2);}
 </style>
 </head>
 <body>
@@ -299,6 +305,8 @@
       📴 Essa etapa precisa de internet, pra garantir que o número do contrato seja gerado certo, sem risco de duplicar.<br/><br/>
       Conecte e tente de novo.
     </div>
+    <datalist id="dl-planilha-desc"><option value="Aluguel"><option value="Caução"><option value="Condomínio"><option value="IPTU"></datalist>
+    <datalist id="dl-planilha-un"><option value="mês"><option value="un"><option value="dia"><option value="ano"><option value="m²"><option value="vb"></datalist>
     <div id="sc-formulario">
       <div class="selo-numero" id="sc-numero-gerado" style="display:none"></div>
 
@@ -306,7 +314,7 @@
       <div class="campo"><textarea id="sc-objeto" style="min-height:60px"></textarea></div>
 
       <div style="display:flex;gap:10px">
-        <div class="campo" style="flex:1"><span class="rotulo">Valor estimado (R$)</span><input type="number" id="sc-valor" min="0" step="0.01"/></div>
+        <div class="campo" style="flex:1"><span class="rotulo">Valor estimado (R$) — soma da planilha</span><input type="number" id="sc-valor" class="campo-soma" min="0" step="0.01" readonly/></div>
       </div>
       <div style="display:flex;gap:10px">
         <div class="campo" style="flex:1"><span class="rotulo">Início previsto</span><input type="date" id="sc-inicio"/></div>
@@ -335,8 +343,8 @@
         </div>
       </div>
 
-      <div class="secao-opcional" id="sec-planilha">
-        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-planilha')">📊 Planilha de Preços (opcional)<span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional aberta" id="sec-planilha">
+        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-planilha')">📊 Planilha de Preços<span class="secao-opcional-seta">▶</span></div>
         <div class="secao-opcional-corpo">
           <div id="sc-planilha-lista"></div>
           <button type="button" class="btn-add-linha" onclick="adicionarLinhaPlanilha()">+ Adicionar item</button>
@@ -1713,6 +1721,10 @@ const RESPONSABILIDADES_LOCACAO_IMOVEL = [
   { item: 'Manutenção Estrutural', resp: 'Contratado' },
   { item: 'Vistoria de Entrada/Saída', resp: 'Ambos' },
 ];
+const PLANILHA_PADRAO_LOCACAO = [
+  { descricao: 'Aluguel', unidade: 'mês', quantidade: '', precoUnitario: '' },
+  { descricao: 'Caução', unidade: 'un', quantidade: 1, precoUnitario: '' },
+];
 const OPCOES_RESP = ['Contratante', 'Contratado', 'Ambos', 'Contratante/Contratado', 'A definir'];
 
 let _responsabilidadesAtuais = [];  // [{item, resp}] — começa com o padrão, mas dá pra adicionar/remover livremente
@@ -1750,7 +1762,7 @@ async function abrirSolicitarContrato() {
   // Cópia do template — editar aqui não mexe na constante original,
   // então toda vez que abrir de novo volta ao padrão
   _responsabilidadesAtuais = RESPONSABILIDADES_LOCACAO_IMOVEL.map(r => ({ ...r }));
-  _planilhaAtual = [];
+  _planilhaAtual = PLANILHA_PADRAO_LOCACAO.map(it => ({ ...it }));
   _renderizarResponsabilidades();
   _renderizarPlanilha();
 
@@ -1761,11 +1773,11 @@ function _renderizarResponsabilidades() {
   const lista = document.getElementById('sc-responsabilidades-lista');
   lista.innerHTML = _responsabilidadesAtuais.map((r, i) => `
     <div class="resp-linha">
-      <input type="text" class="resp-item-input" value="${r.item}" placeholder="Item" oninput="_responsabilidadesAtuais[${i}].item=this.value"/>
+      <input type="text" class="resp-item-input" value="${esc(r.item)}" placeholder="Item" oninput="_responsabilidadesAtuais[${i}].item=this.value"/>
       <select class="resp-select" onchange="_responsabilidadesAtuais[${i}].resp=this.value">
         ${OPCOES_RESP.map(o => `<option value="${o}" ${o === r.resp ? 'selected' : ''}>${o}</option>`).join('')}
       </select>
-      <button type="button" class="btn-remover-linha" onclick="removerLinhaResponsabilidade(${i})">🗑️</button>
+      <button type="button" class="btn-remover-linha" onclick="removerLinhaResponsabilidade(${i})">🗑️ Excluir</button>
     </div>`).join('');
 }
 function adicionarLinhaResponsabilidade() {
@@ -1782,9 +1794,9 @@ function _renderizarPlanilha() {
   lista.innerHTML = _planilhaAtual.map((it, i) => `
     <div class="item-card">
       <div class="item-card-topo"><button type="button" class="btn-remover-linha" onclick="removerLinhaPlanilha(${i})">🗑️</button></div>
-      <input type="text" class="item-campo-mini" placeholder="Descrição do item" value="${it.descricao}" oninput="_planilhaAtual[${i}].descricao=this.value"/>
+      <input type="text" class="item-campo-mini" list="dl-planilha-desc" placeholder="Descrição do item" value="${esc(it.descricao)}" oninput="_planilhaAtual[${i}].descricao=this.value"/>
       <div class="item-linha-numeros">
-        <input type="text" class="item-campo-mini" style="flex:1" placeholder="Unidade" value="${it.unidade}" oninput="_planilhaAtual[${i}].unidade=this.value"/>
+        <input type="text" class="item-campo-mini" style="flex:1" list="dl-planilha-un" placeholder="Unidade" value="${esc(it.unidade)}" oninput="_planilhaAtual[${i}].unidade=this.value"/>
         <input type="number" class="item-campo-mini" style="flex:1" placeholder="Qtd" min="0" step="0.01" value="${it.quantidade || ''}" oninput="_planilhaAtual[${i}].quantidade=this.value;_recalcularTotalPlanilha()"/>
         <input type="number" class="item-campo-mini" style="flex:1" placeholder="Preço unit. (R$)" min="0" step="0.01" value="${it.precoUnitario || ''}" oninput="_planilhaAtual[${i}].precoUnitario=this.value;_recalcularTotalPlanilha()"/>
       </div>
@@ -1811,6 +1823,8 @@ function _recalcularTotalPlanilha() {
   });
   const totalEl = document.getElementById('sc-planilha-total');
   if (totalEl) totalEl.textContent = 'Total: ' + _fmtMoedaSimples(total);
+  const valorEl = document.getElementById('sc-valor');
+  if (valorEl) valorEl.value = total > 0 ? total.toFixed(2) : '';
 }
 
 // Gera um PDF de verdade (não é print do navegador) com o conteúdo da
