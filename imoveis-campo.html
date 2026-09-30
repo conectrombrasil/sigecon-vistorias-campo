@@ -820,6 +820,27 @@ async function _removerVistoriasQueNaoDevemMaisAparecer(vistoriasDoServidor) {
   }
 }
 
+// Tira do aparelho imóveis que não são do usuário (ex.: guardados antes do
+// filtro existir). Nunca mexe no que ainda está esperando pra sincronizar.
+async function _removerImoveisQueNaoDevemMaisAparecer(imoveisDoServidor) {
+  const idsValidos = new Set(imoveisDoServidor.map(i => i.id));
+  const fila = await idbTodos('fila');
+  const pendentes = new Set(fila.filter(f => f.tipo === 'criar_imovel').map(f => f.payload.id));
+  const comTrabalhoPendente = new Set(fila.filter(f => f.tipo === 'criar_vistoria').map(f => f.payload.imovel_id));
+  for (const im of await idbTodos('imoveis')) {
+    if (idsValidos.has(im.id) || pendentes.has(im.id) || comTrabalhoPendente.has(im.id)) continue;
+    const vs = (await idbTodos('vistorias')).filter(v => v.imovel_id === im.id);
+    const vIds = new Set(vs.map(v => v.id));
+    const cs = (await idbTodos('comodos')).filter(c => vIds.has(c.vistoria_id));
+    const cIds = new Set(cs.map(c => c.id));
+    for (const f of (await idbTodos('fotos')).filter(f => cIds.has(f.comodo_id) || vIds.has(f.vistoria_id))) await idbRemover('fotos', f.id);
+    for (const c of cs) await idbRemover('comodos', c.id);
+    for (const v of vs) await idbRemover('vistorias', v.id);
+    await idbRemover('solicitacoes', im.id);
+    await idbRemover('imoveis', im.id);
+  }
+}
+
 async function carregarImoveisDoServidor() {
   const { data: vinc } = await sb.from('usuario_obras').select('obra_id').eq('usuario_id', sessaoAtual.user.id);
   obrasIds = (vinc || []).map(v => v.obra_id);
@@ -840,9 +861,11 @@ async function carregarImoveisDoServidor() {
   const { data: tiposDocData } = await sb.from('documento_tipos').select('id,categoria_id,nome,obrigatorio,tem_validade,aplica_pf,aplica_pj').eq('ativo', true).order('nome');
   await idbSalvarVarios('tipos_documento', tiposDocData || []);
 
-  const { data: imoveis, error } = await sb.from('imoveis').select('id,logradouro,numero,complemento,bairro,cidade,estado,cep,capacidade_pessoas,obra_id,fornecedor_id').in('obra_id', obrasIds).order('logradouro');
+  const { data: imoveis, error } = await sb.from('imoveis').select('id,logradouro,numero,complemento,bairro,cidade,estado,cep,capacidade_pessoas,obra_id,fornecedor_id,criado_por')
+    .eq('criado_por', sessaoAtual.user.id).in('obra_id', obrasIds).order('logradouro');
   if (error) throw error;
   await idbSalvarVarios('imoveis', imoveis || []);
+  await _removerImoveisQueNaoDevemMaisAparecer(imoveis || []);
   await _carregarSolicitacoesDoServidor(imoveis || []);
 
   // Também traz as vistorias em rascunho (pra continuar) e as mais
@@ -987,7 +1010,7 @@ async function _carregarSolicitacoesDoServidor(imoveis) {
 async function irParaHome() { await renderizarListaImoveis(); mostrarTela('tela-home'); }
 
 async function renderizarListaImoveis() {
-  const imoveis = await idbTodos('imoveis');
+  const imoveis = (await idbTodos('imoveis')).filter(i => !i.criado_por || i.criado_por === sessaoAtual.user.id);
   const el = document.getElementById('lista-imoveis');
   if (!imoveis.length) {
     el.innerHTML = `<div class="vazio">Nenhum imóvel ainda.<br/>Toque em "+ Novo imóvel" pra começar pelo Passo 1 (fornecedor).${navigator.onLine ? '' : '<br/>Conecte à internet pelo menos uma vez pra carregar a lista.'}</div>`;
@@ -1168,7 +1191,7 @@ async function salvarNovoImovel() {
     mostrarToast('Imóvel atualizado!', 'sucesso');
     await abrirImovel(_imovelEditandoId);
   } else {
-    const registro = { id: crypto.randomUUID(), ...campos };
+    const registro = { id: crypto.randomUUID(), ...campos, criado_por: sessaoAtual.user.id };
     await idbSalvar('imoveis', registro);
     await enfileirar('criar_imovel', registro);
     mostrarToast('Imóvel cadastrado! Agora é o Passo 3: fazer a vistoria.', 'sucesso');
