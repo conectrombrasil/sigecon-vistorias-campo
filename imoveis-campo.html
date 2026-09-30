@@ -531,7 +531,7 @@ async function enviarFotoParaServidor(p) {
     // drive_id fica nulo de propósito — é o próprio sinal de "subiu pro
     // Supabase mas ainda não foi migrado pro Drive" (sem precisar de
     // nenhuma coluna nova na tabela)
-    drive_id: null, drive_url: null, download_url: urlData.publicUrl,
+    drive_id: null, drive_url: urlData.publicUrl, download_url: urlData.publicUrl, // drive_url não aceita nulo no banco — usa a mesma URL do Storage até migrar pro Drive de verdade
     versao: 1, status: 'enviado', criado_por: p.usuarioId,
   });
   if (error) throw error;
@@ -556,7 +556,7 @@ async function enviarDocumentoFornecedorParaServidor(p) {
   const { error } = await sb.from('documentos').insert({
     modulo: 'fornecedores', registro_id: p.fornecedorId, tipo: 'exigido', documento_tipo_id: p.documentoTipoId,
     nome_arquivo: p.nomeArquivo, mime_type: p.mimeType, tamanho_bytes: p.tamanhoBytes,
-    drive_id: null, drive_url: null, download_url: urlData.publicUrl,
+    drive_id: null, drive_url: urlData.publicUrl, download_url: urlData.publicUrl, // drive_url não aceita nulo no banco — usa a mesma URL do Storage até migrar pro Drive de verdade
     versao: 1, status: 'enviado', criado_por: p.usuarioId,
   });
   if (error) throw error;
