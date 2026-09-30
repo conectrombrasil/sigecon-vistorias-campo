@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <style>
   :root{
     --navy:#0B1929; --navy2:#112236; --navy3:#1A3352;
@@ -145,6 +146,13 @@
   .doc-tipo-btn{background:var(--navy3);border:1px solid var(--border);color:var(--text2);border-radius:7px;
     padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
   .doc-tipo-btn.anexado{background:rgba(46,204,138,0.18);border-color:var(--green);color:#7be8bc;}
+  .aviso-offline-bloqueio{background:rgba(224,85,85,0.14);border:1px solid var(--red);border-radius:10px;padding:16px;text-align:center;font-size:13.5px;line-height:1.5;}
+  .resp-linha{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);}
+  .resp-item{flex:1;font-size:13px;}
+  .resp-select{background:var(--navy3);border:1px solid var(--border);border-radius:7px;color:var(--text);
+    padding:6px 8px;font-size:12px;min-width:140px;}
+  .selo-numero{display:inline-block;background:rgba(241,90,36,0.18);color:#ffb98a;border:1px solid var(--orange);
+    border-radius:8px;padding:8px 16px;font-weight:700;font-size:15px;margin:10px 0;}
   .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
     border-radius:50%;animation:girar .7s linear infinite;vertical-align:middle;}
   @keyframes girar{to{transform:rotate(360deg);}}
@@ -187,7 +195,10 @@
     <button class="topo-acao" onclick="abrirEditarImovel()">✏️ Editar</button>
   </div>
   <div class="status-barra" id="status-barra-2"></div>
-  <div class="conteudo" id="lista-vistorias"></div>
+  <div class="conteudo">
+    <button class="btn" style="margin-bottom:16px" onclick="abrirSolicitarContrato()">📄 Solicitar Contrato de Locação</button>
+    <div id="lista-vistorias"></div>
+  </div>
   <button class="fab" onclick="abrirEscolhaTipoVistoria()">+ Nova vistoria</button>
 </div>
 
@@ -221,6 +232,63 @@
     <div class="campo"><input type="number" id="ni-capacidade" min="1"/></div>
     <div class="erro-msg" id="ni-erro"></div>
     <button class="btn" id="ni-btn-salvar" onclick="salvarNovoImovel()">Salvar imóvel</button>
+  </div>
+</div>
+
+<!-- ================= SOLICITAR CONTRATO (só online) ================= -->
+<div class="tela" id="tela-solicitar-contrato">
+  <div class="topo">
+    <button class="topo-voltar" onclick="mostrarTela('tela-imovel')">←</button>
+    <div class="topo-titulo">Solicitar Contrato</div>
+  </div>
+  <div class="conteudo">
+    <div id="sc-bloqueio-offline" class="aviso-offline-bloqueio" style="display:none">
+      📴 Essa etapa precisa de internet, pra garantir que o número do contrato seja gerado certo, sem risco de duplicar.<br/><br/>
+      Conecte e tente de novo.
+    </div>
+    <div id="sc-formulario">
+      <div class="selo-numero" id="sc-numero-gerado" style="display:none"></div>
+
+      <span class="rotulo">Objeto / Descrição</span>
+      <div class="campo"><textarea id="sc-objeto" style="min-height:60px"></textarea></div>
+
+      <div style="display:flex;gap:10px">
+        <div class="campo" style="flex:1"><span class="rotulo">Valor estimado (R$)</span><input type="number" id="sc-valor" min="0" step="0.01"/></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="campo" style="flex:1"><span class="rotulo">Início previsto</span><input type="date" id="sc-inicio"/></div>
+        <div class="campo" style="flex:1"><span class="rotulo">Fim previsto</span><input type="date" id="sc-fim"/></div>
+      </div>
+
+      <div class="secao-opcional" id="sec-condicoes">
+        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-condicoes')">💰 Condições de Locação (opcional)<span class="secao-opcional-seta">▶</span></div>
+        <div class="secao-opcional-corpo">
+          <div style="display:flex;gap:10px">
+            <div class="campo" style="flex:1"><span class="rotulo">Caução (meses)</span><input type="number" id="sc-caucao-meses" min="0"/></div>
+            <div class="campo" style="flex:1"><span class="rotulo">Valor da caução (R$)</span><input type="number" id="sc-caucao-valor" min="0" step="0.01"/></div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <div class="campo" style="flex:1"><span class="rotulo">Data pgto. caução</span><input type="date" id="sc-caucao-data"/></div>
+            <div class="campo" style="flex:1"><span class="rotulo">Dia de pgto. do aluguel</span><input type="number" id="sc-dia-aluguel" min="1" max="31"/></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="secao-opcional aberta" id="sec-resp">
+        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-resp')">📋 Responsabilidades<span class="secao-opcional-seta">▶</span></div>
+        <div class="secao-opcional-corpo" id="sc-responsabilidades-lista"></div>
+      </div>
+
+      <div class="secao-opcional aberta" id="sec-anexo">
+        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-anexo')">📎 Anexo<span class="secao-opcional-seta">▶</span></div>
+        <div class="secao-opcional-corpo">
+          <div id="sc-anexo-status" style="font-size:12.5px;color:var(--text2)">O relatório da vistoria mais recente será gerado em PDF e anexado automaticamente.</div>
+        </div>
+      </div>
+
+      <div class="erro-msg" id="sc-erro"></div>
+      <button class="btn" id="sc-btn-enviar" onclick="enviarSolicitacaoContrato()">Enviar Solicitação</button>
+    </div>
   </div>
 </div>
 
@@ -1188,6 +1256,206 @@ function comprimirImagem(arquivo, larguraMax, qualidade) {
     img.onerror = reject;
     leitor.readAsDataURL(arquivo);
   });
+}
+
+// ══════════════════════════════════════════════════════════════
+// Solicitar Contrato (Locação de Imóveis) — exclusivamente ONLINE, pra
+// garantir que a numeração sequencial nunca seja gerada em duplicidade.
+// Nada aqui passa pela fila offline — ou vai direto e confirmado, ou
+// mostra erro claro e não fica "pendente" escondido em lugar nenhum.
+// ══════════════════════════════════════════════════════════════
+const RESPONSABILIDADES_LOCACAO_IMOVEL = [
+  { item: 'Pagamento do Aluguel', resp: 'Contratante' },
+  { item: 'Conservação do Imóvel', resp: 'Contratante' },
+  { item: 'IPTU e Taxas', resp: 'Contratante' },
+  { item: 'Manutenção Estrutural', resp: 'Contratado' },
+  { item: 'Vistoria de Entrada/Saída', resp: 'Ambos' },
+];
+const OPCOES_RESP = ['Contratante', 'Contratado', 'Ambos', 'Contratante/Contratado', 'A definir'];
+
+function abrirSolicitarContrato() {
+  const bloqueio = document.getElementById('sc-bloqueio-offline');
+  const form = document.getElementById('sc-formulario');
+  if (!navigator.onLine) {
+    bloqueio.style.display = 'block';
+    form.style.display = 'none';
+    mostrarTela('tela-solicitar-contrato');
+    return;
+  }
+  bloqueio.style.display = 'none';
+  form.style.display = 'block';
+  document.getElementById('sc-numero-gerado').style.display = 'none';
+  document.getElementById('sc-erro').textContent = '';
+  document.getElementById('sc-btn-enviar').disabled = false;
+  document.getElementById('sc-btn-enviar').textContent = 'Enviar Solicitação';
+
+  const endereco = [imovelAtual.logradouro, imovelAtual.numero].filter(Boolean).join(', ');
+  document.getElementById('sc-objeto').value = `Locação do imóvel situado em ${endereco || '(endereço a confirmar)'}.`;
+  ['sc-valor', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-dia-aluguel'].forEach(id => { document.getElementById(id).value = ''; });
+
+  const lista = document.getElementById('sc-responsabilidades-lista');
+  lista.innerHTML = RESPONSABILIDADES_LOCACAO_IMOVEL.map((r, i) => `
+    <div class="resp-linha">
+      <span class="resp-item">${r.item}</span>
+      <select class="resp-select" id="sc-resp-${i}">
+        ${OPCOES_RESP.map(o => `<option value="${o}" ${o === r.resp ? 'selected' : ''}>${o}</option>`).join('')}
+      </select>
+    </div>`).join('');
+
+  mostrarTela('tela-solicitar-contrato');
+}
+
+// Gera um PDF de verdade (não é print do navegador) com o conteúdo da
+// vistoria mais recente desse imóvel — cômodo, estado e observações.
+// Fotos ficam de fora dessa primeira versão (o texto já dá um registro
+// útil; anexar imagem no PDF é um passo futuro, se precisar).
+async function _gerarPdfVistoriaRecente() {
+  const todasVistorias = await idbTodos('vistorias');
+  const doImovel = todasVistorias.filter(v => v.imovel_id === imovelAtual.id).sort((a, b) => (b.data_vistoria || '').localeCompare(a.data_vistoria || ''));
+  if (!doImovel.length) return null;
+  const vistoria = doImovel[0];
+  const todosComodos = await idbTodos('comodos');
+  const comodos = todosComodos.filter(c => c.vistoria_id === vistoria.id).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const margem = 15;
+  let y = 20;
+
+  doc.setFontSize(16); doc.setFont(undefined, 'bold');
+  doc.text('Relatório de Vistoria de Imóvel', margem, y); y += 8;
+  doc.setFontSize(10); doc.setFont(undefined, 'normal');
+  const endereco = [imovelAtual.logradouro, imovelAtual.numero, imovelAtual.bairro, imovelAtual.cidade].filter(Boolean).join(', ');
+  doc.text(`Imóvel: ${endereco || '—'}`, margem, y); y += 6;
+  doc.text(`Tipo de vistoria: ${TIPO_LABEL[vistoria.tipo] || vistoria.tipo}  ·  Data: ${formatarDataBR(vistoria.data_vistoria)}`, margem, y); y += 10;
+
+  doc.setDrawColor(200); doc.line(margem, y, 210 - margem, y); y += 8;
+
+  if (!comodos.length) {
+    doc.text('Nenhum cômodo registrado nessa vistoria.', margem, y);
+  }
+  for (const c of comodos) {
+    if (y > 270) { doc.addPage(); y = 20; }
+    doc.setFontSize(12); doc.setFont(undefined, 'bold');
+    doc.text(`${c.nome}  —  Estado: ${c.estado}`, margem, y); y += 6;
+    doc.setFontSize(10); doc.setFont(undefined, 'normal');
+    if (c.observacoes) {
+      const linhas = doc.splitTextToSize(c.observacoes, 210 - margem * 2);
+      doc.text(linhas, margem, y);
+      y += linhas.length * 5;
+    }
+    y += 6;
+  }
+
+  doc.setFontSize(8); doc.setTextColor(150);
+  doc.text(`Gerado pelo app de campo SIGECON em ${new Date().toLocaleString('pt-BR')}`, margem, 290);
+
+  const blob = doc.output('blob');
+  const base64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+  return { base64, tamanho: blob.size, nomeArquivo: `Vistoria_${(endereco || 'imovel').replace(/[^\w]+/g, '_')}_${vistoria.data_vistoria}.pdf` };
+}
+
+async function enviarSolicitacaoContrato() {
+  const erroEl = document.getElementById('sc-erro');
+  erroEl.textContent = '';
+  if (!navigator.onLine) { erroEl.textContent = 'Perdeu a conexão — não dá pra continuar com segurança. Tente de novo quando estiver online.'; return; }
+
+  const objeto = document.getElementById('sc-objeto').value.trim();
+  if (!objeto) { erroEl.textContent = 'Descreva o objeto da locação.'; return; }
+
+  const btn = document.getElementById('sc-btn-enviar');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  try {
+    const agora = new Date();
+    const numeroAno = agora.getFullYear(), numeroMes = agora.getMonth() + 1;
+    const { data: numeroSequencial, error: erroSeq } = await sb.rpc('fn_proximo_numero_solicitacao', { p_ano: numeroAno });
+    if (erroSeq) throw new Error('Erro ao gerar o número da solicitação: ' + erroSeq.message);
+
+    const camposEspecificos = {
+      caucao_meses: document.getElementById('sc-caucao-meses').value ? parseInt(document.getElementById('sc-caucao-meses').value, 10) : null,
+      caucao_valor: document.getElementById('sc-caucao-valor').value ? parseFloat(document.getElementById('sc-caucao-valor').value) : null,
+      data_pgto_caucao: document.getElementById('sc-caucao-data').value || null,
+      dia_pgto_aluguel: document.getElementById('sc-dia-aluguel').value ? parseInt(document.getElementById('sc-dia-aluguel').value, 10) : null,
+    };
+
+    const { data: sol, error: erroSol } = await sb.from('solicitacoes_contratos').insert({
+      tipo: 'locacao_imovel', tipo_solicitacao: 'contrato',
+      numero_aditivo: null, numero_ano: numeroAno, numero_mes: numeroMes, numero_sequencial: numeroSequencial,
+      numero_personalizado: null, documento_legado: false, contrato_ref_id: null,
+      fornecedor_id: imovelAtual.fornecedor_id || null, obra_id: imovelAtual.obra_id,
+      valor_estimado: document.getElementById('sc-valor').value ? parseFloat(document.getElementById('sc-valor').value) : null,
+      data_inicio: document.getElementById('sc-inicio').value || null,
+      data_fim: document.getElementById('sc-fim').value || null,
+      campos_especificos: camposEspecificos,
+      objeto, status: 'pendente', criado_por: sessaoAtual.user.id,
+    }).select().single();
+    if (erroSol) throw new Error('Erro ao criar a solicitação: ' + erroSol.message);
+
+    // Item mínimo, só pra vincular o imóvel — sem mexer na mobília/vistoria
+    // (essa edição continua só pelo módulo web, por enquanto)
+    const endereco = [imovelAtual.logradouro, imovelAtual.numero, imovelAtual.bairro, imovelAtual.cidade].filter(Boolean).join(', ');
+    await sb.from('solicitacao_itens').insert({
+      solicitacao_id: sol.id, tipo: 'locacao_imovel', imovel_id: imovelAtual.id,
+      descricao: endereco || imovelAtual.logradouro, endereco: imovelAtual.logradouro,
+      numero_imovel: imovelAtual.numero || null, bairro: imovelAtual.bairro || null,
+      cidade: imovelAtual.cidade || null, estado: imovelAtual.estado || null, cep: imovelAtual.cep || null,
+    });
+
+    // Responsabilidades (template ajustado pela pessoa na tela)
+    const responsabilidades = RESPONSABILIDADES_LOCACAO_IMOVEL.map((r, i) => ({
+      solicitacao_id: sol.id, item: r.item, responsavel: document.getElementById('sc-resp-' + i).value, ordem: i,
+    }));
+    await sb.from('solicitacoes_responsabilidades').insert(responsabilidades);
+
+    // Anexo: gera o PDF da vistoria mais recente e sobe direto pro Drive
+    // (nessa etapa já estamos garantidamente online, não precisa do
+    // "trampolim" pelo Supabase)
+    const anexoStatus = document.getElementById('sc-anexo-status');
+    const pdfVistoria = await _gerarPdfVistoriaRecente();
+    if (pdfVistoria) {
+      anexoStatus.textContent = 'Enviando o PDF da vistoria...';
+      try {
+        const token = btoa(sessaoAtual.user.id + ':' + Date.now() + ':sigecon');
+        const gasResp = await fetch(DRIVE_GAS_URL, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            acao: 'drive.upload', token, modulo: 'Contratos', subpasta: 'Contratos/Solicitacoes',
+            nomeArquivo: pdfVistoria.nomeArquivo, mimeType: 'application/pdf', base64: pdfVistoria.base64,
+            idRegistro: sol.id, enviadoPor: sessaoAtual.user.id,
+          }),
+        });
+        const gasJson = await gasResp.json();
+        if (gasJson.sucesso) {
+          await sb.from('solicitacoes_documentos').insert({
+            solicitacao_id: sol.id, tipo_documento: 'Relatório de Vistoria', nome_arquivo: pdfVistoria.nomeArquivo,
+            mime_type: 'application/pdf', tamanho_bytes: pdfVistoria.tamanho,
+            drive_id: gasJson.dados.driveId, drive_url: gasJson.dados.driveUrl, enviado_por: sessaoAtual.user.id,
+          });
+          anexoStatus.textContent = '✅ PDF da vistoria anexado.';
+        } else {
+          anexoStatus.textContent = '⚠️ A solicitação foi criada, mas o PDF da vistoria não subiu: ' + (gasJson.erro || 'erro desconhecido') + '. Pode anexar depois pelo módulo web.';
+        }
+      } catch (e) {
+        anexoStatus.textContent = '⚠️ A solicitação foi criada, mas o PDF da vistoria não subiu: ' + e.message + '. Pode anexar depois pelo módulo web.';
+      }
+    } else {
+      anexoStatus.textContent = 'Nenhuma vistoria encontrada pra esse imóvel — solicitação enviada sem anexo.';
+    }
+
+    await sb.from('solicitacoes_mensagens').insert({
+      solicitacao_id: sol.id, autor_id: sessaoAtual.user.id, tipo: 'sistema',
+      conteudo: `📋 Solicitação criada pelo app de campo em ${new Date().toLocaleString('pt-BR')}.`,
+    });
+
+    document.getElementById('sc-numero-gerado').style.display = 'block';
+    document.getElementById('sc-numero-gerado').textContent = `Solicitação nº ${String(numeroSequencial).padStart(3, '0')}/${numeroAno} criada com sucesso!`;
+    btn.style.display = 'none';
+    mostrarToast('Solicitação de contrato enviada!', 'sucesso');
+  } catch (e) {
+    erroEl.textContent = e.message;
+    btn.disabled = false; btn.textContent = 'Enviar Solicitação';
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
