@@ -151,6 +151,7 @@
   </div>
   <div class="status-barra" id="status-barra"></div>
   <div class="conteudo" id="lista-imoveis"></div>
+  <button class="fab" onclick="abrirNovoImovel()">+ Novo imóvel</button>
 </div>
 
 <!-- ================= IMÓVEL: lista de vistorias ================= -->
@@ -165,6 +166,38 @@
   <div class="status-barra" id="status-barra-2"></div>
   <div class="conteudo" id="lista-vistorias"></div>
   <button class="fab" onclick="abrirEscolhaTipoVistoria()">+ Nova vistoria</button>
+</div>
+
+<!-- ================= NOVO IMÓVEL ================= -->
+<div class="tela" id="tela-novo-imovel">
+  <div class="topo">
+    <button class="topo-voltar" onclick="mostrarTela('tela-home')">←</button>
+    <div class="topo-titulo">Novo imóvel</div>
+  </div>
+  <div class="conteudo">
+    <span class="rotulo">Obra *</span>
+    <div class="campo"><select id="ni-obra"></select></div>
+    <span class="rotulo">Fornecedor</span>
+    <div class="campo"><select id="ni-fornecedor"><option value="">(nenhum)</option></select></div>
+    <span class="rotulo">Logradouro *</span>
+    <div class="campo"><input type="text" id="ni-logradouro" placeholder="Rua, avenida..."/></div>
+    <div style="display:flex;gap:10px">
+      <div class="campo" style="flex:1"><span class="rotulo">Número</span><input type="text" id="ni-numero"/></div>
+      <div class="campo" style="flex:2"><span class="rotulo">Complemento</span><input type="text" id="ni-complemento"/></div>
+    </div>
+    <span class="rotulo">Bairro</span>
+    <div class="campo"><input type="text" id="ni-bairro"/></div>
+    <div style="display:flex;gap:10px">
+      <div class="campo" style="flex:2"><span class="rotulo">Cidade</span><input type="text" id="ni-cidade"/></div>
+      <div class="campo" style="flex:1"><span class="rotulo">UF</span><input type="text" id="ni-estado" maxlength="2" style="text-transform:uppercase"/></div>
+    </div>
+    <span class="rotulo">CEP</span>
+    <div class="campo"><input type="text" id="ni-cep"/></div>
+    <span class="rotulo">Capacidade de pessoas *</span>
+    <div class="campo"><input type="number" id="ni-capacidade" min="1"/></div>
+    <div class="erro-msg" id="ni-erro"></div>
+    <button class="btn" onclick="salvarNovoImovel()">Salvar imóvel</button>
+  </div>
 </div>
 
 <!-- ================= VISTORIA: cômodos ================= -->
@@ -231,7 +264,7 @@ let vistoriaAtual = null;
 // precisa subir pro Supabase quando a internet voltar.
 // ══════════════════════════════════════════════════════════════
 const DB_NOME = 'vistorias_campo_db';
-const DB_VERSAO = 1;
+const DB_VERSAO = 2; // v2: acrescenta 'obras' e 'fornecedores' (pra cadastrar imóvel offline) — não apaga nada do que já existia
 let _dbPromise = null;
 
 function abrirDB() {
@@ -246,6 +279,8 @@ function abrirDB() {
       if (!db.objectStoreNames.contains('fotos')) db.createObjectStore('fotos', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('fila')) db.createObjectStore('fila', { keyPath: 'seq', autoIncrement: true });
       if (!db.objectStoreNames.contains('sessao')) db.createObjectStore('sessao', { keyPath: 'chave' });
+      if (!db.objectStoreNames.contains('obras')) db.createObjectStore('obras', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('fornecedores')) db.createObjectStore('fornecedores', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -306,7 +341,10 @@ async function enfileirar(tipo, payload) {
 
 async function processarItemFila(item) {
   const p = item.payload;
-  if (item.tipo === 'criar_vistoria') {
+  if (item.tipo === 'criar_imovel') {
+    const { error } = await sb.from('imoveis').insert(p);
+    if (error) throw error;
+  } else if (item.tipo === 'criar_vistoria') {
     const { error } = await sb.from('imovel_vistorias').insert(p);
     if (error) throw error;
   } else if (item.tipo === 'atualizar_vistoria') {
@@ -484,9 +522,16 @@ async function carregarImoveisDoServidor() {
   const { data: vinc } = await sb.from('usuario_obras').select('obra_id').eq('usuario_id', sessaoAtual.user.id);
   obrasIds = (vinc || []).map(v => v.obra_id);
   await idbSalvar('sessao', { chave: 'obras_ids', valor: obrasIds });
-  if (!obrasIds.length) { await idbSalvarVarios('imoveis', []); return; }
+  if (!obrasIds.length) { await idbSalvarVarios('imoveis', []); await idbSalvarVarios('obras', []); return; }
 
-  const { data: imoveis, error } = await sb.from('imoveis').select('id,logradouro,numero,bairro,cidade,obra_id').in('obra_id', obrasIds).order('logradouro');
+  // Obras e fornecedores ficam guardados localmente só pra alimentar o
+  // formulário de "Novo Imóvel" offline — não precisa de mais nada deles
+  const { data: obrasData } = await sb.from('obras').select('id,nome').in('id', obrasIds).order('nome');
+  await idbSalvarVarios('obras', obrasData || []);
+  const { data: fornecedoresData } = await sb.from('fornecedores').select('id,razao_social').eq('ativo', true).order('razao_social');
+  await idbSalvarVarios('fornecedores', fornecedoresData || []);
+
+  const { data: imoveis, error } = await sb.from('imoveis').select('id,logradouro,numero,complemento,bairro,cidade,estado,cep,capacidade_pessoas,obra_id,fornecedor_id').in('obra_id', obrasIds).order('logradouro');
   if (error) throw error;
   await idbSalvarVarios('imoveis', imoveis || []);
 
@@ -522,6 +567,53 @@ async function renderizarListaImoveis() {
       <div class="card-titulo">${i.logradouro || '(sem endereço)'}${i.numero ? ', ' + i.numero : ''}</div>
       <div class="card-sub">${[i.bairro, i.cidade].filter(Boolean).join(' — ') || '&nbsp;'}</div>
     </div>`).join('');
+}
+
+async function abrirNovoImovel() {
+  const obras = await idbTodos('obras');
+  const fornecedores = await idbTodos('fornecedores');
+  const selObra = document.getElementById('ni-obra');
+  const selFornecedor = document.getElementById('ni-fornecedor');
+  ['ni-logradouro', 'ni-numero', 'ni-complemento', 'ni-bairro', 'ni-cidade', 'ni-estado', 'ni-cep', 'ni-capacidade'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('ni-erro').textContent = '';
+
+  if (!obras.length) {
+    selObra.innerHTML = '<option value="">Nenhuma obra disponível — conecte à internet pelo menos uma vez</option>';
+  } else {
+    selObra.innerHTML = obras.map(o => `<option value="${o.id}">${o.nome}</option>`).join('');
+  }
+  selFornecedor.innerHTML = '<option value="">(nenhum)</option>' + fornecedores.map(f => `<option value="${f.id}">${f.razao_social}</option>`).join('');
+  mostrarTela('tela-novo-imovel');
+}
+
+async function salvarNovoImovel() {
+  const erroEl = document.getElementById('ni-erro');
+  erroEl.textContent = '';
+  const logradouro = document.getElementById('ni-logradouro').value.trim();
+  const obraId = document.getElementById('ni-obra').value;
+  const capacidadeStr = document.getElementById('ni-capacidade').value;
+  if (!logradouro) { erroEl.textContent = 'Informe o logradouro.'; return; }
+  if (!obraId) { erroEl.textContent = 'Selecione a obra vinculada.'; return; }
+  if (!capacidadeStr || parseInt(capacidadeStr, 10) < 1) { erroEl.textContent = 'Informe a capacidade de pessoas.'; return; }
+
+  const registro = {
+    id: crypto.randomUUID(),
+    obra_id: obraId,
+    fornecedor_id: document.getElementById('ni-fornecedor').value || null,
+    logradouro,
+    numero: document.getElementById('ni-numero').value.trim() || null,
+    complemento: document.getElementById('ni-complemento').value.trim() || null,
+    bairro: document.getElementById('ni-bairro').value.trim() || null,
+    cidade: document.getElementById('ni-cidade').value.trim() || null,
+    estado: document.getElementById('ni-estado').value.trim().toUpperCase() || null,
+    cep: document.getElementById('ni-cep').value.trim() || null,
+    capacidade_pessoas: parseInt(capacidadeStr, 10),
+  };
+  await idbSalvar('imoveis', registro);
+  await enfileirar('criar_imovel', registro);
+  mostrarToast('Imóvel cadastrado! Já dá pra fazer a vistoria.', 'sucesso');
+  await renderizarListaImoveis();
+  await abrirImovel(registro.id); // já entra direto nele — o objetivo é poder vistoriar na sequência, mesmo offline
 }
 
 async function abrirImovel(id) {
