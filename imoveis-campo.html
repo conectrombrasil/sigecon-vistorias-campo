@@ -903,14 +903,15 @@ function renderPassos(containerId, atual, feitos) {
 }
 
 function _numSolicitacao(s) { return `${String(s.numero_sequencial || 0).padStart(3, '0')}/${s.numero_ano || ''}`; }
+// Status válidos no banco (check constraint): pendente (padrão), aprovado, reprovado, em_elaboracao, concluido
 function _rotuloStatusSolicitacao(st) {
   const x = (st || 'pendente').toLowerCase();
   if (x === 'pendente') return { txt: 'Solicitação enviada', classe: 'selo-info' };
-  if (x.startsWith('aprov')) return { txt: 'Solicitação aprovada', classe: 'selo-finalizado' };
-  if (x.startsWith('conclu')) return { txt: 'Solicitação concluída', classe: 'selo-finalizado' };
-  if (x.startsWith('rejeit') || x.startsWith('recus') || x.startsWith('cancel')) return { txt: 'Solicitação ' + x.replace(/_/g, ' '), classe: 'selo-pendente' };
-  if (x.startsWith('em_')) return { txt: 'Solicitação ' + x.replace(/_/g, ' '), classe: 'selo-info' };
-  return { txt: 'Solicitação ' + x.replace(/_/g, ' '), classe: 'selo-info' };
+  if (x === 'aprovado') return { txt: 'Solicitação aprovada', classe: 'selo-finalizado' };
+  if (x === 'em_elaboracao') return { txt: 'Contrato em elaboração', classe: 'selo-info' };
+  if (x === 'concluido') return { txt: 'Contrato concluído', classe: 'selo-finalizado' };
+  if (x === 'reprovado') return { txt: 'Solicitação reprovada', classe: 'selo-pendente', reprovada: true };
+  return { txt: 'Solicitação: ' + x.replace(/_/g, ' '), classe: 'selo-info' };
 }
 
 // Situação do imóvel dentro do passo a passo
@@ -923,7 +924,9 @@ function _calcEstado(im, vistorias, solicitacoes, fila) {
   let e = { concluida, emEdicao, solicitacao, naoSync };
   if (solicitacao) {
     const r = _rotuloStatusSolicitacao(solicitacao.status);
-    Object.assign(e, { rotulo: r.txt, classe: r.classe, proximo: 'Solicitação nº ' + _numSolicitacao(solicitacao), passoAtual: 4, feitos: [1, 2, 3, 4] });
+    const n = 'Solicitação nº ' + _numSolicitacao(solicitacao);
+    if (r.reprovada) Object.assign(e, { rotulo: r.txt, classe: r.classe, reprovada: true, proximo: n + ' — envie uma nova (Passo 4)', passoAtual: 4, feitos: [1, 2, 3] });
+    else Object.assign(e, { rotulo: r.txt, classe: r.classe, proximo: n, passoAtual: 4, feitos: [1, 2, 3, 4] });
   } else if (concluida) {
     Object.assign(e, { rotulo: 'Vistoria concluída', classe: 'selo-finalizado', proximo: 'Próximo: Passo 4 — solicitar o contrato', passoAtual: 4, feitos: [1, 2, 3] });
   } else if (emEdicao) {
@@ -1311,8 +1314,8 @@ async function _renderizarPainelImovel() {
   renderPassos('passos-imovel', e.passoAtual, e.feitos);
   const trava = '<div class="card-sub" style="margin-top:10px">🔒 O Passo 4 (contrato) libera quando você concluir a vistoria.</div>';
   let cta;
-  if (e.solicitacao) cta = '<button class="btn btn-secundario" onclick="abrirSolicitarContrato()">📄 Enviar nova solicitação</button>';
-  else if (e.concluida) cta = '<button class="btn" onclick="abrirSolicitarContrato()">📄 Passo 4 — Solicitar contrato de locação</button>';
+  if (e.solicitacao && !e.reprovada) cta = '<button class="btn btn-secundario" onclick="abrirSolicitarContrato()">📄 Enviar nova solicitação</button>';
+  else if (e.concluida || e.reprovada) cta = '<button class="btn" onclick="abrirSolicitarContrato()">📄 Passo 4 — Solicitar contrato de locação</button>';
   else if (e.emEdicao) cta = `<button class="btn" onclick="abrirVistoria('${e.emEdicao.id}')">📋 Passo 3 — Continuar vistoria</button>` + trava;
   else cta = '<button class="btn" onclick="abrirEscolhaTipoVistoria()">📋 Passo 3 — Fazer vistoria</button>' + trava;
   document.getElementById('imovel-painel').innerHTML = `<div class="card" style="cursor:default;margin-bottom:16px">
@@ -1605,9 +1608,10 @@ let _planilhaAtual = [];             // [{descricao, unidade, quantidade, precoU
 async function abrirSolicitarContrato() {
   if (!imovelAtual.fornecedor_id) { mostrarToast('Este imóvel está sem fornecedor. Toque em Editar e escolha um (Passo 1).', 'erro'); return; }
   const [vist, sols] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes')]);
-  if (!vist.some(v => v.imovel_id === imovelAtual.id && v.status === 'finalizado')) { mostrarToast('Conclua a vistoria antes (Passo 3).', 'erro'); return; }
+  const jaEnviada0 = sols.find(x => x.imovel_id === imovelAtual.id);
+  if (!jaEnviada0 && !vist.some(v => v.imovel_id === imovelAtual.id && v.status === 'finalizado')) { mostrarToast('Conclua a vistoria antes (Passo 3).', 'erro'); return; }
   const jaEnviada = sols.find(x => x.imovel_id === imovelAtual.id);
-  if (jaEnviada && !confirm(`Este imóvel já tem a solicitação nº ${_numSolicitacao(jaEnviada)}. Enviar outra mesmo assim?`)) return;
+  if (jaEnviada && !_rotuloStatusSolicitacao(jaEnviada.status).reprovada && !confirm(`Este imóvel já tem a solicitação nº ${_numSolicitacao(jaEnviada)}. Enviar outra mesmo assim?`)) return;
   renderPassos('passos-sc', 4);
   const bloqueio = document.getElementById('sc-bloqueio-offline');
   const form = document.getElementById('sc-formulario');
