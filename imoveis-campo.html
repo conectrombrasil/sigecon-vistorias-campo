@@ -540,14 +540,36 @@ async function carregarImoveisDoServidor() {
   // suficiente pra saber o que já existe, não o histórico inteiro
   if (imoveis && imoveis.length) {
     const ids = imoveis.map(i => i.id);
+    // Só as vistorias do próprio usuário — cada vistoriador vê e mexe só
+    // no que é dele. Quem precisa ver de todo mundo usa o módulo web.
     const { data: vistorias } = await sb.from('imovel_vistorias')
-      .select('id,imovel_id,tipo,status,data_vistoria,responsavel')
+      .select('id,imovel_id,tipo,status,data_vistoria,responsavel,criado_por')
+      .eq('criado_por', sessaoAtual.user.id)
       .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(200);
     await idbSalvarVarios('vistorias', vistorias || []);
     if (vistorias && vistorias.length) {
       const idsVist = vistorias.map(v => v.id);
       const { data: comodos } = await sb.from('vistoria_comodos').select('*').in('vistoria_id', idsVist);
       await idbSalvarVarios('comodos', comodos || []);
+
+      // Fotos que já existiam antes (tiradas pelo módulo web, ou por essa
+      // pessoa em outro aparelho/sessão) — só a METADADO por enquanto; a
+      // imagem em si (quando é do Drive) só é buscada quando o cômodo é
+      // aberto, pra não pesar a sincronização com muitas fotos de uma vez
+      if (comodos && comodos.length) {
+        const idsComodos = comodos.map(c => c.id);
+        const { data: docs } = await sb.from('documentos').select('id,registro_id,drive_id,download_url,mime_type,nome_arquivo,descricao')
+          .eq('modulo', 'vistoria_comodo').in('registro_id', idsComodos);
+        const jaSalvas = new Set((await idbTodos('fotos')).map(f => f.id));
+        const novas = (docs || []).filter(d => !jaSalvas.has(d.id)).map(d => ({
+          id: d.id, comodo_id: d.registro_id, status: 'sincronizado', existente: true,
+          driveId: d.drive_id || null, mimeType: d.mime_type || 'image/jpeg',
+          // Foto do Supabase Storage já tem URL pronta pra usar direto;
+          // foto do Drive só ganha previewUrl quando o cômodo for aberto
+          previewUrl: d.drive_id ? null : d.download_url,
+        }));
+        if (novas.length) await idbSalvarVarios('fotos', novas);
+      }
     }
   }
 }
@@ -733,7 +755,10 @@ async function renderizarComodos() {
         <span class="rotulo">Fotos</span>
         <div class="fotos-grid" id="fotos-${c.id}">
           <div class="foto-add" onclick="document.getElementById('foto-input-${c.id}').click()">📷</div>
-          ${fotosDoComodo.map(f => `<div class="foto-mini"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`).join('')}
+          ${fotosDoComodo.map(f => f.previewUrl
+            ? `<div class="foto-mini"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`
+            : `<div class="foto-mini" id="foto-pendente-${f.id}" style="display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text3)">📷</div>`
+          ).join('')}
         </div>
         <input type="file" id="foto-input-${c.id}" accept="image/*" capture="environment" style="display:none" onchange="tirarFotoComodo('${c.id}',this)"/>
       </div>`;
@@ -741,7 +766,34 @@ async function renderizarComodos() {
   }
 }
 
-function toggleComodo(id) { document.getElementById('comodo-' + id).classList.toggle('aberto'); }
+function toggleComodo(id) {
+  const el = document.getElementById('comodo-' + id);
+  const abrindo = !el.classList.contains('aberto');
+  el.classList.toggle('aberto');
+  if (abrindo) carregarFotosPendentesDoDrive(id);
+}
+
+// Busca do Drive (via GAS) as fotos existentes desse cômodo que ainda não
+// têm imagem resolvida — só dispara quando o cômodo é aberto e só se
+// estiver online, pra não pesar a sincronização geral com muitas fotos
+async function carregarFotosPendentesDoDrive(comodoId) {
+  if (!navigator.onLine) return;
+  const fotos = await idbTodos('fotos');
+  const pendentes = fotos.filter(f => f.comodo_id === comodoId && f.existente && f.driveId && !f.previewUrl);
+  for (const f of pendentes) {
+    try {
+      const token = btoa(sessaoAtual.user.id + ':' + Date.now() + ':sigecon');
+      const resp = await fetch(DRIVE_GAS_URL + '?acao=base64&driveId=' + f.driveId + '&token=' + token);
+      const json = await resp.json();
+      if (!json.sucesso) continue;
+      const dataUrl = `data:${json.mimeType || f.mimeType};base64,${json.base64}`;
+      f.previewUrl = dataUrl;
+      await idbSalvar('fotos', f);
+      const el = document.getElementById('foto-pendente-' + f.id);
+      if (el) el.outerHTML = `<div class="foto-mini"><img src="${dataUrl}"/><span class="foto-status">✅</span></div>`;
+    } catch (e) { /* mantém o placeholder 📷 — tenta de novo na próxima vez que abrir */ }
+  }
+}
 
 async function mudarEstadoComodo(id, estado) {
   const c = await idbPegar('comodos', id);
