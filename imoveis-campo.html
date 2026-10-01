@@ -166,6 +166,12 @@
   .resp-linha .resp-item-input{flex:1;background:var(--navy3);border:1px solid var(--border);border-radius:6px;
     color:var(--text);padding:6px 8px;font-size:12.5px;}
   .planilha-total{text-align:right;font-weight:700;font-size:13px;margin-top:6px;padding-top:8px;border-top:1px solid var(--border);}
+  .filtros-status{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;-webkit-overflow-scrolling:touch;}
+  .filtros-status::-webkit-scrollbar{display:none;}
+  .chip-filtro{flex-shrink:0;background:var(--navy2);border:1px solid var(--border);color:var(--text2);
+    padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .chip-filtro.ativo{background:rgba(241,90,36,0.2);border-color:var(--orange);color:#ffb98a;}
+  .card-info-extra{font-size:11.5px;color:var(--text3);margin-top:4px;line-height:1.5;}
   .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
     border-radius:50%;animation:girar .7s linear infinite;vertical-align:middle;}
   @keyframes girar{to{transform:rotate(360deg);}}
@@ -1020,7 +1026,14 @@ async function irParaPasso(k) {
   }
 }
 
-function _numSolicitacao(s) { return `${String(s.numero_sequencial || 0).padStart(3, '0')}/${s.numero_ano || ''}`; }
+// Esse é o número de CONTROLE da solicitação (mesmo formato que o
+// módulo web usa: "SOL ano.mês.sequencial") — não é o número do
+// contrato em si, que só existe depois, quando alguém de fato
+// elabora o contrato (fica em contratos.numero, separado)
+function _numSolicitacao(s) {
+  if (!s.numero_ano || !s.numero_mes || !s.numero_sequencial) return '';
+  return `SOL ${s.numero_ano}.${String(s.numero_mes).padStart(2, '0')}.${String(s.numero_sequencial).padStart(3, '0')}`;
+}
 // Status válidos no banco (check constraint): pendente (padrão), aprovado, reprovado, em_elaboracao, concluido
 function _rotuloStatusSolicitacao(st) {
   const x = (st || 'pendente').toLowerCase();
@@ -1041,16 +1054,24 @@ function _calcEstado(im, vistorias, solicitacoes, fila) {
   const naoSync = fila.some(f => f.tipo === 'criar_imovel' && f.payload.id === im.id);
   let e = { concluida, emEdicao, solicitacao, naoSync };
   if (solicitacao) {
-    const r = _rotuloStatusSolicitacao(solicitacao.status);
-    const n = 'Solicitação nº ' + _numSolicitacao(solicitacao);
-    if (r.reprovada) Object.assign(e, { rotulo: r.txt, classe: r.classe, reprovada: true, proximo: n + ' — envie uma nova (Passo 4)', passoAtual: 4, feitos: [1, 2, 3] });
-    else Object.assign(e, { rotulo: r.txt, classe: r.classe, proximo: n, passoAtual: 4, feitos: [1, 2, 3, 4] });
+    const ehDistrato = solicitacao.tipo_solicitacao === 'distrato';
+    const r = ehDistrato
+      ? { txt: 'Imóvel distratado', classe: 'selo-pendente' }
+      : _rotuloStatusSolicitacao(solicitacao.status);
+    const n = _numSolicitacao(solicitacao);
+    const filtroChave = ehDistrato ? 'distratado'
+      : r.reprovada ? 'reprovado'
+      : solicitacao.status === 'em_elaboracao' ? 'em_elaboracao'
+      : (solicitacao.status === 'aprovado' || solicitacao.status === 'concluido') ? 'contratado'
+      : 'solicitado';
+    if (r.reprovada) Object.assign(e, { rotulo: r.txt, classe: r.classe, reprovada: true, proximo: n + ' — envie uma nova (Passo 4)', passoAtual: 4, feitos: [1, 2, 3], filtroChave });
+    else Object.assign(e, { rotulo: r.txt, classe: r.classe, proximo: n, passoAtual: 4, feitos: [1, 2, 3, 4], filtroChave });
   } else if (concluida) {
-    Object.assign(e, { rotulo: 'Vistoria concluída', classe: 'selo-finalizado', proximo: 'Próximo: Passo 4 — solicitar o contrato', passoAtual: 4, feitos: [1, 2, 3] });
+    Object.assign(e, { rotulo: 'Vistoria concluída', classe: 'selo-finalizado', proximo: 'Próximo: Passo 4 — solicitar o contrato', passoAtual: 4, feitos: [1, 2, 3], filtroChave: 'vistoria_concluida' });
   } else if (emEdicao) {
-    Object.assign(e, { rotulo: 'Vistoria em andamento', classe: 'selo-rascunho', proximo: 'Próximo: Passo 3 — concluir a vistoria', passoAtual: 3, feitos: [1, 2] });
+    Object.assign(e, { rotulo: 'Vistoria em andamento', classe: 'selo-rascunho', proximo: 'Próximo: Passo 3 — concluir a vistoria', passoAtual: 3, feitos: [1, 2], filtroChave: 'vistoria_andamento' });
   } else {
-    Object.assign(e, { rotulo: 'Aguardando vistoria', classe: 'selo-neutro', proximo: 'Próximo: Passo 3 — fazer a vistoria', passoAtual: 3, feitos: [1, 2] });
+    Object.assign(e, { rotulo: 'Aguardando vistoria', classe: 'selo-neutro', proximo: 'Próximo: Passo 3 — fazer a vistoria', passoAtual: 3, feitos: [1, 2], filtroChave: 'aguardando_vistoria' });
   }
   return e;
 }
@@ -1061,7 +1082,7 @@ async function _carregarSolicitacoesDoServidor(imoveis) {
     const { data: itens, error } = await sb.from('solicitacao_itens').select('imovel_id,solicitacao_id').in('imovel_id', imoveis.map(i => i.id));
     if (error || !itens || !itens.length) return;
     const solIds = [...new Set(itens.map(i => i.solicitacao_id))];
-    const { data: sols, error: e2 } = await sb.from('solicitacoes_contratos').select('id,status,numero_sequencial,numero_ano').in('id', solIds);
+    const { data: sols, error: e2 } = await sb.from('solicitacoes_contratos').select('id,status,tipo_solicitacao,numero_sequencial,numero_ano,numero_mes,criado_em').in('id', solIds);
     if (e2 || !sols) return;
     const porId = new Map(sols.map(x => [x.id, x]));
     const peso = x => (x.numero_ano || 0) * 1e6 + (x.numero_sequencial || 0);
@@ -1072,11 +1093,42 @@ async function _carregarSolicitacoesDoServidor(imoveis) {
       const atual = melhor.get(it.imovel_id);
       if (!atual || peso(sol) > peso(atual)) melhor.set(it.imovel_id, sol);
     }
-    await idbSalvarVarios('solicitacoes', [...melhor].map(([imovel_id, x]) => ({ imovel_id, solicitacao_id: x.id, status: x.status, numero_sequencial: x.numero_sequencial, numero_ano: x.numero_ano })));
+    // O número do CONTRATO em si (contratos.numero) só existe depois que
+    // alguém elabora o contrato de verdade — busca à parte, separada do
+    // número de controle da solicitação
+    const melhorIds = [...melhor.values()].map(x => x.id);
+    let numeroContratoPorSolId = new Map();
+    if (melhorIds.length) {
+      const { data: contratosData } = await sb.from('contratos').select('numero,solicitacao_origem_id').in('solicitacao_origem_id', melhorIds);
+      numeroContratoPorSolId = new Map((contratosData || []).map(c => [c.solicitacao_origem_id, c.numero]));
+    }
+    await idbSalvarVarios('solicitacoes', [...melhor].map(([imovel_id, x]) => ({
+      imovel_id, solicitacao_id: x.id, status: x.status, tipo_solicitacao: x.tipo_solicitacao,
+      numero_sequencial: x.numero_sequencial, numero_ano: x.numero_ano, numero_mes: x.numero_mes, criado_em: x.criado_em,
+      numero_contrato: numeroContratoPorSolId.get(x.id) || null,
+    })));
   } catch (e) { /* status da solicitação é um extra — se falhar, o app segue normal */ }
 }
 
 async function irParaHome() { await renderizarListaImoveis(); mostrarTela('tela-home'); }
+
+const FILTROS_STATUS_IMOVEL = [
+  { chave: 'todos', rotulo: 'Todos' },
+  { chave: 'aguardando_vistoria', rotulo: 'Aguardando vistoria' },
+  { chave: 'vistoria_andamento', rotulo: 'Vistoria em andamento' },
+  { chave: 'vistoria_concluida', rotulo: 'Vistoria concluída' },
+  { chave: 'solicitado', rotulo: 'Solicitado' },
+  { chave: 'em_elaboracao', rotulo: 'Em elaboração' },
+  { chave: 'contratado', rotulo: 'Contratado' },
+  { chave: 'reprovado', rotulo: 'Rejeitado' },
+  { chave: 'distratado', rotulo: 'Distratado' },
+];
+let _filtroStatusImovelAtual = 'todos';
+
+function filtrarImoveisPorStatus(chave) {
+  _filtroStatusImovelAtual = chave;
+  renderizarListaImoveis();
+}
 
 async function renderizarListaImoveis() {
   const imoveis = (await idbTodos('imoveis')).filter(i => !i.criado_por || i.criado_por === sessaoAtual.user.id);
@@ -1085,14 +1137,33 @@ async function renderizarListaImoveis() {
     el.innerHTML = `<div class="vazio">Nenhum imóvel ainda.<br/>Toque em "+ Novo imóvel" pra começar pelo Passo 1 (fornecedor).${navigator.onLine ? '' : '<br/>Conecte à internet pelo menos uma vez pra carregar a lista.'}</div>`;
     return;
   }
-  const [vist, sols, fila] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes'), idbTodos('fila')]);
-  el.innerHTML = imoveis.map(i => {
-    const e = _calcEstado(i, vist, sols, fila);
+  const [vist, sols, fila, fornecedores, obras] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes'), idbTodos('fila'), idbTodos('fornecedores'), idbTodos('obras')]);
+  const fornPorId = new Map(fornecedores.map(f => [f.id, f]));
+  const obraPorId = new Map(obras.map(o => [o.id, o]));
+
+  const comEstado = imoveis.map(i => ({ i, e: _calcEstado(i, vist, sols, fila) }));
+  const filtrados = _filtroStatusImovelAtual === 'todos' ? comEstado : comEstado.filter(x => x.e.filtroChave === _filtroStatusImovelAtual);
+
+  const chips = `<div class="filtros-status">${FILTROS_STATUS_IMOVEL.map(f =>
+    `<button class="chip-filtro ${_filtroStatusImovelAtual === f.chave ? 'ativo' : ''}" onclick="filtrarImoveisPorStatus('${f.chave}')">${f.rotulo}</button>`
+  ).join('')}</div>`;
+
+  const cards = !filtrados.length ? `<div class="vazio">Nenhum imóvel com esse status.</div>` : filtrados.map(({ i, e }) => {
+    const forn = fornPorId.get(i.fornecedor_id);
+    const obra = obraPorId.get(i.obra_id);
+    const infoExtra = [
+      forn ? `👤 ${esc(forn.razao_social)}` : null,
+      obra ? `🏗️ ${esc(obra.nome)}` : null,
+      e.solicitacao ? esc(_numSolicitacao(e.solicitacao)) : null,
+      e.solicitacao?.numero_contrato ? `📄 Contrato nº ${esc(e.solicitacao.numero_contrato)}` : null,
+      e.solicitacao?.criado_em ? `Solicitado em ${new Date(e.solicitacao.criado_em).toLocaleDateString('pt-BR')}` : null,
+    ].filter(Boolean).join(' · ');
     return `<div class="card" onclick="abrirImovel('${i.id}')">
       <div class="card-linha">
         <div style="flex:1;min-width:0">
           <div class="card-titulo">${esc(i.logradouro) || '(sem endereço)'}${i.numero ? ', ' + esc(i.numero) : ''}</div>
           <div class="card-sub">${esc([i.bairro, i.cidade].filter(Boolean).join(' — ')) || '&nbsp;'}</div>
+          ${infoExtra ? `<div class="card-info-extra">${infoExtra}</div>` : ''}
           <div style="margin-top:8px"><span class="selo ${e.classe}">${esc(e.rotulo)}</span>${e.naoSync ? ' <span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}</div>
           <div class="card-sub" style="margin-top:6px">${esc(e.proximo)}</div>
         </div>
@@ -1100,6 +1171,8 @@ async function renderizarListaImoveis() {
       </div>
     </div>`;
   }).join('');
+
+  el.innerHTML = chips + cards;
 }
 
 // Exclui o imóvel SÓ do aparelho. Se ele já estiver no sistema, volta a
@@ -1877,7 +1950,7 @@ async function abrirSolicitarContrato() {
   const jaEnviada0 = sols.find(x => x.imovel_id === imovelAtual.id);
   if (!jaEnviada0 && !vist.some(v => v.imovel_id === imovelAtual.id && v.status === 'finalizado')) { mostrarToast('Conclua a vistoria antes (Passo 3).', 'erro'); return; }
   const jaEnviada = sols.find(x => x.imovel_id === imovelAtual.id);
-  if (jaEnviada && !_rotuloStatusSolicitacao(jaEnviada.status).reprovada && !confirm(`Este imóvel já tem a solicitação nº ${_numSolicitacao(jaEnviada)}. Enviar outra mesmo assim?`)) return;
+  if (jaEnviada && !_rotuloStatusSolicitacao(jaEnviada.status).reprovada && !confirm(`Este imóvel já tem a ${_numSolicitacao(jaEnviada)}. Enviar outra mesmo assim?`)) return;
   renderPassos('passos-sc', 4);
   const bloqueio = document.getElementById('sc-bloqueio-offline');
   const form = document.getElementById('sc-formulario');
