@@ -446,6 +446,19 @@
       </div>
     </div>
 
+    <div class="secao-opcional" id="sec-nf-testemunha">
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-nf-testemunha')">👤 Testemunha (opcional)<span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-corpo">
+        <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Se já souber quem será a testemunha desse contrato, cadastra aqui — já vem preenchido na hora de solicitar.</div>
+        <span class="rotulo">Nome da testemunha</span>
+        <div class="campo"><input type="text" id="nf-test-nome"/></div>
+        <div style="display:flex;gap:10px">
+          <div class="campo" style="flex:1"><span class="rotulo">Telefone</span><input type="tel" id="nf-test-tel"/></div>
+          <div class="campo" style="flex:1"><span class="rotulo">E-mail</span><input type="email" id="nf-test-email"/></div>
+        </div>
+      </div>
+    </div>
+
     <div class="secao-opcional" id="sec-banco">
       <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-banco')">🏦 Dados Bancários (opcional)<span class="secao-opcional-seta">▶</span></div>
       <div class="secao-opcional-corpo">
@@ -602,6 +615,9 @@ async function processarItemFila(item) {
     if (error) throw error;
   } else if (item.tipo === 'criar_fornecedor') {
     const { error } = await sb.from('fornecedores').insert(p);
+    if (error) throw error;
+  } else if (item.tipo === 'criar_contato_fornecedor') {
+    const { error } = await sb.from('fornecedor_contatos').insert(p);
     if (error) throw error;
   } else if (item.tipo === 'vincular_categoria_fornecedor') {
     const { error } = await sb.from('fornecedor_categorias_vinculo').insert(p);
@@ -1250,7 +1266,7 @@ async function abrirNovoFornecedor(origem) {
   _tipoPessoaFornecedorAtual = 'PJ';
   _categoriasMarcadas = new Set();
   _documentosAnexados = {};
-  ['nf-nome', 'nf-cpf-cnpj', 'nf-email', 'nf-telefone', 'nf-banco-nome', 'nf-banco-agencia', 'nf-banco-conta', 'nf-banco-titular', 'nf-banco-titular-doc', 'nf-banco-obs'].forEach(id => { document.getElementById(id).value = ''; });
+  ['nf-nome', 'nf-cpf-cnpj', 'nf-email', 'nf-telefone', 'nf-test-nome', 'nf-test-tel', 'nf-test-email', 'nf-banco-nome', 'nf-banco-agencia', 'nf-banco-conta', 'nf-banco-titular', 'nf-banco-titular-doc', 'nf-banco-obs'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('nf-banco-tipo').value = 'corrente';
   document.getElementById('nf-erro').textContent = '';
   document.querySelectorAll('#tela-novo-fornecedor .secao-opcional').forEach(sec => sec.classList.remove('aberta'));
@@ -1347,6 +1363,18 @@ async function salvarNovoFornecedor() {
   };
   await idbSalvar('fornecedores', registro);
   await enfileirar('criar_fornecedor', registro);
+
+  // Testemunha cadastrada já aqui no início vira um contato do fornecedor
+  // (cargo = "Testemunha"), pra não precisar digitar de novo lá na frente
+  const testNome = document.getElementById('nf-test-nome').value.trim();
+  if (testNome) {
+    await enfileirar('criar_contato_fornecedor', {
+      id: crypto.randomUUID(), fornecedor_id: registro.id, nome: testNome, cargo: 'Testemunha',
+      telefone: document.getElementById('nf-test-tel').value.trim() || null,
+      email: document.getElementById('nf-test-email').value.trim() || null,
+      descricao: null, principal: false, criado_por: sessaoAtual.user.id,
+    });
+  }
 
   // Vincula as categorias automáticas (Locação de Imóvel + Geral PF/PJ)
   const cats = await _categoriasAutomaticas();
@@ -1785,6 +1813,16 @@ async function abrirSolicitarContrato() {
   const endereco = [imovelAtual.logradouro, imovelAtual.numero].filter(Boolean).join(', ');
   document.getElementById('sc-objeto').value = `Locação do imóvel situado em ${endereco || '(endereço a confirmar)'}.`;
   ['sc-valor', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-dia-aluguel', 'sc-test-nome', 'sc-test-tel', 'sc-test-email'].forEach(id => { document.getElementById(id).value = ''; });
+
+  // Testemunha já cadastrada no fornecedor (Passo 1) vem automática —
+  // continua editável aqui, caso precise ajustar na hora
+  const { data: testemunhas } = await sb.from('fornecedor_contatos').select('nome,telefone,email')
+    .eq('fornecedor_id', imovelAtual.fornecedor_id).eq('cargo', 'Testemunha').order('nome').limit(1);
+  if (testemunhas && testemunhas.length) {
+    document.getElementById('sc-test-nome').value = testemunhas[0].nome || '';
+    document.getElementById('sc-test-tel').value = testemunhas[0].telefone || '';
+    document.getElementById('sc-test-email').value = testemunhas[0].email || '';
+  }
 
   // Cópia do template — editar aqui não mexe na constante original,
   // então toda vez que abrir de novo volta ao padrão
