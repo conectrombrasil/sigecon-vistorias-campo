@@ -482,7 +482,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
       </div>
 
       <div class="secao-opcional" id="sec-condicoes">
-        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-condicoes')">💰 Condições de locação <span style="font-weight:500;color:var(--text3);font-size:12.5px">(opcional)</span><span class="secao-opcional-seta">▶</span></div>
+        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-condicoes')">💰 Condições de locação<span class="secao-opcional-seta">▶</span></div>
         <div class="secao-opcional-corpo">
           <div style="display:flex;gap:10px">
             <div class="campo" style="flex:1"><span class="rotulo">Caução (meses)</span><input type="number" id="sc-caucao-meses" min="0" inputmode="numeric"/></div>
@@ -614,8 +614,15 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     <span class="rotulo" id="nf-rotulo-doc">CPF</span>
     <div class="campo"><input type="text" id="nf-cpf-cnpj" placeholder="Só números" inputmode="numeric"/></div>
 
+    <div id="bloco-nf-representante" style="display:none">
+      <span class="rotulo">Nome do representante legal</span>
+      <div class="campo"><input type="text" id="nf-rep-nome"/></div>
+      <span class="rotulo">CPF do representante legal</span>
+      <div class="campo"><input type="text" id="nf-rep-cpf" placeholder="Só números" inputmode="numeric"/></div>
+    </div>
+
     <div class="secao-opcional" id="sec-contato">
-      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-contato')">📞 Contato <span style="font-weight:500;color:var(--text3);font-size:12.5px">(opcional)</span><span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-contato')">📞 Contato<span class="secao-opcional-seta">▶</span></div>
       <div class="secao-opcional-corpo">
         <span class="rotulo">E-mail</span>
         <div class="campo"><input type="email" id="nf-email" inputmode="email"/></div>
@@ -625,7 +632,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     </div>
 
     <div class="secao-opcional" id="sec-nf-testemunha">
-      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-nf-testemunha')">👤 Testemunha <span style="font-weight:500;color:var(--text3);font-size:12.5px">(opcional)</span><span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-nf-testemunha')">👤 Testemunha<span class="secao-opcional-seta">▶</span></div>
       <div class="secao-opcional-corpo">
         <div style="font-size:12.5px;color:var(--text3);margin:10px 0 4px">Se já souber quem será a testemunha desse contrato, cadastre aqui — já vem preenchido na hora de solicitar.</div>
         <span class="rotulo">Nome da testemunha</span>
@@ -638,7 +645,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     </div>
 
     <div class="secao-opcional" id="sec-banco">
-      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-banco')">🏦 Dados bancários <span style="font-weight:500;color:var(--text3);font-size:12.5px">(opcional)</span><span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-banco')">🏦 Dados bancários<span class="secao-opcional-seta">▶</span></div>
       <div class="secao-opcional-corpo">
         <span class="rotulo">Banco</span>
         <div class="campo"><input type="text" id="nf-banco-nome"/></div>
@@ -801,6 +808,9 @@ async function processarItemFila(item) {
     if (error) throw error;
   } else if (item.tipo === 'criar_contato_fornecedor') {
     const { error } = await sb.from('fornecedor_contatos').insert(p);
+    if (error) throw error;
+  } else if (item.tipo === 'criar_socio_fornecedor') {
+    const { error } = await sb.from('fornecedor_socios').insert(p);
     if (error) throw error;
   } else if (item.tipo === 'vincular_categoria_fornecedor') {
     const { error } = await sb.from('fornecedor_categorias_vinculo').insert(p);
@@ -1502,6 +1512,8 @@ async function abrirEditarFornecedor(id) {
   _documentosAnexados = {};
   document.getElementById('nf-nome').value = f.razao_social || '';
   document.getElementById('nf-cpf-cnpj').value = f.cpf_cnpj || '';
+  document.getElementById('nf-rep-nome').value = '';
+  document.getElementById('nf-rep-cpf').value = '';
   document.getElementById('nf-email').value = f.email || '';
   document.getElementById('nf-telefone').value = f.telefone || '';
   document.getElementById('nf-test-nome').value = '';
@@ -1638,7 +1650,7 @@ async function abrirNovoFornecedor(origem) {
   _tipoPessoaFornecedorAtual = 'PJ';
   _categoriasMarcadas = new Set();
   _documentosAnexados = {};
-  ['nf-nome', 'nf-cpf-cnpj', 'nf-email', 'nf-telefone', 'nf-test-nome', 'nf-test-tel', 'nf-test-email', 'nf-banco-nome', 'nf-banco-agencia', 'nf-banco-conta', 'nf-banco-titular', 'nf-banco-titular-doc', 'nf-banco-obs'].forEach(id => { document.getElementById(id).value = ''; });
+  ['nf-nome', 'nf-cpf-cnpj', 'nf-rep-nome', 'nf-rep-cpf', 'nf-email', 'nf-telefone', 'nf-test-nome', 'nf-test-tel', 'nf-test-email', 'nf-banco-nome', 'nf-banco-agencia', 'nf-banco-conta', 'nf-banco-titular', 'nf-banco-titular-doc', 'nf-banco-obs'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('nf-banco-tipo').value = 'corrente';
   document.getElementById('nf-erro').textContent = '';
   document.querySelectorAll('#tela-novo-fornecedor .secao-opcional').forEach(sec => sec.classList.remove('aberta'));
@@ -1660,6 +1672,7 @@ function _selecionarTipoPessoaFornecedor(tipo) {
   document.getElementById('nf-btn-pj').classList.toggle('sel', tipo === 'PJ');
   document.getElementById('nf-rotulo-nome').textContent = tipo === 'PF' ? 'Nome' : 'Razão Social';
   document.getElementById('nf-rotulo-doc').textContent = tipo === 'PF' ? 'CPF' : 'CNPJ';
+  document.getElementById('bloco-nf-representante').style.display = tipo === 'PJ' ? 'block' : 'none';
   renderizarCategoriasFornecedor(); // o checklist de documentos muda conforme PF/PJ (aplica_pf / aplica_pj)
 }
 
@@ -1766,6 +1779,17 @@ async function salvarNovoFornecedor() {
       telefone: document.getElementById('nf-test-tel').value.trim() || null,
       email: document.getElementById('nf-test-email').value.trim() || null,
       descricao: null, principal: false, criado_por: sessaoAtual.user.id,
+    });
+  }
+
+  // Representante legal (só faz sentido pra Pessoa Jurídica) vira um
+  // sócio do fornecedor — mesma tabela que o módulo web já usa
+  const repNome = document.getElementById('nf-rep-nome').value.trim();
+  if (_tipoPessoaFornecedorAtual === 'PJ' && repNome) {
+    await enfileirar('criar_socio_fornecedor', {
+      id: crypto.randomUUID(), fornecedor_id: registro.id, nome: repNome,
+      qualificacao: 'Representante Legal', cpf_cnpj_socio: document.getElementById('nf-rep-cpf').value.replace(/\D/g, '') || null,
+      email: null, telefone: null, criado_por: sessaoAtual.user.id,
     });
   }
 
@@ -2381,6 +2405,22 @@ async function enviarSolicitacaoContrato() {
   const testTel = document.getElementById('sc-test-tel').value.trim();
   const testEmail = document.getElementById('sc-test-email').value.trim();
   if (!testNome || (!testTel && !testEmail)) { erroEl.textContent = 'Informe a testemunha: nome e pelo menos um contato (telefone ou e-mail).'; return; }
+
+  // O cadastro rápido do fornecedor (Passo 1) é flexível de propósito,
+  // mas pra mandar a solicitação de verdade esses dados não podem faltar
+  const fornecedorAtual = (await idbTodos('fornecedores')).find(f => f.id === imovelAtual.fornecedor_id);
+  if (!fornecedorAtual || !fornecedorAtual.razao_social || !fornecedorAtual.cpf_cnpj) {
+    erroEl.textContent = `Falta completar o cadastro do fornecedor (nome/razão social e CPF/CNPJ) — toque na bolinha "Fornecedor" lá em cima pra corrigir.`;
+    return;
+  }
+  if (fornecedorAtual.tipo_pessoa === 'PJ') {
+    const { data: socios } = await sb.from('fornecedor_socios').select('nome,cpf_cnpj_socio').eq('fornecedor_id', fornecedorAtual.id);
+    const temRepresentante = (socios || []).some(s => s.nome && s.cpf_cnpj_socio);
+    if (!temRepresentante) {
+      erroEl.textContent = `Falta o nome e CPF do representante legal do fornecedor (pessoa jurídica) — toque na bolinha "Fornecedor" lá em cima pra completar.`;
+      return;
+    }
+  }
 
   const btn = document.getElementById('sc-btn-enviar');
   btn.disabled = true; btn.textContent = 'Enviando...';
