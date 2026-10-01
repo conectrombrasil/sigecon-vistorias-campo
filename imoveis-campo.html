@@ -2242,8 +2242,20 @@ async function abrirSolicitarContrato() {
   document.getElementById('sc-objeto').value = `Locação do imóvel situado em ${endereco || '(endereço a confirmar)'}.`;
   ['sc-valor', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-dia-aluguel', 'sc-test-nome', 'sc-test-tel', 'sc-test-email'].forEach(id => { document.getElementById(id).value = ''; });
 
+  // Cópia do template — editar aqui não mexe na constante original,
+  // então toda vez que abrir de novo volta ao padrão
+  _responsabilidadesAtuais = RESPONSABILIDADES_LOCACAO_IMOVEL.map(r => ({ ...r }));
+  _planilhaAtual = PLANILHA_PADRAO_LOCACAO.map(it => ({ ...it }));
+
+  // O rascunho precisa ser restaurado ANTES da testemunha automática —
+  // senão, um rascunho antigo com os campos de testemunha vazios
+  // sobrescrevia (com string vazia) o que a busca abaixo tinha acabado
+  // de preencher. Essa era a causa da testemunha "não salvar".
+  await _restaurarRascunhoSolicitacao();
+
   // Testemunha já cadastrada no fornecedor (Passo 1) vem automática —
-  // continua editável aqui, caso precise ajustar na hora
+  // só sobrescreve se achar uma de verdade; senão, respeita o que o
+  // rascunho (ou o campo em branco) já tinha
   const { data: testemunhas } = await sb.from('fornecedor_contatos').select('nome,telefone,email')
     .eq('fornecedor_id', imovelAtual.fornecedor_id).eq('cargo', 'Testemunha').order('nome').limit(1);
   if (testemunhas && testemunhas.length) {
@@ -2252,11 +2264,6 @@ async function abrirSolicitarContrato() {
     document.getElementById('sc-test-email').value = testemunhas[0].email || '';
   }
 
-  // Cópia do template — editar aqui não mexe na constante original,
-  // então toda vez que abrir de novo volta ao padrão
-  _responsabilidadesAtuais = RESPONSABILIDADES_LOCACAO_IMOVEL.map(r => ({ ...r }));
-  _planilhaAtual = PLANILHA_PADRAO_LOCACAO.map(it => ({ ...it }));
-  await _restaurarRascunhoSolicitacao();
   _renderizarResponsabilidades();
   _renderizarPlanilha();
 
