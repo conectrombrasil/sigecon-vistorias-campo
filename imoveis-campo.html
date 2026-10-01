@@ -1257,6 +1257,13 @@ let _fornecedorEditandoId = null; // null = cadastrando novo; preenchido = edita
 async function abrirEditarFornecedor(id) {
   const f = (await idbTodos('fornecedores')).find(x => x.id === id);
   if (!f) return;
+  // Só quem cadastrou esse fornecedor pelo app de campo pode editar por
+  // aqui — essa checagem precisa ficar AQUI (não só na lista), porque
+  // esse é o único jeito de chegar na edição agora (pela bolinha do passo)
+  if (f.criado_por !== sessaoAtual.user.id) {
+    mostrarToast('Esse fornecedor não foi cadastrado por você — só quem cadastrou pode editar por aqui.', 'erro');
+    return;
+  }
   _fornecedorEditandoId = id;
   _origemNovoFornecedor = 'passo';
   _tipoPessoaFornecedorAtual = f.tipo_pessoa || 'PJ';
