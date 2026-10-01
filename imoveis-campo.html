@@ -998,8 +998,26 @@ function renderPassos(containerId, atual, feitos) {
   el.style.display = 'flex';
   el.innerHTML = nomes.map((n, i) => {
     const k = i + 1, cls = f.includes(k) ? 'feito' : (k === atual ? 'atual' : '');
-    return `<div class="passo ${cls}"><div class="bola">${f.includes(k) ? '✓' : k}</div>${n}</div>`;
+    // Só dá pra voltar pra uma etapa já feita ou pra atual — não dá pra
+    // "pular pra frente" clicando numa etapa que ainda não chegou
+    const clicavel = f.includes(k) || k === atual;
+    return `<div class="passo ${cls}" ${clicavel ? `onclick="irParaPasso(${k})" style="cursor:pointer"` : ''}><div class="bola">${f.includes(k) ? '✓' : k}</div>${n}</div>`;
   }).join('');
+}
+
+// Clicar numa bolinha do passo a passo volta pra editar aquela etapa —
+// só funciona com um imóvel já aberto (é o contexto que todo passo usa)
+async function irParaPasso(k) {
+  if (!imovelAtual) return;
+  if (k === 1) {
+    if (imovelAtual.fornecedor_id) await abrirEditarFornecedor(imovelAtual.fornecedor_id);
+  } else if (k === 2) {
+    await abrirEditarImovel();
+  } else if (k === 3) {
+    await abrirImovel(imovelAtual.id);
+  } else if (k === 4) {
+    await abrirSolicitarContrato();
+  }
 }
 
 function _numSolicitacao(s) { return `${String(s.numero_sequencial || 0).padStart(3, '0')}/${s.numero_ano || ''}`; }
@@ -1150,15 +1168,9 @@ async function renderizarListaFornecedores() {
   }
   el.innerHTML = lista.map(f => {
     const tipo = f.tipo_pessoa === 'PF' ? 'Pessoa Física' : f.tipo_pessoa === 'PJ' ? 'Pessoa Jurídica' : '';
-    // Só quem cadastrou pelo app de campo pode editar por aqui — o
-    // cadastro pode ter saído incompleto e precisar de ajuste depois
-    const souEu = f.criado_por === sessaoAtual.user.id;
-    return `<div class="card" style="display:flex;align-items:center;gap:8px" onclick="escolherFornecedor('${f.id}')">
-      <div style="flex:1">
-        <div class="card-titulo">${esc(f.razao_social)}</div>
-        <div class="card-sub">${esc([tipo, f.cpf_cnpj].filter(Boolean).join(' · ')) || '&nbsp;'}</div>
-      </div>
-      ${souEu ? `<button class="topo-acao" onclick="event.stopPropagation();abrirEditarFornecedor('${f.id}')">✏️</button>` : ''}
+    return `<div class="card" onclick="escolherFornecedor('${f.id}')">
+      <div class="card-titulo">${esc(f.razao_social)}</div>
+      <div class="card-sub">${esc([tipo, f.cpf_cnpj].filter(Boolean).join(' · ')) || '&nbsp;'}</div>
     </div>`;
   }).join('');
 }
@@ -1166,11 +1178,14 @@ async function escolherFornecedor(id) { await abrirNovoImovel(id); }
 
 let _fornecedorEditandoId = null; // null = cadastrando novo; preenchido = editando este fornecedor
 
+// Chamada pela bolinha "Fornecedor" do passo a passo (irParaPasso), com
+// o imóvel já aberto — voltar daqui sempre retorna pro imóvel, não pra
+// lista de escolher fornecedor
 async function abrirEditarFornecedor(id) {
   const f = (await idbTodos('fornecedores')).find(x => x.id === id);
   if (!f) return;
   _fornecedorEditandoId = id;
-  _origemNovoFornecedor = 'escolha';
+  _origemNovoFornecedor = 'passo';
   _tipoPessoaFornecedorAtual = f.tipo_pessoa || 'PJ';
   _categoriasMarcadas = new Set();
   _documentosAnexados = {};
@@ -1324,6 +1339,7 @@ async function abrirNovoFornecedor(origem) {
   mostrarTela('tela-novo-fornecedor');
 }
 function voltarDoFornecedor() {
+  if (_origemNovoFornecedor === 'passo') { abrirImovel(imovelAtual.id); return; }
   mostrarTela(_origemNovoFornecedor === 'escolha' ? 'tela-fornecedor-escolha' : 'tela-novo-imovel');
 }
 
@@ -1458,8 +1474,7 @@ async function salvarNovoFornecedor() {
   if (_fornecedorEditandoId) {
     _fornecedorEditandoId = null;
     mostrarToast('Fornecedor atualizado!', 'sucesso');
-    await renderizarListaFornecedores();
-    mostrarTela('tela-fornecedor-escolha');
+    await abrirImovel(imovelAtual.id);
     return;
   }
 
