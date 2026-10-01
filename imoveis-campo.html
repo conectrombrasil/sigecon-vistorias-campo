@@ -238,6 +238,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .foto-add{aspect-ratio:1;border-radius:12px;border:2px dashed var(--border2);display:flex;flex-direction:column;gap:2px;align-items:center;
     justify-content:center;font-size:24px;color:var(--blue2);cursor:pointer;background:rgba(90,166,238,.05);}
   .foto-add small{font-size:10.5px;font-weight:700;}
+  .foto-add-galeria{color:var(--text2);}
   .foto-add:active{background:rgba(90,166,238,.12);}
   .remover-comodo{background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:4px;}
   .remover-comodo-link{display:flex;align-items:center;gap:6px;margin:16px auto 0;color:var(--err-txt);font-size:13px;font-weight:600;padding:10px 14px;border-radius:10px;}
@@ -1702,7 +1703,7 @@ async function renderizarCategoriasFornecedor() {
           return `<div class="doc-tipo-linha">
             <span class="doc-tipo-nome">${esc(t.nome)}${t.obrigatorio ? ' <span class="doc-tipo-obrig">*</span>' : ''}</span>
             <button class="doc-tipo-btn ${anexado ? 'anexado' : ''}" onclick="document.getElementById('doc-input-${t.id}').click()">${anexado ? '✅ Anexado' : '📎 Anexar'}</button>
-            <input type="file" id="doc-input-${t.id}" accept="image/*,.pdf" capture="environment" style="display:none" onchange="anexarDocumentoFornecedor(this,'${t.id}')"/>
+            <input type="file" id="doc-input-${t.id}" accept="image/*,.pdf" style="display:none" onchange="anexarDocumentoFornecedor(this,'${t.id}')"/>
           </div>`;
         }).join('')}
       </div>
@@ -2008,13 +2009,15 @@ async function renderizarComodos() {
         <textarea onblur="mudarObsComodo('${c.id}',this.value)" placeholder="Observações do cômodo...">${esc(c.observacoes || '')}</textarea>
         <span class="rotulo">Fotos</span>
         <div class="fotos-grid" id="fotos-${c.id}">
-          <div class="foto-add" onclick="document.getElementById('foto-input-${c.id}').click()">📷<small>Adicionar</small></div>
+          <div class="foto-add" onclick="document.getElementById('foto-input-${c.id}').click()">📷<small>Câmera</small></div>
+          <div class="foto-add foto-add-galeria" onclick="document.getElementById('foto-galeria-${c.id}').click()">🖼️<small>Galeria</small></div>
           ${fotosDoComodo.map(f => f.previewUrl
             ? `<div class="foto-mini"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`
             : `<div class="foto-mini" id="foto-pendente-${f.id}" style="display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text3)">📷</div>`
           ).join('')}
         </div>
         <input type="file" id="foto-input-${c.id}" accept="image/*" capture="environment" style="display:none" onchange="tirarFotoComodo('${c.id}',this)"/>
+        <input type="file" id="foto-galeria-${c.id}" accept="image/*" multiple style="display:none" onchange="tirarFotoComodo('${c.id}',this)"/>
         <button class="remover-comodo remover-comodo-link" onclick="removerComodo('${c.id}')"><svg class="ic" style="width:17px;height:17px"><use href="#i-lixo"/></svg>Remover cômodo</button>
       </div>`;
     el.appendChild(div);
@@ -2036,20 +2039,24 @@ async function renderizarFotosGerais() {
     <div class="comodo-nome" style="margin-bottom:2px">📷 Fotos gerais do imóvel</div>
     <div class="card-sub" style="margin:0 0 12px">Fachada, vista externa, etc.</div>
     <div class="fotos-grid">
-      ${travada ? '' : `<div class="foto-add" onclick="document.getElementById('foto-geral-input').click()">📷<small>Adicionar</small></div>`}
+      ${travada ? '' : `<div class="foto-add" onclick="document.getElementById('foto-geral-input').click()">📷<small>Câmera</small></div>
+      <div class="foto-add foto-add-galeria" onclick="document.getElementById('foto-geral-galeria').click()">🖼️<small>Galeria</small></div>`}
       ${fotos.map(f => f.previewUrl
         ? `<div class="foto-mini"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`
         : `<div class="foto-mini" style="display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text3)">📷</div>`
       ).join('')}
     </div>
     <input type="file" id="foto-geral-input" accept="image/*" capture="environment" style="display:none" onchange="tirarFotoGeral(this)"/>
+    <input type="file" id="foto-geral-galeria" accept="image/*" multiple style="display:none" onchange="tirarFotoGeral(this)"/>
   </div>`;
 }
 
 async function tirarFotoGeral(input) {
-  const arquivo = input.files[0];
+  const arquivos = [...input.files].filter(a => !a.type || a.type.startsWith('image/'));
   input.value = '';
-  if (!arquivo) return;
+  if (!arquivos.length) return;
+  let falhas = 0;
+  for (const arquivo of arquivos) {
   try {
     const comprimida = await comprimirImagem(arquivo, 1280, 0.72);
     const fotoLocalId = crypto.randomUUID();
@@ -2062,10 +2069,18 @@ async function tirarFotoGeral(input) {
       mimeType: 'image/jpeg', base64: comprimida.base64, tamanhoBytes: comprimida.tamanho,
       usuarioId: sessaoAtual.user.id,
     });
-    await renderizarFotosGerais();
-  } catch (e) {
-    mostrarToast('Erro ao processar a foto: ' + e.message, 'erro');
+  } catch (e) { falhas++; }
   }
+  await renderizarFotosGerais();
+  _avisarResultadoFotos(arquivos.length, falhas);
+}
+
+// Aviso depois de adicionar fotos (principalmente quando vieram várias da galeria)
+function _avisarResultadoFotos(total, falhas) {
+  const ok = total - falhas;
+  if (falhas && !ok) mostrarToast(total > 1 ? 'Não deu pra processar essas fotos. Tente outras.' : 'Não deu pra processar essa foto. Tente outra.', 'erro');
+  else if (falhas) mostrarToast(`${ok} foto${ok > 1 ? 's' : ''} adicionada${ok > 1 ? 's' : ''} · ${falhas} não deu pra processar`, 'erro');
+  else if (total > 1) mostrarToast(`${total} fotos adicionadas`, 'sucesso');
 }
 
 // Fotos gerais que já estavam no Drive (feitas no módulo web): busca a imagem ao abrir a vistoria
@@ -2140,9 +2155,11 @@ async function removerComodo(id) {
 // Fotos — guardadas localmente (comprimidas) até conseguir subir
 // ══════════════════════════════════════════════════════════════
 async function tirarFotoComodo(comodoId, input) {
-  const arquivo = input.files[0];
+  const arquivos = [...input.files].filter(a => !a.type || a.type.startsWith('image/'));
   input.value = '';
-  if (!arquivo) return;
+  if (!arquivos.length) return;
+  let falhas = 0;
+  for (const arquivo of arquivos) {
   try {
     const comprimida = await comprimirImagem(arquivo, 1280, 0.72);
     const fotoLocalId = crypto.randomUUID();
@@ -2155,11 +2172,12 @@ async function tirarFotoComodo(comodoId, input) {
       mimeType: 'image/jpeg', base64: comprimida.base64, tamanhoBytes: comprimida.tamanho,
       usuarioId: sessaoAtual.user.id,
     });
-    await renderizarComodos();
-    document.getElementById('comodo-' + comodoId).classList.add('aberto');
-  } catch (e) {
-    mostrarToast('Erro ao processar a foto: ' + e.message, 'erro');
+  } catch (e) { falhas++; }
   }
+  await renderizarComodos();
+  const elComodo = document.getElementById('comodo-' + comodoId);
+  if (elComodo) elComodo.classList.add('aberto');
+  _avisarResultadoFotos(arquivos.length, falhas);
 }
 
 // Reduz a foto antes de guardar — essencial offline, senão o
