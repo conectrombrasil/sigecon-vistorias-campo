@@ -423,7 +423,7 @@
 <div class="tela" id="tela-novo-fornecedor">
   <div class="topo">
     <button class="topo-voltar" onclick="voltarDoFornecedor()">←</button>
-    <div class="topo-titulo">Novo fornecedor</div>
+    <div class="topo-titulo" id="nf-titulo-tela">Novo fornecedor</div>
   </div>
   <div class="passos" id="passos-nf"></div>
   <div class="conteudo">
@@ -615,6 +615,9 @@ async function processarItemFila(item) {
     if (error) throw error;
   } else if (item.tipo === 'criar_fornecedor') {
     const { error } = await sb.from('fornecedores').insert(p);
+    if (error) throw error;
+  } else if (item.tipo === 'atualizar_fornecedor') {
+    const { error } = await sb.from('fornecedores').update(p.campos).eq('id', p.id);
     if (error) throw error;
   } else if (item.tipo === 'criar_contato_fornecedor') {
     const { error } = await sb.from('fornecedor_contatos').insert(p);
@@ -876,7 +879,9 @@ async function carregarImoveisDoServidor() {
   // formulário de "Novo Imóvel" offline — não precisa de mais nada deles
   const { data: obrasData } = await sb.from('obras').select('id,nome').in('id', obrasIds).order('nome');
   await idbSalvarVarios('obras', obrasData || []);
-  const { data: fornecedoresData } = await sb.from('fornecedores').select('id,razao_social,tipo_pessoa,cpf_cnpj').eq('ativo', true).order('razao_social');
+  const { data: fornecedoresData } = await sb.from('fornecedores')
+    .select('id,razao_social,tipo_pessoa,cpf_cnpj,email,telefone,banco_nome,banco_agencia,banco_conta,banco_tipo,banco_titular,banco_titular_doc,banco_obs,criado_por')
+    .eq('ativo', true).order('razao_social');
   await idbSalvarVarios('fornecedores', fornecedoresData || []);
 
   // Categorias de documento e o checklist de cada uma — pra dar pra
@@ -1145,13 +1150,52 @@ async function renderizarListaFornecedores() {
   }
   el.innerHTML = lista.map(f => {
     const tipo = f.tipo_pessoa === 'PF' ? 'Pessoa Física' : f.tipo_pessoa === 'PJ' ? 'Pessoa Jurídica' : '';
-    return `<div class="card" onclick="escolherFornecedor('${f.id}')">
-      <div class="card-titulo">${esc(f.razao_social)}</div>
-      <div class="card-sub">${esc([tipo, f.cpf_cnpj].filter(Boolean).join(' · ')) || '&nbsp;'}</div>
+    // Só quem cadastrou pelo app de campo pode editar por aqui — o
+    // cadastro pode ter saído incompleto e precisar de ajuste depois
+    const souEu = f.criado_por === sessaoAtual.user.id;
+    return `<div class="card" style="display:flex;align-items:center;gap:8px" onclick="escolherFornecedor('${f.id}')">
+      <div style="flex:1">
+        <div class="card-titulo">${esc(f.razao_social)}</div>
+        <div class="card-sub">${esc([tipo, f.cpf_cnpj].filter(Boolean).join(' · ')) || '&nbsp;'}</div>
+      </div>
+      ${souEu ? `<button class="topo-acao" onclick="event.stopPropagation();abrirEditarFornecedor('${f.id}')">✏️</button>` : ''}
     </div>`;
   }).join('');
 }
 async function escolherFornecedor(id) { await abrirNovoImovel(id); }
+
+let _fornecedorEditandoId = null; // null = cadastrando novo; preenchido = editando este fornecedor
+
+async function abrirEditarFornecedor(id) {
+  const f = (await idbTodos('fornecedores')).find(x => x.id === id);
+  if (!f) return;
+  _fornecedorEditandoId = id;
+  _origemNovoFornecedor = 'escolha';
+  _tipoPessoaFornecedorAtual = f.tipo_pessoa || 'PJ';
+  _categoriasMarcadas = new Set();
+  _documentosAnexados = {};
+  document.getElementById('nf-nome').value = f.razao_social || '';
+  document.getElementById('nf-cpf-cnpj').value = f.cpf_cnpj || '';
+  document.getElementById('nf-email').value = f.email || '';
+  document.getElementById('nf-telefone').value = f.telefone || '';
+  document.getElementById('nf-test-nome').value = '';
+  document.getElementById('nf-test-tel').value = '';
+  document.getElementById('nf-test-email').value = '';
+  document.getElementById('nf-banco-nome').value = f.banco_nome || '';
+  document.getElementById('nf-banco-agencia').value = f.banco_agencia || '';
+  document.getElementById('nf-banco-conta').value = f.banco_conta || '';
+  document.getElementById('nf-banco-tipo').value = f.banco_tipo || 'corrente';
+  document.getElementById('nf-banco-titular').value = f.banco_titular || '';
+  document.getElementById('nf-banco-titular-doc').value = f.banco_titular_doc || '';
+  document.getElementById('nf-banco-obs').value = f.banco_obs || '';
+  document.getElementById('nf-erro').textContent = '';
+  document.querySelectorAll('#tela-novo-fornecedor .secao-opcional').forEach(sec => sec.classList.remove('aberta'));
+  document.getElementById('passos-nf').style.display = 'none';
+  _selecionarTipoPessoaFornecedor(_tipoPessoaFornecedorAtual);
+  await renderizarCategoriasFornecedor();
+  document.getElementById('nf-titulo-tela').textContent = 'Editar fornecedor';
+  mostrarTela('tela-novo-fornecedor');
+}
 
 function voltarDoFormImovel() {
   if (_imovelEditandoId) abrirImovel(_imovelEditandoId);
@@ -1262,6 +1306,8 @@ function toggleSecaoOpcional(id) { document.getElementById(id).classList.toggle(
 let _origemNovoFornecedor = 'escolha'; // 'escolha' = vindo do Passo 1 · 'imovel' = vindo do formulário do imóvel
 
 async function abrirNovoFornecedor(origem) {
+  _fornecedorEditandoId = null; // garante que não fica "preso" num modo de edição de uma vez anterior
+  document.getElementById('nf-titulo-tela').textContent = 'Novo fornecedor';
   _origemNovoFornecedor = origem === 'imovel' ? 'imovel' : 'escolha';
   _tipoPessoaFornecedorAtual = 'PJ';
   _categoriasMarcadas = new Set();
@@ -1347,9 +1393,9 @@ async function salvarNovoFornecedor() {
   const doc = document.getElementById('nf-cpf-cnpj').value.replace(/\D/g, '');
   if (!nome) { erroEl.textContent = 'Informe o nome.'; return; }
 
-  const registro = {
-    id: crypto.randomUUID(), tipo_pessoa: _tipoPessoaFornecedorAtual,
-    razao_social: nome, cpf_cnpj: doc || null, ativo: true,
+  const camposComuns = {
+    tipo_pessoa: _tipoPessoaFornecedorAtual,
+    razao_social: nome, cpf_cnpj: doc || null,
     email: document.getElementById('nf-email').value.trim() || null,
     telefone: document.getElementById('nf-telefone').value.trim() || null,
     banco_nome: document.getElementById('nf-banco-nome').value.trim() || null,
@@ -1359,13 +1405,33 @@ async function salvarNovoFornecedor() {
     banco_titular: document.getElementById('nf-banco-titular').value.trim() || null,
     banco_titular_doc: document.getElementById('nf-banco-titular-doc').value.trim() || null,
     banco_obs: document.getElementById('nf-banco-obs').value.trim() || null,
-    criado_por: sessaoAtual.user.id,
   };
-  await idbSalvar('fornecedores', registro);
-  await enfileirar('criar_fornecedor', registro);
 
-  // Testemunha cadastrada já aqui no início vira um contato do fornecedor
-  // (cargo = "Testemunha"), pra não precisar digitar de novo lá na frente
+  let registro;
+  if (_fornecedorEditandoId) {
+    // Edição — só quem cadastrou pode chegar até aqui (o botão ✏️ só
+    // aparece pros fornecedores do próprio usuário). Não mexe em
+    // categoria/vínculo de novo, pra não duplicar o que já foi criado.
+    registro = await idbPegar('fornecedores', _fornecedorEditandoId);
+    Object.assign(registro, camposComuns);
+    await idbSalvar('fornecedores', registro);
+    await enfileirar('atualizar_fornecedor', { id: _fornecedorEditandoId, campos: camposComuns });
+  } else {
+    registro = { id: crypto.randomUUID(), ativo: true, criado_por: sessaoAtual.user.id, ...camposComuns };
+    await idbSalvar('fornecedores', registro);
+    await enfileirar('criar_fornecedor', registro);
+
+    // Vincula as categorias automáticas (Locação de Imóvel + Geral PF/PJ)
+    // — só na criação, senão duplicaria o vínculo a cada edição
+    const cats = await _categoriasAutomaticas();
+    for (const c of cats) {
+      await enfileirar('vincular_categoria_fornecedor', { fornecedor_id: registro.id, categoria_id: c.id, criado_por: sessaoAtual.user.id });
+    }
+  }
+
+  // Testemunha cadastrada aqui vira um contato do fornecedor (cargo =
+  // "Testemunha"), pra não precisar digitar de novo lá na frente — só
+  // cria se a pessoa de fato preencheu (fica em branco por padrão ao editar)
   const testNome = document.getElementById('nf-test-nome').value.trim();
   if (testNome) {
     await enfileirar('criar_contato_fornecedor', {
@@ -1376,13 +1442,10 @@ async function salvarNovoFornecedor() {
     });
   }
 
-  // Vincula as categorias automáticas (Locação de Imóvel + Geral PF/PJ)
-  const cats = await _categoriasAutomaticas();
-  for (const c of cats) {
-    await enfileirar('vincular_categoria_fornecedor', { fornecedor_id: registro.id, categoria_id: c.id, criado_por: sessaoAtual.user.id });
-  }
-  // Sobe os documentos anexados (só os que valem pro tipo de pessoa escolhido)
-  const idsPermitidos = new Set(cats.flatMap(c => c.tipos.map(t => t.id)));
+  // Sobe os documentos anexados (só os que valem pro tipo de pessoa
+  // escolhido) — dá pra anexar mais documentos tanto criando quanto editando
+  const cats2 = await _categoriasAutomaticas();
+  const idsPermitidos = new Set(cats2.flatMap(c => c.tipos.map(t => t.id)));
   for (const [tipoId, doc2] of Object.entries(_documentosAnexados)) {
     if (!idsPermitidos.has(tipoId)) continue;
     await enfileirar('enviar_documento_fornecedor', {
@@ -1390,6 +1453,14 @@ async function salvarNovoFornecedor() {
       nomeArquivo: doc2.nomeArquivo, mimeType: doc2.mimeType, base64: doc2.base64, tamanhoBytes: doc2.tamanhoBytes,
       usuarioId: sessaoAtual.user.id,
     });
+  }
+
+  if (_fornecedorEditandoId) {
+    _fornecedorEditandoId = null;
+    mostrarToast('Fornecedor atualizado!', 'sucesso');
+    await renderizarListaFornecedores();
+    mostrarTela('tela-fornecedor-escolha');
+    return;
   }
 
   // Já entra selecionado no formulário de imóvel que estava aberto —
