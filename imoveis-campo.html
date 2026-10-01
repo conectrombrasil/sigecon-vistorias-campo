@@ -15,194 +15,295 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <style>
   :root{
-    --navy:#0B1929; --navy2:#112236; --navy3:#1A3352;
-    --blue:#2E7BC4; --blue2:#3E8FD8; --orange:#F15A24; --orange-dark:#D9481A;
-    --text:#E8EDF2; --text2:#8AA5BE; --text3:#4D6B85;
-    --border:rgba(46,123,196,0.2); --green:#2ECC8A; --red:#E05555; --amber:#E0A830;
+    --navy:#0A1624; --navy2:#11223A; --navy3:#182F4C; --navy4:#21406A;
+    --blue:#2E7BC4; --blue2:#5AA6EE; --orange:#F15A24; --orange-dark:#D9481A;
+    --text:#EEF3F8; --text2:#9DB4CA; --text3:#64829E;
+    --border:rgba(120,165,210,0.16); --border2:rgba(120,165,210,0.30);
+    --green:#2ECC8A; --red:#E05555; --amber:#E0A830;
+    --topo-h:60px; --raio:16px;
+    --sombra:0 6px 18px rgba(0,0,0,.22);
+    --safe-top:env(safe-area-inset-top,0px); --safe-bot:env(safe-area-inset-bottom,0px);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{height:100%;}
-  body{font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--navy);color:var(--text);
-    padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
-    overscroll-behavior-y:contain;}
+  html,body{min-height:100%;}
+  body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--navy);color:var(--text);
+    overscroll-behavior-y:contain;-webkit-font-smoothing:antialiased;line-height:1.35;}
   button,input,select,textarea{font-family:inherit;}
-  .tela{display:none;min-height:100%;flex-direction:column;}
-  .tela.ativa{display:flex;}
+  button{touch-action:manipulation;}
+  svg.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+  .tela{display:none;min-height:100vh;min-height:100dvh;flex-direction:column;}
+  .tela.ativa{display:flex;animation:entrar .18s ease-out;}
+  @keyframes entrar{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 
   /* ===== Topo fixo ===== */
-  .topo{position:sticky;top:0;z-index:20;background:var(--navy2);border-bottom:1px solid var(--border);
-    padding:14px 16px;display:flex;align-items:center;gap:10px;padding-top:calc(14px + env(safe-area-inset-top,0px));}
-  .topo-voltar{background:none;border:none;color:var(--text);font-size:20px;padding:4px 8px;cursor:pointer;}
-  .topo-titulo{font-weight:700;font-size:16px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .topo-sub{font-size:11px;color:var(--text2);}
+  .topo{position:sticky;top:0;z-index:20;background:rgba(17,34,58,.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);display:flex;align-items:center;gap:4px;
+    height:calc(var(--topo-h) + var(--safe-top));padding:var(--safe-top) 8px 0 8px;}
+  .topo > div{min-width:0;}
+  .topo-voltar,.topo-icone{width:44px;height:44px;border-radius:12px;background:none;border:none;color:var(--text);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+  .topo-voltar:active,.topo-icone:active{background:rgba(255,255,255,.08);}
+  .topo-titulo{font-weight:700;font-size:17px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.1px;}
+  .topo-sub{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
+  .topo-textos{flex:1;padding:0 6px;}
+  .topo-acao{background:none;border:none;color:var(--text2);font-size:13px;padding:4px 8px;cursor:pointer;}
 
   /* ===== Barra de status de conexão/fila ===== */
-  .status-barra{padding:9px 16px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;
-    transition:background .2s;}
-  .status-barra.offline{background:rgba(224,85,85,0.18);color:#ff9a9a;}
-  .status-barra.pendente{background:rgba(224,168,48,0.18);color:#ffd27a;}
-  .status-barra.ok{background:rgba(46,204,138,0.14);color:#7be8bc;}
-  .status-barra button{margin-left:auto;background:rgba(255,255,255,0.12);border:none;color:inherit;
-    padding:5px 12px;border-radius:7px;font-size:11.5px;font-weight:700;cursor:pointer;}
+  .status-barra{padding:9px 16px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;transition:background .2s;}
+  .status-barra:empty{display:none;}
+  .status-barra.offline{background:rgba(224,85,85,0.16);color:#ff9a9a;}
+  .status-barra.pendente{background:rgba(224,168,48,0.16);color:#ffd27a;}
+  .status-barra.ok{background:transparent;color:#6fd9ae;font-size:11.5px;padding:6px 16px;font-weight:600;}
+  .status-barra button{margin-left:auto;background:rgba(255,255,255,0.14);border:none;color:inherit;
+    padding:8px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;}
 
-  .conteudo{flex:1;padding:14px 16px 90px;overflow-y:auto;}
+  .conteudo{flex:1;padding:14px 16px calc(112px + var(--safe-bot));}
+  .conteudo-form{padding-bottom:0;}
 
   /* ===== Login ===== */
-  #tela-login .conteudo{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;padding:24px;}
-  .login-logo{width:76px;height:76px;border-radius:20px;background:var(--navy2);border:1px solid var(--border);
-    display:flex;align-items:center;justify-content:center;margin-bottom:18px;}
-  .login-titulo{font-size:20px;font-weight:700;margin-bottom:4px;text-align:center;}
-  .login-sub{font-size:13px;color:var(--text2);margin-bottom:28px;text-align:center;}
-  .campo{width:100%;max-width:340px;margin-bottom:12px;}
-  .campo input{width:100%;background:var(--navy2);border:1px solid var(--border);border-radius:10px;
-    padding:13px 14px;color:var(--text);font-size:15px;}
-  .campo input:focus{outline:none;border-color:var(--blue);}
-  .btn{width:100%;max-width:340px;background:var(--orange);border:none;color:#fff;font-weight:700;
-    font-size:15px;padding:14px;border-radius:10px;cursor:pointer;}
-  .btn:active{background:var(--orange-dark);}
-  .btn:disabled{opacity:.55;}
-  .btn-secundario{background:var(--navy2);border:1px solid var(--border);color:var(--text);}
-  .erro-msg{color:#ff9a9a;font-size:12.5px;margin-bottom:10px;min-height:16px;text-align:center;}
+  #tela-login .conteudo{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;min-height:100dvh;
+    padding:calc(24px + var(--safe-top)) 24px calc(24px + var(--safe-bot));
+    background:radial-gradient(120% 60% at 50% 0%,rgba(46,123,196,.22),transparent 70%);}
+  .login-logo{width:84px;height:84px;border-radius:24px;background:linear-gradient(145deg,var(--navy3),var(--navy2));border:1px solid var(--border2);
+    display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:38px;box-shadow:var(--sombra);}
+  .login-titulo{font-size:23px;font-weight:800;margin-bottom:6px;text-align:center;letter-spacing:-.3px;}
+  .login-sub{font-size:13.5px;color:var(--text2);margin-bottom:30px;text-align:center;max-width:280px;}
+  #tela-login .campo,#tela-login .btn{max-width:360px;}
 
-  /* ===== Cards de imóvel / vistoria ===== */
-  .card{background:var(--navy2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;}
-  .card:active{background:var(--navy3);}
-  .card-titulo{font-weight:700;font-size:14.5px;}
-  .card-sub{font-size:12px;color:var(--text2);margin-top:3px;}
-  .selo{display:inline-block;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:700;
+  /* ===== Campos ===== */
+  .campo{width:100%;margin-bottom:14px;}
+  .campo input,.campo select,.campo textarea{width:100%;background:var(--navy2);border:1px solid var(--border2);border-radius:12px;
+    padding:13px 14px;color:var(--text);font-size:16px;min-height:50px;-webkit-appearance:none;appearance:none;}
+  .campo select{padding-right:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%239DB4CA' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 12px center;}
+  .campo select option{background:var(--navy2);color:var(--text);}
+  .campo input:focus,.campo select:focus,.campo textarea:focus,textarea:focus{outline:none;border-color:var(--blue2);box-shadow:0 0 0 3px rgba(90,166,238,.18);}
+  .campo .rotulo{margin-top:0;}
+  input[type=date]{min-height:50px;}
+  .btn{width:100%;background:var(--orange);border:none;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;
+    font-size:16px;min-height:52px;padding:14px;border-radius:14px;cursor:pointer;box-shadow:0 6px 16px rgba(241,90,36,.25);transition:transform .08s;}
+  .btn:active{background:var(--orange-dark);transform:scale(.985);}
+  .btn:disabled{opacity:.55;}
+  .btn-secundario{background:var(--navy3);border:1px solid var(--border2);color:var(--text);box-shadow:none;}
+  .btn-secundario:active{background:var(--navy4);}
+  .erro-msg{color:#ff9a9a;font-size:13px;margin-bottom:10px;min-height:16px;text-align:center;}
+  .erro-msg:empty{min-height:0;margin:0;}
+
+  /* Barra de ação fixa no rodapé dos formulários */
+  .barra-acao{position:sticky;bottom:0;z-index:10;margin:18px -16px 0;padding:14px 16px calc(14px + var(--safe-bot));
+    background:linear-gradient(to bottom,rgba(10,22,36,0),var(--navy) 26%);}
+  .barra-acao .btn + .btn{margin-top:8px;}
+
+  /* ===== Home: busca + filtros ===== */
+  .home-ferramentas{position:sticky;top:calc(var(--topo-h) + var(--safe-top));z-index:15;background:var(--navy);padding:12px 16px 2px;}
+  .busca{display:flex;align-items:center;gap:8px;background:var(--navy2);border:1px solid var(--border2);border-radius:12px;padding:0 12px;color:var(--text3);}
+  .busca:focus-within{border-color:var(--blue2);}
+  .busca input{flex:1;background:none;border:none;color:var(--text);font-size:16px;height:46px;min-width:0;}
+  .busca input:focus{outline:none;}
+  .busca input::-webkit-search-cancel-button{filter:invert(.7);}
+  .filtros-status{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 10px;margin:0 -16px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .filtros-status::-webkit-scrollbar{display:none;}
+  .chip-filtro{flex-shrink:0;background:var(--navy2);border:1px solid var(--border2);color:var(--text2);display:flex;align-items:center;gap:6px;
+    height:36px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .chip-filtro .chip-n{background:rgba(255,255,255,.08);border-radius:999px;padding:1px 7px;font-size:11px;}
+  .chip-filtro.ativo{background:rgba(241,90,36,0.18);border-color:var(--orange);color:#ffc09a;}
+  .chip-filtro.ativo .chip-n{background:rgba(241,90,36,.3);}
+
+  /* ===== Cards ===== */
+  .card{background:var(--navy2);border:1px solid var(--border);border-radius:var(--raio);padding:15px 14px 15px 16px;margin-bottom:12px;
+    cursor:pointer;transition:transform .08s,background .15s;position:relative;}
+  .card:active{background:var(--navy3);transform:scale(.99);}
+  .card-titulo{font-weight:700;font-size:15.5px;letter-spacing:-.1px;}
+  .card-sub{font-size:13px;color:var(--text2);margin-top:3px;}
+  .card-linha{display:flex;align-items:center;gap:10px;}
+  .card-seta{color:var(--text3);display:flex;}
+  .card-topo-linha{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .card-info-extra{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--text3);margin-top:8px;line-height:1.4;}
+  .card-rodape{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid var(--border);}
+  .card-proximo{font-size:12.5px;color:var(--text2);flex:1;min-width:0;}
+  .card-imovel::before{content:'';position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;background:var(--text3);}
+  .card-imovel.st-vistoria_andamento::before{background:var(--amber);}
+  .card-imovel.st-vistoria_concluida::before,.card-imovel.st-contratado::before{background:var(--green);}
+  .card-imovel.st-solicitado::before,.card-imovel.st-em_elaboracao::before{background:var(--blue2);}
+  .card-imovel.st-reprovado::before,.card-imovel.st-distratado::before{background:var(--red);}
+  .mini-passos{display:flex;gap:3px;flex-shrink:0;}
+  .mini-passos i{width:14px;height:5px;border-radius:3px;background:var(--navy4);}
+  .mini-passos i.f{background:var(--green);}
+  .mini-passos i.a{background:var(--orange);}
+  .card-estatico{cursor:default;}
+  .card-estatico:active{background:var(--navy2);transform:none;}
+
+  .selo{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;
     text-transform:uppercase;letter-spacing:.3px;}
   .selo-rascunho{background:rgba(224,168,48,0.18);color:#ffd27a;}
   .selo-finalizado{background:rgba(46,204,138,0.16);color:#7be8bc;}
   .selo-pendente{background:rgba(224,85,85,0.18);color:#ff9a9a;}
-  .vazio{text-align:center;padding:40px 20px;color:var(--text3);font-size:13.5px;}
+  .selo-info{background:rgba(46,123,196,0.22);color:#8fc4f5;}
+  .selo-neutro{background:rgba(138,165,190,0.16);color:var(--text2);}
+  .vazio{text-align:center;padding:48px 24px;color:var(--text3);font-size:14px;line-height:1.55;}
+  .vazio-icone{font-size:40px;margin-bottom:10px;opacity:.8;}
+  .secao-titulo{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin:22px 2px 10px;}
 
   /* ===== Botão flutuante ===== */
-  .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;
-    background:var(--orange);color:#fff;border:none;border-radius:999px;padding:15px 22px;font-weight:700;
-    font-size:14px;box-shadow:0 8px 22px rgba(241,90,36,.4);cursor:pointer;}
-
-  /* ===== Cômodo ===== */
-  .comodo{background:var(--navy2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;}
-  .comodo-cab{padding:13px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;}
-  .comodo-nome{font-weight:700;font-size:14px;flex:1;}
-  .estado-badge{padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:700;}
-  .estado-BOM{background:rgba(46,204,138,0.16);color:#7be8bc;}
-  .estado-REGULAR{background:rgba(224,168,48,0.18);color:#ffd27a;}
-  .estado-RUIM{background:rgba(224,85,85,0.18);color:#ff9a9a;}
-  .estado-NA{background:rgba(138,165,190,0.18);color:var(--text2);}
-  .comodo-corpo{display:none;padding:0 14px 14px;}
-  .comodo.aberto .comodo-corpo{display:block;}
-  .rotulo{font-size:11.5px;color:var(--text2);margin-bottom:5px;display:block;font-weight:600;}
-  .estados-linha{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
-  .estado-btn{flex:1;min-width:70px;padding:9px 6px;border-radius:8px;border:1px solid var(--border);
-    background:var(--navy3);color:var(--text2);font-size:11.5px;font-weight:700;cursor:pointer;text-align:center;}
-  .estado-btn.sel-BOM{background:rgba(46,204,138,0.22);border-color:var(--green);color:#7be8bc;}
-  .estado-btn.sel-REGULAR{background:rgba(224,168,48,0.22);border-color:var(--amber);color:#ffd27a;}
-  .estado-btn.sel-RUIM{background:rgba(224,85,85,0.22);border-color:var(--red);color:#ff9a9a;}
-  .estado-btn.sel-NA{background:rgba(138,165,190,0.22);border-color:var(--text2);color:var(--text);}
-  textarea{width:100%;background:var(--navy3);border:1px solid var(--border);border-radius:8px;color:var(--text);
-    padding:10px;font-size:13px;min-height:64px;resize:vertical;margin-bottom:12px;}
-  .fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;margin-bottom:6px;}
-  .foto-mini{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--navy3);}
-  .foto-mini img{width:100%;height:100%;object-fit:cover;display:block;}
-  .foto-mini .foto-status{position:absolute;bottom:3px;right:3px;background:rgba(0,0,0,.6);border-radius:5px;
-    padding:1px 5px;font-size:9px;font-weight:700;}
-  .foto-add{aspect-ratio:1;border-radius:8px;border:2px dashed var(--border);display:flex;align-items:center;
-    justify-content:center;font-size:22px;color:var(--text3);cursor:pointer;}
-  .remover-comodo{background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:4px;}
-
-  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--navy3);
-    border:1px solid var(--border);color:var(--text);padding:11px 18px;border-radius:10px;font-size:13px;
-    z-index:100;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:88vw;text-align:center;}
-  .toast.mostrar{opacity:1;transform:translateX(-50%) translateY(0);}
-  .toast.erro{border-color:var(--red);}
-
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:none;align-items:flex-end;}
-  .modal-overlay.aberto{display:flex;}
-  .modal{background:var(--navy2);width:100%;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));
-    max-height:76vh;overflow-y:auto;}
-  .modal-titulo{font-weight:700;font-size:15px;margin-bottom:14px;}
-  .opcao-lista button{width:100%;text-align:left;background:var(--navy3);border:1px solid var(--border);
-    color:var(--text);padding:13px 14px;border-radius:10px;margin-bottom:8px;font-size:14px;cursor:pointer;}
-  .tipo-pessoa-toggle{display:flex;gap:8px;margin-bottom:12px;}
-  .tipo-pessoa-toggle button{flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--navy3);
-    color:var(--text2);font-weight:700;font-size:13px;cursor:pointer;}
-  .tipo-pessoa-toggle button.sel{background:rgba(241,90,36,0.2);border-color:var(--orange);color:#ffb98a;}
-  .link-add{background:none;border:none;color:var(--blue2);font-size:12.5px;font-weight:700;cursor:pointer;padding:0;margin-bottom:10px;}
-  .topo-acao{background:none;border:none;color:var(--text2);font-size:13px;padding:4px 8px;cursor:pointer;}
-  .secao-opcional{border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;}
-  .secao-opcional-cab{padding:12px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--navy2);font-weight:700;font-size:13.5px;}
-  .secao-opcional-seta{margin-left:auto;font-size:12px;color:var(--text3);transition:transform .2s;}
-  .secao-opcional.aberta .secao-opcional-seta{transform:rotate(90deg);}
-  .secao-opcional-corpo{display:none;padding:12px 14px;}
-  .secao-opcional.aberta .secao-opcional-corpo{display:block;}
-  .cat-item{margin-bottom:10px;}
-  .cat-check{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;cursor:pointer;}
-  .cat-docs{margin:8px 0 0 26px;display:none;}
-  .cat-item.marcada .cat-docs{display:block;}
-  .doc-tipo-linha{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:12.5px;border-bottom:1px solid var(--border);}
-  .doc-tipo-nome{flex:1;}
-  .doc-tipo-obrig{color:var(--amber);font-size:10.5px;}
-  .doc-tipo-btn{background:var(--navy3);border:1px solid var(--border);color:var(--text2);border-radius:7px;
-    padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
-  .doc-tipo-btn.anexado{background:rgba(46,204,138,0.18);border-color:var(--green);color:#7be8bc;}
-  .aviso-offline-bloqueio{background:rgba(224,85,85,0.14);border:1px solid var(--red);border-radius:10px;padding:16px;text-align:center;font-size:13.5px;line-height:1.5;}
-  .resp-linha{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);}
-  .resp-item{flex:1;font-size:13px;}
-  .resp-select{background:var(--navy3);border:1px solid var(--border);border-radius:7px;color:var(--text);
-    padding:6px 8px;font-size:12px;min-width:140px;}
-  .selo-numero{display:inline-block;background:rgba(241,90,36,0.18);color:#ffb98a;border:1px solid var(--orange);
-    border-radius:8px;padding:8px 16px;font-weight:700;font-size:15px;margin:10px 0;}
-  .item-card{background:var(--navy3);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;}
-  .item-card-topo{display:flex;justify-content:flex-end;margin-bottom:6px;}
-  .item-campo-mini{width:100%;background:var(--navy2);border:1px solid var(--border);border-radius:6px;color:var(--text);
-    padding:6px 8px;font-size:12px;margin-bottom:6px;}
-  .item-linha-numeros{display:flex;gap:6px;}
-  .item-linha-numeros .item-campo-mini{margin-bottom:0;}
-  .item-total{font-size:11.5px;color:var(--text2);margin-top:4px;text-align:right;}
-  .btn-remover-linha{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:2px 6px;}
-  .btn-add-linha{width:100%;background:none;border:1px dashed var(--border);color:var(--blue2);border-radius:8px;
-    padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;margin-top:4px;}
-  .resp-linha .resp-item-input{flex:1;background:var(--navy3);border:1px solid var(--border);border-radius:6px;
-    color:var(--text);padding:6px 8px;font-size:12.5px;}
-  .planilha-total{text-align:right;font-weight:700;font-size:13px;margin-top:6px;padding-top:8px;border-top:1px solid var(--border);}
-  .filtros-status{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;-webkit-overflow-scrolling:touch;}
-  .filtros-status::-webkit-scrollbar{display:none;}
-  .chip-filtro{flex-shrink:0;background:var(--navy2);border:1px solid var(--border);color:var(--text2);
-    padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
-  .chip-filtro.ativo{background:rgba(241,90,36,0.2);border-color:var(--orange);color:#ffb98a;}
-  .card-info-extra{font-size:11.5px;color:var(--text3);margin-top:4px;line-height:1.5;}
-  .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
-    border-radius:50%;animation:girar .7s linear infinite;vertical-align:middle;}
-  @keyframes girar{to{transform:rotate(360deg);}}
+  .fab{position:fixed;right:16px;bottom:calc(18px + var(--safe-bot));z-index:30;display:flex;align-items:center;gap:8px;
+    background:var(--orange);color:#fff;border:none;border-radius:18px;height:56px;padding:0 22px 0 18px;font-weight:700;
+    font-size:15px;box-shadow:0 10px 26px rgba(241,90,36,.42);cursor:pointer;transition:transform .08s;}
+  .fab:active{transform:scale(.96);background:var(--orange-dark);}
 
   /* ===== Passo a passo ===== */
-  .passos{display:flex;align-items:flex-start;padding:12px 10px 10px;background:var(--navy2);border-bottom:1px solid var(--border);}
-  .passo{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;font-size:10.5px;color:var(--text3);text-align:center;font-weight:600;}
-  .passo::before{content:'';position:absolute;top:13px;left:-50%;width:100%;height:2px;background:var(--border);z-index:0;}
+  .passos{display:flex;align-items:flex-start;padding:12px 6px 12px;background:var(--navy2);border-bottom:1px solid var(--border);}
+  .passo{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;font-size:11px;color:var(--text3);text-align:center;font-weight:600;padding:2px 0;border-radius:10px;}
+  .passo.clicavel{cursor:pointer;}
+  .passo.clicavel:active{background:rgba(255,255,255,.05);}
+  .passo::before{content:'';position:absolute;top:16px;left:-50%;width:100%;height:2px;background:var(--border2);z-index:0;}
   .passo:first-child::before{display:none;}
-  .passo .bola{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:var(--navy2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;z-index:1;}
+  .passo .bola{width:28px;height:28px;border-radius:50%;border:2px solid var(--border2);background:var(--navy2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;z-index:1;}
   .passo.feito{color:#7be8bc;}
   .passo.feito .bola{background:var(--green);border-color:var(--green);color:#06281a;}
   .passo.feito::before,.passo.atual::before{background:var(--green);}
   .passo.atual{color:var(--text);}
-  .passo.atual .bola{border-color:var(--orange);color:#ffb98a;background:rgba(241,90,36,0.2);}
-  .selo-info{background:rgba(46,123,196,0.22);color:#8fc4f5;}
-  .selo-neutro{background:rgba(138,165,190,0.18);color:var(--text2);}
-  .card-linha{display:flex;align-items:flex-start;gap:8px;}
-  .btn-mini{background:rgba(46,204,138,0.16);border:1px solid var(--green);color:#7be8bc;border-radius:8px;padding:7px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .passo.atual .bola{border-color:var(--orange);color:#ffb98a;background:rgba(241,90,36,0.2);box-shadow:0 0 0 4px rgba(241,90,36,.12);}
+
+  /* ===== Cômodo ===== */
+  .comodo{background:var(--navy2);border:1px solid var(--border);border-radius:var(--raio);margin-bottom:10px;overflow:hidden;}
+  .comodo.aberto{border-color:var(--border2);}
+  .comodo-cab{min-height:58px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .comodo-cab:active{background:var(--navy3);}
+  .comodo-nome{font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .comodo-fotos{font-size:12px;color:var(--text3);white-space:nowrap;}
+  .comodo-seta{color:var(--text3);transition:transform .2s;}
+  .comodo.aberto .comodo-seta{transform:rotate(180deg);}
+  .estado-badge{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;}
+  .estado-BOM{background:rgba(46,204,138,0.16);color:#7be8bc;}
+  .estado-REGULAR{background:rgba(224,168,48,0.18);color:#ffd27a;}
+  .estado-RUIM{background:rgba(224,85,85,0.18);color:#ff9a9a;}
+  .estado-NA{background:rgba(138,165,190,0.18);color:var(--text2);}
+  .comodo-corpo{display:none;padding:4px 16px 16px;border-top:1px solid var(--border);}
+  .comodo.aberto .comodo-corpo{display:block;}
+  .rotulo{font-size:12.5px;color:var(--text2);margin:12px 0 6px;display:block;font-weight:600;}
+  .estados-linha{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:4px;}
+  .estado-btn{min-height:46px;padding:8px 4px;border-radius:11px;border:1px solid var(--border2);
+    background:var(--navy3);color:var(--text2);font-size:12.5px;font-weight:700;cursor:pointer;text-align:center;}
+  .estado-btn.sel-BOM{background:rgba(46,204,138,0.22);border-color:var(--green);color:#7be8bc;}
+  .estado-btn.sel-REGULAR{background:rgba(224,168,48,0.22);border-color:var(--amber);color:#ffd27a;}
+  .estado-btn.sel-RUIM{background:rgba(224,85,85,0.22);border-color:var(--red);color:#ff9a9a;}
+  .estado-btn.sel-NA{background:rgba(138,165,190,0.22);border-color:var(--text2);color:var(--text);}
+  textarea{width:100%;background:var(--navy3);border:1px solid var(--border2);border-radius:12px;color:var(--text);
+    padding:12px;font-size:16px;min-height:76px;resize:vertical;margin-bottom:4px;}
+  .fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-bottom:6px;}
+  .foto-mini{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--navy3);}
+  .foto-mini img{width:100%;height:100%;object-fit:cover;display:block;}
+  .foto-mini .foto-status{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);border-radius:6px;padding:1px 5px;font-size:10px;font-weight:700;}
+  .foto-add{aspect-ratio:1;border-radius:12px;border:2px dashed var(--border2);display:flex;flex-direction:column;gap:2px;align-items:center;
+    justify-content:center;font-size:24px;color:var(--blue2);cursor:pointer;background:rgba(90,166,238,.05);}
+  .foto-add small{font-size:10.5px;font-weight:700;}
+  .foto-add:active{background:rgba(90,166,238,.12);}
+  .remover-comodo{background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:4px;}
+  .remover-comodo-link{display:flex;align-items:center;gap:6px;margin:16px auto 0;color:#ff9a9a;font-size:13px;font-weight:600;padding:10px 14px;border-radius:10px;}
+  .remover-comodo-link:active{background:rgba(224,85,85,.12);}
+
+  .toast{position:fixed;left:50%;bottom:calc(92px + var(--safe-bot));transform:translateX(-50%) translateY(20px);background:var(--navy4);
+    border:1px solid var(--border2);color:var(--text);padding:12px 18px;border-radius:12px;font-size:14px;box-shadow:var(--sombra);
+    z-index:100;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;width:max-content;max-width:90vw;text-align:center;}
+  .toast.mostrar{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.erro{border-color:var(--red);}
+  .toast.sucesso{border-color:var(--green);}
+
+  /* ===== Modais (bottom sheet) ===== */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:none;align-items:flex-end;}
+  .modal-overlay.aberto{display:flex;animation:fade .18s ease-out;}
+  .modal-overlay.aberto .modal{animation:subir .22s cubic-bezier(.2,.8,.3,1);}
+  @keyframes fade{from{opacity:0;}to{opacity:1;}}
+  @keyframes subir{from{transform:translateY(40px);opacity:.6;}to{transform:none;opacity:1;}}
+  .modal{background:var(--navy2);width:100%;border-radius:22px 22px 0 0;padding:10px 16px calc(18px + var(--safe-bot));
+    max-height:82vh;overflow-y:auto;border-top:1px solid var(--border2);}
+  .modal::before{content:'';display:block;width:40px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 14px;}
+  .modal-titulo{font-weight:800;font-size:17px;margin-bottom:14px;}
+  .opcao-lista button{width:100%;text-align:left;background:var(--navy3);border:1px solid var(--border);display:flex;align-items:center;gap:12px;
+    color:var(--text);min-height:54px;padding:12px 14px;border-radius:14px;margin-bottom:8px;font-size:15px;font-weight:600;cursor:pointer;}
+  .opcao-lista button:active{background:var(--navy4);}
+  .opcao-lista button small{display:block;font-size:12px;color:var(--text2);font-weight:500;margin-top:2px;}
+  .opcao-lista .opcao-ic{font-size:22px;width:28px;text-align:center;}
+  .opcao-lista button.opcao-perigo{color:#ff9a9a;border-color:rgba(224,85,85,.35);}
+  .opcao-grade{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+  .opcao-grade button{margin:0;min-height:50px;justify-content:center;text-align:center;font-size:14px;}
+  .linha-add{display:flex;gap:8px;margin-bottom:8px;}
+  .linha-add .campo{margin:0;flex:1;}
+  .linha-add .btn{width:auto;padding:0 18px;box-shadow:none;}
+
+  .tipo-pessoa-toggle{display:flex;gap:4px;margin-bottom:16px;background:var(--navy2);border:1px solid var(--border2);padding:4px;border-radius:14px;}
+  .tipo-pessoa-toggle button{flex:1;min-height:44px;border-radius:10px;border:none;background:none;
+    color:var(--text2);font-weight:700;font-size:14px;cursor:pointer;}
+  .tipo-pessoa-toggle button.sel{background:var(--orange);color:#fff;}
+  .link-add{background:none;border:none;color:var(--blue2);font-size:13.5px;font-weight:700;cursor:pointer;padding:6px 0 10px;margin:-6px 0 6px;text-align:left;}
+  .secao-opcional{border:1px solid var(--border);border-radius:var(--raio);margin-bottom:12px;overflow:hidden;background:var(--navy2);}
+  .secao-opcional-cab{min-height:54px;padding:12px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;font-size:14.5px;}
+  .secao-opcional-cab:active{background:var(--navy3);}
+  .secao-opcional-seta{margin-left:auto;font-size:0;color:var(--text3);transition:transform .2s;width:20px;height:20px;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364829E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center no-repeat;}
+  .secao-opcional.aberta .secao-opcional-seta{transform:rotate(180deg);}
+  .secao-opcional-corpo{display:none;padding:4px 16px 16px;border-top:1px solid var(--border);}
+  .secao-opcional.aberta .secao-opcional-corpo{display:block;}
+  .secao-opcional-corpo .campo input,.secao-opcional-corpo .campo select,.secao-opcional-corpo .campo textarea{background:var(--navy3);}
+  .cat-item{margin:12px 0 10px;}
+  .cat-check{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;cursor:pointer;}
+  .cat-docs{margin:8px 0 0 26px;display:none;}
+  .cat-item.marcada .cat-docs{display:block;}
+  .doc-tipo-linha{display:flex;align-items:center;gap:10px;padding:10px 0;font-size:13.5px;border-bottom:1px solid var(--border);}
+  .doc-tipo-nome{flex:1;}
+  .doc-tipo-obrig{color:var(--amber);font-size:11px;}
+  .doc-tipo-btn{background:var(--navy3);border:1px solid var(--border2);color:var(--text2);border-radius:10px;
+    min-height:38px;padding:0 12px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .doc-tipo-btn.anexado{background:rgba(46,204,138,0.18);border-color:var(--green);color:#7be8bc;}
+  .aviso-offline-bloqueio{background:rgba(224,85,85,0.12);border:1px solid var(--red);border-radius:var(--raio);padding:20px;text-align:center;font-size:14px;line-height:1.55;}
+  .resp-linha{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 0;border-bottom:1px solid var(--border);}
+  .resp-item{flex:1;font-size:13px;}
+  .resp-select{background:var(--navy3);border:1px solid var(--border2);border-radius:10px;color:var(--text);
+    padding:0 10px;font-size:15px;min-height:44px;flex:1;min-width:0;}
+  .resp-linha .resp-item-input{flex:1 1 100%;background:var(--navy3);border:1px solid var(--border2);border-radius:10px;
+    color:var(--text);padding:0 12px;font-size:16px;min-height:44px;}
+  .resp-linha .btn-remover-linha{font-size:12.5px;font-weight:700;min-height:44px;padding:0 12px;border:1px solid rgba(224,85,85,.5);border-radius:10px;white-space:nowrap;}
+  .selo-numero{display:block;background:rgba(46,204,138,0.14);color:#7be8bc;border:1px solid var(--green);text-align:center;
+    border-radius:14px;padding:14px 16px;font-weight:700;font-size:15px;margin:10px 0 16px;}
+  .item-card{background:var(--navy3);border:1px solid var(--border);border-radius:12px;padding:10px;margin:10px 0 8px;}
+  .item-card-topo{display:flex;justify-content:flex-end;margin-bottom:4px;}
+  .item-campo-mini{width:100%;background:var(--navy2);border:1px solid var(--border2);border-radius:10px;color:var(--text);
+    padding:0 10px;font-size:16px;min-height:44px;margin-bottom:8px;min-width:0;}
+  .item-linha-numeros{display:flex;gap:6px;}
+  .item-linha-numeros .item-campo-mini{margin-bottom:0;}
+  .item-total{font-size:12.5px;color:var(--text2);margin-top:6px;text-align:right;}
+  .btn-remover-linha{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:6px 8px;}
+  .btn-add-linha{width:100%;background:none;border:1px dashed var(--border2);color:var(--blue2);border-radius:12px;
+    min-height:46px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;}
+  .planilha-total{text-align:right;font-weight:800;font-size:15px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+  .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+    border-radius:50%;animation:girar .7s linear infinite;vertical-align:middle;}
+  @keyframes girar{to{transform:rotate(360deg);}}
+
+  .btn-mini{background:rgba(46,204,138,0.16);border:1px solid var(--green);color:#7be8bc;border-radius:10px;min-height:40px;padding:0 12px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
   .travada .comodo-corpo{pointer-events:none;opacity:.65;}
   .travada .remover-comodo{display:none;}
-  .banner-ok{background:rgba(46,204,138,0.14);border:1px solid var(--green);color:#7be8bc;border-radius:10px;padding:12px;text-align:center;font-weight:700;font-size:13.5px;margin-bottom:10px;}
-
-  .resp-linha{flex-wrap:wrap;gap:8px;}
-  .resp-linha .resp-item-input{flex:1 1 100%;}
-  .resp-linha .resp-select{flex:1;min-width:0;}
-  .resp-linha .btn-remover-linha{font-size:12px;font-weight:700;padding:7px 10px;border:1px solid var(--red);border-radius:7px;white-space:nowrap;}
+  .banner-ok{background:rgba(46,204,138,0.14);border:1px solid var(--green);color:#7be8bc;border-radius:14px;padding:14px;text-align:center;font-weight:700;font-size:14px;margin-bottom:10px;}
+  .dica{font-size:12.5px;color:var(--text3);text-align:center;margin-top:10px;}
   input[readonly].campo-soma{background:var(--navy3);color:var(--text2);}
+  .painel-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  .passo-titulo{font-size:18px;font-weight:800;margin-bottom:4px;letter-spacing:-.2px;}
+  @media (min-width:640px){ .conteudo,.home-ferramentas{max-width:640px;width:100%;margin-left:auto;margin-right:auto;} }
 </style>
 </head>
 <body>
+
+<!-- Ícones reutilizados -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-voltar" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+  <symbol id="i-seta" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-baixo" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-sair" viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.3 6.6a8 8 0 1 0 11.4 0"/></symbol>
+  <symbol id="i-mais" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+  <symbol id="i-busca" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-lixo" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+</svg>
 
 <!-- ================= LOGIN ================= -->
 <div class="tela ativa" id="tela-login">
@@ -210,8 +311,8 @@
     <div class="login-logo">🏠</div>
     <div class="login-titulo">Vistorias em Campo</div>
     <div class="login-sub">SIGECON — funciona sem internet, sincroniza depois</div>
-    <div class="campo"><input type="email" id="login-email" placeholder="E-mail" autocomplete="username"/></div>
-    <div class="campo"><input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password"/></div>
+    <div class="campo"><input type="email" id="login-email" placeholder="E-mail" autocomplete="username" inputmode="email" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('login-senha').focus();}"/></div>
+    <div class="campo"><input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();fazerLogin();}"/></div>
     <div class="erro-msg" id="login-erro"></div>
     <button class="btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
   </div>
@@ -220,47 +321,55 @@
 <!-- ================= HOME: lista de imóveis ================= -->
 <div class="tela" id="tela-home">
   <div class="topo">
-    <div class="topo-titulo">Vistorias em Campo</div>
-    <button class="topo-voltar" onclick="sair()" title="Sair">⏻</button>
+    <div class="topo-textos" style="padding-left:8px">
+      <div class="topo-titulo">Meus imóveis</div>
+      <div class="topo-sub" id="home-sub">Vistorias em Campo</div>
+    </div>
+    <button class="topo-icone" onclick="sair()" aria-label="Sair" title="Sair"><svg class="ic"><use href="#i-sair"/></svg></button>
   </div>
   <div class="status-barra" id="status-barra"></div>
-  <div class="conteudo" id="lista-imoveis"></div>
-  <button class="fab" onclick="abrirEscolhaFornecedor()">+ Novo imóvel</button>
+  <div class="home-ferramentas">
+    <label class="busca"><svg class="ic" style="width:19px;height:19px"><use href="#i-busca"/></svg>
+      <input type="search" id="busca-imovel" placeholder="Buscar endereço, fornecedor ou obra" enterkeyhint="search" oninput="renderizarListaImoveis()"/></label>
+    <div class="filtros-status" id="filtros-imoveis"></div>
+  </div>
+  <div class="conteudo" id="lista-imoveis" style="padding-top:4px"></div>
+  <button class="fab" onclick="abrirEscolhaFornecedor()"><svg class="ic"><use href="#i-mais"/></svg>Novo imóvel</button>
 </div>
 
 <!-- ================= IMÓVEL: lista de vistorias ================= -->
 <div class="tela" id="tela-imovel">
   <div class="topo">
-    <button class="topo-voltar" onclick="irParaHome()">←</button>
-    <div style="flex:1">
+    <button class="topo-voltar" aria-label="Voltar" onclick="irParaHome()"><svg class="ic"><use href="#i-voltar"/></svg></button>
+    <div class="topo-textos">
       <div class="topo-titulo" id="imovel-titulo"></div>
       <div class="topo-sub" id="imovel-sub"></div>
     </div>
-    <button class="topo-acao" onclick="abrirEditarImovel()">✏️ Editar</button>
-    <button class="topo-acao" onclick="deletarImovelLocal(imovelAtual.id)" title="Excluir do aparelho">🗑️</button>
+    <button class="topo-icone" aria-label="Mais opções" onclick="abrirModal('modal-menu-imovel')"><svg class="ic"><use href="#i-menu"/></svg></button>
   </div>
   <div class="status-barra" id="status-barra-2"></div>
   <div class="passos" id="passos-imovel"></div>
   <div class="conteudo">
     <div id="imovel-painel"></div>
-    <div class="rotulo" style="margin:4px 0 8px">Vistorias deste imóvel</div>
+    <div class="secao-titulo">Vistorias deste imóvel</div>
     <div id="lista-vistorias"></div>
   </div>
-  <button class="fab" onclick="abrirEscolhaTipoVistoria()">+ Nova vistoria</button>
+  <button class="fab" onclick="abrirEscolhaTipoVistoria()"><svg class="ic"><use href="#i-mais"/></svg>Nova vistoria</button>
 </div>
 
 <!-- ================= PASSO 1: ESCOLHER FORNECEDOR ================= -->
 <div class="tela" id="tela-fornecedor-escolha">
   <div class="topo">
-    <button class="topo-voltar" onclick="irParaHome()">←</button>
-    <div class="topo-titulo">Novo imóvel</div>
+    <button class="topo-voltar" aria-label="Voltar" onclick="irParaHome()"><svg class="ic"><use href="#i-voltar"/></svg></button>
+    <div class="topo-textos"><div class="topo-titulo">Novo imóvel</div></div>
   </div>
   <div class="passos" id="passos-forn"></div>
   <div class="conteudo">
-    <div style="font-size:15px;font-weight:700;margin-bottom:4px">Passo 1 — Escolha o fornecedor</div>
-    <div class="card-sub" style="margin:0 0 12px">Quem é o locador do imóvel? Escolha na lista ou cadastre um novo.</div>
-    <div class="campo" style="max-width:none"><input type="text" id="forn-busca" placeholder="Buscar por nome ou CPF/CNPJ" oninput="renderizarListaFornecedores()"/></div>
-    <button class="btn btn-secundario" style="max-width:none;margin-bottom:14px" onclick="abrirNovoFornecedor('escolha')">+ Cadastrar fornecedor novo</button>
+    <div class="passo-titulo">Escolha o fornecedor</div>
+    <div class="card-sub" style="margin:0 0 14px">Quem é o locador do imóvel? Escolha na lista ou cadastre um novo.</div>
+    <label class="busca" style="margin-bottom:12px"><svg class="ic" style="width:19px;height:19px"><use href="#i-busca"/></svg>
+      <input type="search" id="forn-busca" placeholder="Buscar por nome ou CPF/CNPJ" enterkeyhint="search" oninput="renderizarListaFornecedores()"/></label>
+    <button class="btn btn-secundario" style="margin-bottom:18px" onclick="abrirNovoFornecedor('escolha')"><svg class="ic" style="width:20px;height:20px"><use href="#i-mais"/></svg>Cadastrar fornecedor novo</button>
     <div id="forn-lista"></div>
   </div>
 </div>
@@ -268,20 +377,20 @@
 <!-- ================= NOVO IMÓVEL ================= -->
 <div class="tela" id="tela-novo-imovel">
   <div class="topo">
-    <button class="topo-voltar" onclick="voltarDoFormImovel()">←</button>
-    <div class="topo-titulo" id="ni-titulo-tela">Novo imóvel</div>
+    <button class="topo-voltar" aria-label="Voltar" onclick="voltarDoFormImovel()"><svg class="ic"><use href="#i-voltar"/></svg></button>
+    <div class="topo-textos"><div class="topo-titulo" id="ni-titulo-tela">Novo imóvel</div></div>
   </div>
   <div class="passos" id="passos-ni"></div>
-  <div class="conteudo">
+  <div class="conteudo conteudo-form">
     <span class="rotulo">Obra *</span>
     <div class="campo"><select id="ni-obra"></select></div>
     <span class="rotulo">Fornecedor *</span>
     <div class="campo"><select id="ni-fornecedor"><option value="">Selecione...</option></select></div>
-    <button class="link-add" onclick="abrirNovoFornecedor('imovel')">+ Cadastrar fornecedor novo (pessoa física ou jurídica)</button>
+    <button class="link-add" onclick="abrirNovoFornecedor('imovel')">+ Cadastrar fornecedor novo</button>
     <span class="rotulo">Logradouro *</span>
-    <div class="campo"><input type="text" id="ni-logradouro" placeholder="Rua, avenida..."/></div>
+    <div class="campo"><input type="text" id="ni-logradouro" placeholder="Rua, avenida..." autocomplete="address-line1"/></div>
     <div style="display:flex;gap:10px">
-      <div class="campo" style="flex:1"><span class="rotulo">Número</span><input type="text" id="ni-numero"/></div>
+      <div class="campo" style="flex:1"><span class="rotulo">Número</span><input type="text" id="ni-numero" inputmode="numeric"/></div>
       <div class="campo" style="flex:2"><span class="rotulo">Complemento</span><input type="text" id="ni-complemento"/></div>
     </div>
     <span class="rotulo">Bairro</span>
@@ -290,23 +399,25 @@
       <div class="campo" style="flex:2"><span class="rotulo">Cidade</span><input type="text" id="ni-cidade"/></div>
       <div class="campo" style="flex:1"><span class="rotulo">UF</span><input type="text" id="ni-estado" maxlength="2" style="text-transform:uppercase"/></div>
     </div>
-    <span class="rotulo">CEP</span>
-    <div class="campo"><input type="text" id="ni-cep"/></div>
-    <span class="rotulo">Capacidade de pessoas *</span>
-    <div class="campo"><input type="number" id="ni-capacidade" min="1"/></div>
-    <div class="erro-msg" id="ni-erro"></div>
-    <button class="btn" id="ni-btn-salvar" onclick="salvarNovoImovel()">Salvar imóvel</button>
+    <div style="display:flex;gap:10px">
+      <div class="campo" style="flex:1"><span class="rotulo">CEP</span><input type="text" id="ni-cep" inputmode="numeric" autocomplete="postal-code"/></div>
+      <div class="campo" style="flex:1"><span class="rotulo">Capacidade (pessoas) *</span><input type="number" id="ni-capacidade" min="1" inputmode="numeric"/></div>
+    </div>
+    <div class="barra-acao">
+      <div class="erro-msg" id="ni-erro"></div>
+      <button class="btn" id="ni-btn-salvar" onclick="salvarNovoImovel()">Salvar imóvel</button>
+    </div>
   </div>
 </div>
 
 <!-- ================= SOLICITAR CONTRATO (só online) ================= -->
 <div class="tela" id="tela-solicitar-contrato">
   <div class="topo">
-    <button class="topo-voltar" onclick="abrirImovel(imovelAtual.id)">←</button>
-    <div class="topo-titulo">Solicitar Contrato</div>
+    <button class="topo-voltar" aria-label="Voltar" onclick="abrirImovel(imovelAtual.id)"><svg class="ic"><use href="#i-voltar"/></svg></button>
+    <div class="topo-textos"><div class="topo-titulo">Solicitar contrato</div></div>
   </div>
   <div class="passos" id="passos-sc"></div>
-  <div class="conteudo">
+  <div class="conteudo conteudo-form">
     <div id="sc-bloqueio-offline" class="aviso-offline-bloqueio" style="display:none">
       📴 Essa etapa precisa de internet, pra garantir que o número do contrato seja gerado certo, sem risco de duplicar.<br/><br/>
       Conecte e tente de novo.
@@ -317,26 +428,25 @@
       <div class="selo-numero" id="sc-numero-gerado" style="display:none"></div>
 
       <span class="rotulo">Objeto / Descrição</span>
-      <div class="campo"><textarea id="sc-objeto" style="min-height:60px"></textarea></div>
+      <div class="campo"><textarea id="sc-objeto" style="min-height:70px"></textarea></div>
 
-      <div style="display:flex;gap:10px">
-        <div class="campo" style="flex:1"><span class="rotulo">Valor estimado (R$) — soma da planilha</span><input type="number" id="sc-valor" class="campo-soma" min="0" step="0.01" readonly/></div>
-      </div>
+      <span class="rotulo">Valor estimado (R$) — soma da planilha</span>
+      <div class="campo"><input type="number" id="sc-valor" class="campo-soma" min="0" step="0.01" readonly/></div>
       <div style="display:flex;gap:10px">
         <div class="campo" style="flex:1"><span class="rotulo">Início previsto</span><input type="date" id="sc-inicio"/></div>
         <div class="campo" style="flex:1"><span class="rotulo">Fim previsto</span><input type="date" id="sc-fim"/></div>
       </div>
 
       <div class="secao-opcional" id="sec-condicoes">
-        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-condicoes')">💰 Condições de Locação (opcional)<span class="secao-opcional-seta">▶</span></div>
+        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-condicoes')">💰 Condições de locação <span style="font-weight:500;color:var(--text3);font-size:12.5px">(opcional)</span><span class="secao-opcional-seta">▶</span></div>
         <div class="secao-opcional-corpo">
           <div style="display:flex;gap:10px">
-            <div class="campo" style="flex:1"><span class="rotulo">Caução (meses)</span><input type="number" id="sc-caucao-meses" min="0"/></div>
-            <div class="campo" style="flex:1"><span class="rotulo">Valor da caução (R$)</span><input type="number" id="sc-caucao-valor" min="0" step="0.01"/></div>
+            <div class="campo" style="flex:1"><span class="rotulo">Caução (meses)</span><input type="number" id="sc-caucao-meses" min="0" inputmode="numeric"/></div>
+            <div class="campo" style="flex:1"><span class="rotulo">Valor caução (R$)</span><input type="number" id="sc-caucao-valor" min="0" step="0.01" inputmode="decimal"/></div>
           </div>
           <div style="display:flex;gap:10px">
             <div class="campo" style="flex:1"><span class="rotulo">Data pgto. caução</span><input type="date" id="sc-caucao-data"/></div>
-            <div class="campo" style="flex:1"><span class="rotulo">Dia de pgto. do aluguel</span><input type="number" id="sc-dia-aluguel" min="1" max="31"/></div>
+            <div class="campo" style="flex:1"><span class="rotulo">Dia pgto. aluguel</span><input type="number" id="sc-dia-aluguel" min="1" max="31" inputmode="numeric"/></div>
           </div>
         </div>
       </div>
@@ -350,7 +460,7 @@
       </div>
 
       <div class="secao-opcional aberta" id="sec-planilha">
-        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-planilha')">📊 Planilha de Preços<span class="secao-opcional-seta">▶</span></div>
+        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-planilha')">📊 Planilha de preços<span class="secao-opcional-seta">▶</span></div>
         <div class="secao-opcional-corpo">
           <div id="sc-planilha-lista"></div>
           <button type="button" class="btn-add-linha" onclick="adicionarLinhaPlanilha()">+ Adicionar item</button>
@@ -362,12 +472,12 @@
         <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-testemunha')">👤 Testemunha<span class="secao-opcional-seta">▶</span></div>
         <div class="secao-opcional-corpo">
           <span class="rotulo">Nome da testemunha *</span>
-          <div class="campo"><input type="text" id="sc-test-nome"/></div>
-          <div style="display:flex;gap:10px">
-            <div class="campo" style="flex:1"><span class="rotulo">Telefone</span><input type="tel" id="sc-test-tel"/></div>
-            <div class="campo" style="flex:1"><span class="rotulo">E-mail</span><input type="email" id="sc-test-email"/></div>
-          </div>
-          <div style="font-size:11.5px;color:var(--text3)">Informe pelo menos um contato: telefone ou e-mail.</div>
+          <div class="campo"><input type="text" id="sc-test-nome" autocomplete="off"/></div>
+          <span class="rotulo">Telefone</span>
+          <div class="campo"><input type="tel" id="sc-test-tel" inputmode="tel"/></div>
+          <span class="rotulo">E-mail</span>
+          <div class="campo"><input type="email" id="sc-test-email" inputmode="email"/></div>
+          <div style="font-size:12.5px;color:var(--text3)">Informe pelo menos um contato: telefone ou e-mail.</div>
         </div>
       </div>
 
@@ -379,9 +489,11 @@
         </div>
       </div>
 
-      <div class="erro-msg" id="sc-erro"></div>
-      <button class="btn" id="sc-btn-enviar" onclick="enviarSolicitacaoContrato()">Enviar Solicitação</button>
-      <button class="btn btn-secundario" id="sc-btn-voltar" style="display:none;margin-top:8px" onclick="abrirImovel(imovelAtual.id)">← Voltar ao imóvel</button>
+      <div class="barra-acao">
+        <div class="erro-msg" id="sc-erro"></div>
+        <button class="btn" id="sc-btn-enviar" onclick="enviarSolicitacaoContrato()">Enviar solicitação</button>
+        <button class="btn btn-secundario" id="sc-btn-voltar" style="display:none" onclick="abrirImovel(imovelAtual.id)">Voltar ao imóvel</button>
+      </div>
     </div>
   </div>
 </div>
@@ -389,8 +501,8 @@
 <!-- ================= VISTORIA: cômodos ================= -->
 <div class="tela" id="tela-vistoria">
   <div class="topo">
-    <button class="topo-voltar" onclick="abrirImovel(imovelAtual.id)">←</button>
-    <div>
+    <button class="topo-voltar" aria-label="Voltar" onclick="abrirImovel(imovelAtual.id)"><svg class="ic"><use href="#i-voltar"/></svg></button>
+    <div class="topo-textos">
       <div class="topo-titulo" id="vistoria-titulo"></div>
       <div class="topo-sub" id="vistoria-sub"></div>
     </div>
@@ -398,7 +510,20 @@
   <div class="passos" id="passos-vistoria"></div>
   <div id="fotos-gerais-sec" style="padding:14px 16px 0"></div>
   <div class="conteudo" id="lista-comodos"></div>
-  <button class="fab" id="fab-comodo" onclick="abrirEscolhaComodo()">+ Cômodo</button>
+  <button class="fab" id="fab-comodo" onclick="abrirEscolhaComodo()"><svg class="ic"><use href="#i-mais"/></svg>Cômodo</button>
+</div>
+
+<!-- ================= Modal: menu do imóvel ================= -->
+<div class="modal-overlay" id="modal-menu-imovel">
+  <div class="modal">
+    <div class="modal-titulo">Opções do imóvel</div>
+    <div class="opcao-lista">
+      <button onclick="fecharModais();abrirEditarImovel()"><span class="opcao-ic">✏️</span><span>Editar dados do imóvel<small>Endereço, obra, capacidade</small></span></button>
+      <button onclick="fecharModais();irParaPasso(1)"><span class="opcao-ic">👤</span><span>Editar fornecedor<small>Só se foi você quem cadastrou</small></span></button>
+      <button class="opcao-perigo" onclick="fecharModais();deletarImovelLocal(imovelAtual.id)"><span class="opcao-ic">🗑️</span><span>Excluir do aparelho<small>Pede confirmação antes</small></span></button>
+    </div>
+    <button class="btn btn-secundario" onclick="fecharModais()">Cancelar</button>
+  </div>
 </div>
 
 <!-- ================= Modal: escolher tipo de vistoria ================= -->
@@ -406,9 +531,9 @@
   <div class="modal">
     <div class="modal-titulo">Tipo de vistoria</div>
     <div class="opcao-lista">
-      <button onclick="criarVistoria('entrada')">Entrada</button>
-      <button onclick="criarVistoria('saida')">Saída</button>
-      <button onclick="criarVistoria('periodica')">Periódica</button>
+      <button onclick="criarVistoria('entrada')"><span class="opcao-ic">📥</span><span>Entrada<small>Antes de ocupar o imóvel</small></span></button>
+      <button onclick="criarVistoria('saida')"><span class="opcao-ic">📤</span><span>Saída<small>Na devolução do imóvel</small></span></button>
+      <button onclick="criarVistoria('periodica')"><span class="opcao-ic">🔁</span><span>Periódica<small>Acompanhamento durante a locação</small></span></button>
     </div>
     <button class="btn btn-secundario" onclick="fecharModais()">Cancelar</button>
   </div>
@@ -418,9 +543,12 @@
 <div class="modal-overlay" id="modal-comodo">
   <div class="modal">
     <div class="modal-titulo">Adicionar cômodo</div>
-    <div class="opcao-lista" id="lista-comodos-comuns"></div>
-    <div class="campo"><input type="text" id="comodo-custom" placeholder="Outro nome..."/></div>
-    <button class="btn" onclick="confirmarComodoCustom()">Adicionar</button>
+    <div class="opcao-lista opcao-grade" id="lista-comodos-comuns"></div>
+    <span class="rotulo">Outro nome</span>
+    <div class="linha-add">
+      <div class="campo"><input type="text" id="comodo-custom" placeholder="Ex.: Suíte, Depósito..." enterkeyhint="done" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarComodoCustom();}"/></div>
+      <button class="btn" onclick="confirmarComodoCustom()">Adicionar</button>
+    </div>
     <button class="btn btn-secundario" style="margin-top:8px" onclick="fecharModais()">Cancelar</button>
   </div>
 </div>
@@ -428,11 +556,11 @@
 <!-- ================= NOVO FORNECEDOR ================= -->
 <div class="tela" id="tela-novo-fornecedor">
   <div class="topo">
-    <button class="topo-voltar" onclick="voltarDoFornecedor()">←</button>
-    <div class="topo-titulo" id="nf-titulo-tela">Novo fornecedor</div>
+    <button class="topo-voltar" aria-label="Voltar" onclick="voltarDoFornecedor()"><svg class="ic"><use href="#i-voltar"/></svg></button>
+    <div class="topo-textos"><div class="topo-titulo" id="nf-titulo-tela">Novo fornecedor</div></div>
   </div>
   <div class="passos" id="passos-nf"></div>
-  <div class="conteudo">
+  <div class="conteudo conteudo-form">
     <div class="tipo-pessoa-toggle">
       <button id="nf-btn-pf" onclick="_selecionarTipoPessoaFornecedor('PF')">Pessoa Física</button>
       <button id="nf-btn-pj" onclick="_selecionarTipoPessoaFornecedor('PJ')">Pessoa Jurídica</button>
@@ -440,59 +568,61 @@
     <span class="rotulo" id="nf-rotulo-nome">Nome</span>
     <div class="campo"><input type="text" id="nf-nome"/></div>
     <span class="rotulo" id="nf-rotulo-doc">CPF</span>
-    <div class="campo"><input type="text" id="nf-cpf-cnpj" placeholder="Só números"/></div>
+    <div class="campo"><input type="text" id="nf-cpf-cnpj" placeholder="Só números" inputmode="numeric"/></div>
 
     <div class="secao-opcional" id="sec-contato">
-      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-contato')">📞 Contato (opcional)<span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-contato')">📞 Contato <span style="font-weight:500;color:var(--text3);font-size:12.5px">(opcional)</span><span class="secao-opcional-seta">▶</span></div>
       <div class="secao-opcional-corpo">
         <span class="rotulo">E-mail</span>
-        <div class="campo"><input type="email" id="nf-email"/></div>
+        <div class="campo"><input type="email" id="nf-email" inputmode="email"/></div>
         <span class="rotulo">Telefone</span>
-        <div class="campo"><input type="text" id="nf-telefone"/></div>
+        <div class="campo"><input type="text" id="nf-telefone" inputmode="tel"/></div>
       </div>
     </div>
 
     <div class="secao-opcional" id="sec-nf-testemunha">
-      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-nf-testemunha')">👤 Testemunha (opcional)<span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-nf-testemunha')">👤 Testemunha <span style="font-weight:500;color:var(--text3);font-size:12.5px">(opcional)</span><span class="secao-opcional-seta">▶</span></div>
       <div class="secao-opcional-corpo">
-        <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Se já souber quem será a testemunha desse contrato, cadastra aqui — já vem preenchido na hora de solicitar.</div>
+        <div style="font-size:12.5px;color:var(--text3);margin:10px 0 4px">Se já souber quem será a testemunha desse contrato, cadastre aqui — já vem preenchido na hora de solicitar.</div>
         <span class="rotulo">Nome da testemunha</span>
         <div class="campo"><input type="text" id="nf-test-nome"/></div>
-        <div style="display:flex;gap:10px">
-          <div class="campo" style="flex:1"><span class="rotulo">Telefone</span><input type="tel" id="nf-test-tel"/></div>
-          <div class="campo" style="flex:1"><span class="rotulo">E-mail</span><input type="email" id="nf-test-email"/></div>
-        </div>
+        <span class="rotulo">Telefone</span>
+        <div class="campo"><input type="tel" id="nf-test-tel" inputmode="tel"/></div>
+        <span class="rotulo">E-mail</span>
+        <div class="campo"><input type="email" id="nf-test-email" inputmode="email"/></div>
       </div>
     </div>
 
     <div class="secao-opcional" id="sec-banco">
-      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-banco')">🏦 Dados Bancários (opcional)<span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-banco')">🏦 Dados bancários <span style="font-weight:500;color:var(--text3);font-size:12.5px">(opcional)</span><span class="secao-opcional-seta">▶</span></div>
       <div class="secao-opcional-corpo">
         <span class="rotulo">Banco</span>
         <div class="campo"><input type="text" id="nf-banco-nome"/></div>
         <div style="display:flex;gap:10px">
-          <div class="campo" style="flex:1"><span class="rotulo">Agência</span><input type="text" id="nf-banco-agencia"/></div>
-          <div class="campo" style="flex:1"><span class="rotulo">Conta</span><input type="text" id="nf-banco-conta"/></div>
+          <div class="campo" style="flex:1"><span class="rotulo">Agência</span><input type="text" id="nf-banco-agencia" inputmode="numeric"/></div>
+          <div class="campo" style="flex:1"><span class="rotulo">Conta</span><input type="text" id="nf-banco-conta" inputmode="numeric"/></div>
         </div>
         <span class="rotulo">Tipo de conta</span>
         <div class="campo"><select id="nf-banco-tipo"><option value="corrente">Conta Corrente</option><option value="poupanca">Conta Poupança</option><option value="pagamento">Conta Pagamento</option></select></div>
         <span class="rotulo">Titular</span>
         <div class="campo"><input type="text" id="nf-banco-titular"/></div>
         <span class="rotulo">CPF/CNPJ do titular</span>
-        <div class="campo"><input type="text" id="nf-banco-titular-doc"/></div>
+        <div class="campo"><input type="text" id="nf-banco-titular-doc" inputmode="numeric"/></div>
         <span class="rotulo">Observações</span>
-        <div class="campo"><textarea id="nf-banco-obs" style="min-height:50px"></textarea></div>
+        <div class="campo"><textarea id="nf-banco-obs" style="min-height:60px"></textarea></div>
       </div>
     </div>
 
     <div class="secao-opcional" id="sec-docs">
-      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-docs')">📁 Documentos (anexe o que tiver)<span class="secao-opcional-seta">▶</span></div>
+      <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-docs')">📁 Documentos <span style="font-weight:500;color:var(--text3);font-size:12.5px">(anexe o que tiver)</span><span class="secao-opcional-seta">▶</span></div>
       <div class="secao-opcional-corpo" id="nf-categorias-lista"></div>
     </div>
 
-    <div class="erro-msg" id="nf-erro"></div>
-    <button class="btn" onclick="salvarNovoFornecedor()">Salvar fornecedor</button>
-    <button class="btn btn-secundario" style="margin-top:8px" onclick="voltarDoFornecedor()">Cancelar</button>
+    <div class="barra-acao">
+      <div class="erro-msg" id="nf-erro"></div>
+      <button class="btn" onclick="salvarNovoFornecedor()">Salvar fornecedor</button>
+    </div>
+    <button class="btn btn-secundario" style="margin:0 0 calc(16px + env(safe-area-inset-bottom,0px))" onclick="voltarDoFornecedor()">Cancelar</button>
   </div>
 </div>
 
@@ -774,14 +904,48 @@ async function atualizarBarraStatus() {
 // ══════════════════════════════════════════════════════════════
 // Navegação entre telas
 // ══════════════════════════════════════════════════════════════
+// Posição de rolagem da lista de imóveis — volta pro mesmo ponto ao retornar
+const _scrollPorTela = {};
 function mostrarTela(id) {
+  const anterior = document.querySelector('.tela.ativa');
+  if (anterior && anterior.id !== id) _scrollPorTela[anterior.id] = window.scrollY;
   document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
   document.getElementById(id).classList.add('ativa');
+  if (!anterior || anterior.id !== id) {
+    const y = id === 'tela-home' ? (_scrollPorTela[id] || 0) : 0;
+    requestAnimationFrame(() => window.scrollTo(0, y));
+  }
+  _armarBotaoVoltarDoCelular();
+}
+function abrirModal(id) {
+  document.getElementById(id).classList.add('aberto');
+  _armarBotaoVoltarDoCelular();
 }
 function fecharModais() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('aberto')); }
+
+// Botão "voltar" do celular (Android / gesto): em vez de sair do app,
+// fecha o modal aberto ou volta pra tela anterior — igual à seta do topo
+let _guardaHistorico = false;
+function _armarBotaoVoltarDoCelular() {
+  const ativa = document.querySelector('.tela.ativa');
+  const precisa = document.querySelector('.modal-overlay.aberto') || (ativa && ativa.querySelector('.topo-voltar'));
+  if (!precisa || _guardaHistorico) return;
+  try { history.pushState({ vistoriasCampo: true }, ''); _guardaHistorico = true; } catch (e) { /* sem suporte — segue normal */ }
+}
+window.addEventListener('popstate', () => {
+  _guardaHistorico = false;
+  if (document.querySelector('.modal-overlay.aberto')) { fecharModais(); _armarBotaoVoltarDoCelular(); return; }
+  const btn = document.querySelector('.tela.ativa .topo-voltar');
+  if (btn) btn.click();
+});
+// Tocar fora do modal (na parte escura) fecha
+document.addEventListener('click', ev => {
+  if (ev.target.classList && ev.target.classList.contains('modal-overlay')) fecharModais();
+});
+
 function mostrarToast(msg, tipo) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'toast mostrar' + (tipo === 'erro' ? ' erro' : '');
+  t.textContent = msg; t.className = 'toast mostrar' + (tipo === 'erro' ? ' erro' : tipo === 'sucesso' ? ' sucesso' : '');
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('mostrar'), 3200);
 }
@@ -1007,7 +1171,7 @@ function renderPassos(containerId, atual, feitos) {
     // Só dá pra voltar pra uma etapa já feita ou pra atual — não dá pra
     // "pular pra frente" clicando numa etapa que ainda não chegou
     const clicavel = f.includes(k) || k === atual;
-    return `<div class="passo ${cls}" ${clicavel ? `onclick="irParaPasso(${k})" style="cursor:pointer"` : ''}><div class="bola">${f.includes(k) ? '✓' : k}</div>${n}</div>`;
+    return `<div class="passo ${cls}${clicavel ? ' clicavel' : ''}" ${clicavel ? `onclick="irParaPasso(${k})"` : ''}><div class="bola">${f.includes(k) ? '✓' : k}</div>${n}</div>`;
   }).join('');
 }
 
@@ -1133,46 +1297,67 @@ function filtrarImoveisPorStatus(chave) {
 async function renderizarListaImoveis() {
   const imoveis = (await idbTodos('imoveis')).filter(i => !i.criado_por || i.criado_por === sessaoAtual.user.id);
   const el = document.getElementById('lista-imoveis');
+  const elChips = document.getElementById('filtros-imoveis');
+  const elSub = document.getElementById('home-sub');
+  const ferramentas = document.querySelector('#tela-home .home-ferramentas');
   if (!imoveis.length) {
-    el.innerHTML = `<div class="vazio">Nenhum imóvel ainda.<br/>Toque em "+ Novo imóvel" pra começar pelo Passo 1 (fornecedor).${navigator.onLine ? '' : '<br/>Conecte à internet pelo menos uma vez pra carregar a lista.'}</div>`;
+    ferramentas.style.display = 'none';
+    elSub.textContent = 'Vistorias em Campo';
+    el.innerHTML = `<div class="vazio"><div class="vazio-icone">🏠</div><b style="color:var(--text2)">Nenhum imóvel ainda</b><br/>Toque em "Novo imóvel" pra começar pelo Passo 1 (fornecedor).${navigator.onLine ? '' : '<br/><br/>Conecte à internet pelo menos uma vez pra carregar a lista.'}</div>`;
     return;
   }
+  ferramentas.style.display = '';
+  elSub.textContent = `${imoveis.length} imóve${imoveis.length > 1 ? 'is' : 'l'} · Vistorias em Campo`;
   const [vist, sols, fila, fornecedores, obras] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes'), idbTodos('fila'), idbTodos('fornecedores'), idbTodos('obras')]);
   const fornPorId = new Map(fornecedores.map(f => [f.id, f]));
   const obraPorId = new Map(obras.map(o => [o.id, o]));
 
-  const comEstado = imoveis.map(i => ({ i, e: _calcEstado(i, vist, sols, fila) }));
+  // Busca por texto (endereço, bairro, cidade, fornecedor, obra) — só no aparelho
+  const termo = _normalizar((document.getElementById('busca-imovel') || {}).value);
+  const textoBusca = i => _normalizar([i.logradouro, i.numero, i.complemento, i.bairro, i.cidade, i.cep,
+    (fornPorId.get(i.fornecedor_id) || {}).razao_social, (obraPorId.get(i.obra_id) || {}).nome].filter(Boolean).join(' '));
+
+  const comEstado = imoveis.map(i => ({ i, e: _calcEstado(i, vist, sols, fila) }))
+    .filter(x => !termo || textoBusca(x.i).includes(termo));
+  const contagem = {};
+  comEstado.forEach(x => { contagem[x.e.filtroChave] = (contagem[x.e.filtroChave] || 0) + 1; });
   const filtrados = _filtroStatusImovelAtual === 'todos' ? comEstado : comEstado.filter(x => x.e.filtroChave === _filtroStatusImovelAtual);
 
-  const chips = `<div class="filtros-status">${FILTROS_STATUS_IMOVEL.map(f =>
-    `<button class="chip-filtro ${_filtroStatusImovelAtual === f.chave ? 'ativo' : ''}" onclick="filtrarImoveisPorStatus('${f.chave}')">${f.rotulo}</button>`
-  ).join('')}</div>`;
+  // Só mostra os filtros que têm imóvel (menos rolagem lateral)
+  elChips.innerHTML = FILTROS_STATUS_IMOVEL.filter(f => f.chave === 'todos' || contagem[f.chave] || f.chave === _filtroStatusImovelAtual).map(f => {
+    const n = f.chave === 'todos' ? comEstado.length : (contagem[f.chave] || 0);
+    return `<button class="chip-filtro ${_filtroStatusImovelAtual === f.chave ? 'ativo' : ''}" onclick="filtrarImoveisPorStatus('${f.chave}')">${f.rotulo}<span class="chip-n">${n}</span></button>`;
+  }).join('');
 
-  const cards = !filtrados.length ? `<div class="vazio">Nenhum imóvel com esse status.</div>` : filtrados.map(({ i, e }) => {
+  const miniPassos = e => `<div class="mini-passos" title="Passo ${e.passoAtual} de 4">${[1, 2, 3, 4].map(k =>
+    `<i class="${(e.feitos || []).includes(k) ? 'f' : k === e.passoAtual ? 'a' : ''}"></i>`).join('')}</div>`;
+
+  const cards = !filtrados.length
+    ? `<div class="vazio"><div class="vazio-icone">🔎</div>${termo ? 'Nenhum imóvel encontrado pra essa busca.' : 'Nenhum imóvel com esse status.'}</div>`
+    : filtrados.map(({ i, e }) => {
     const forn = fornPorId.get(i.fornecedor_id);
     const obra = obraPorId.get(i.obra_id);
     const infoExtra = [
       forn ? `👤 ${esc(forn.razao_social)}` : null,
       obra ? `🏗️ ${esc(obra.nome)}` : null,
-      e.solicitacao ? esc(_numSolicitacao(e.solicitacao)) : null,
       e.solicitacao?.numero_contrato ? `📄 Contrato nº ${esc(e.solicitacao.numero_contrato)}` : null,
-      e.solicitacao?.criado_em ? `Solicitado em ${new Date(e.solicitacao.criado_em).toLocaleDateString('pt-BR')}` : null,
-    ].filter(Boolean).join(' · ');
-    return `<div class="card" onclick="abrirImovel('${i.id}')">
+      e.solicitacao?.criado_em ? `📅 Solicitado em ${new Date(e.solicitacao.criado_em).toLocaleDateString('pt-BR')}` : null,
+    ].filter(Boolean).map(t => `<span>${t}</span>`).join('');
+    return `<div class="card card-imovel st-${e.filtroChave}" onclick="abrirImovel('${i.id}')">
       <div class="card-linha">
         <div style="flex:1;min-width:0">
+          <div class="card-topo-linha"><span class="selo ${e.classe}">${esc(e.rotulo)}</span>${e.naoSync ? '<span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}</div>
           <div class="card-titulo">${esc(i.logradouro) || '(sem endereço)'}${i.numero ? ', ' + esc(i.numero) : ''}</div>
           <div class="card-sub">${esc([i.bairro, i.cidade].filter(Boolean).join(' — ')) || '&nbsp;'}</div>
           ${infoExtra ? `<div class="card-info-extra">${infoExtra}</div>` : ''}
-          <div style="margin-top:8px"><span class="selo ${e.classe}">${esc(e.rotulo)}</span>${e.naoSync ? ' <span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}</div>
-          <div class="card-sub" style="margin-top:6px">${esc(e.proximo)}</div>
+          <div class="card-rodape">${miniPassos(e)}<span class="card-proximo">${esc(e.proximo)}</span></div>
         </div>
-        <button class="remover-comodo" onclick="event.stopPropagation();deletarImovelLocal('${i.id}')" title="Excluir do aparelho">🗑️</button>
+        <span class="card-seta"><svg class="ic"><use href="#i-seta"/></svg></span>
       </div>
     </div>`;
   }).join('');
 
-  el.innerHTML = chips + cards;
+  el.innerHTML = cards;
 }
 
 // Exclui o imóvel SÓ do aparelho. Se ele já estiver no sistema, volta a
@@ -1236,14 +1421,16 @@ async function renderizarListaFornecedores() {
   const lista = !termo ? todos : todos.filter(f => _normalizar(f.razao_social).includes(termo) || (digitos && (f.cpf_cnpj || '').includes(digitos)));
   const el = document.getElementById('forn-lista');
   if (!lista.length) {
-    el.innerHTML = `<div class="vazio">${todos.length ? 'Nenhum fornecedor encontrado.' : 'Nenhum fornecedor carregado ainda.'}<br/>Cadastre um novo no botão acima.</div>`;
+    el.innerHTML = `<div class="vazio"><div class="vazio-icone">👤</div>${todos.length ? 'Nenhum fornecedor encontrado.' : 'Nenhum fornecedor carregado ainda.'}<br/>Cadastre um novo no botão acima.</div>`;
     return;
   }
   el.innerHTML = lista.map(f => {
     const tipo = f.tipo_pessoa === 'PF' ? 'Pessoa Física' : f.tipo_pessoa === 'PJ' ? 'Pessoa Jurídica' : '';
     return `<div class="card" onclick="escolherFornecedor('${f.id}')">
-      <div class="card-titulo">${esc(f.razao_social)}</div>
-      <div class="card-sub">${esc([tipo, f.cpf_cnpj].filter(Boolean).join(' · ')) || '&nbsp;'}</div>
+      <div class="card-linha"><div style="flex:1;min-width:0">
+        <div class="card-titulo">${esc(f.razao_social)}</div>
+        <div class="card-sub">${esc([tipo, f.cpf_cnpj].filter(Boolean).join(' · ')) || '&nbsp;'}</div>
+      </div><span class="card-seta"><svg class="ic"><use href="#i-seta"/></svg></span></div>
     </div>`;
   }).join('');
 }
@@ -1576,7 +1763,7 @@ async function abrirImovel(id) {
   const imoveis = await idbTodos('imoveis');
   imovelAtual = imoveis.find(i => i.id === id);
   if (!imovelAtual) return;
-  document.getElementById('imovel-titulo').textContent = imovelAtual.logradouro || '(sem endereço)';
+  document.getElementById('imovel-titulo').textContent = (imovelAtual.logradouro || '(sem endereço)') + (imovelAtual.numero ? ', ' + imovelAtual.numero : '');
   document.getElementById('imovel-sub').textContent = [imovelAtual.bairro, imovelAtual.cidade].filter(Boolean).join(' — ');
   mostrarTela('tela-imovel');
   await renderizarListaVistorias();
@@ -1586,16 +1773,15 @@ async function _renderizarPainelImovel() {
   const [vist, sols, fila] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes'), idbTodos('fila')]);
   const e = _calcEstado(imovelAtual, vist, sols, fila);
   renderPassos('passos-imovel', e.passoAtual, e.feitos);
-  const trava = '<div class="card-sub" style="margin-top:10px">🔒 O Passo 4 (contrato) libera quando você concluir a vistoria.</div>';
+  const trava = '<div class="dica">🔒 O Passo 4 (contrato) libera quando você concluir a vistoria.</div>';
   let cta;
   if (e.solicitacao && !e.reprovada) cta = '<button class="btn btn-secundario" onclick="abrirSolicitarContrato()">📄 Enviar nova solicitação</button>';
   else if (e.concluida || e.reprovada) cta = '<button class="btn" onclick="abrirSolicitarContrato()">📄 Passo 4 — Solicitar contrato de locação</button>';
   else if (e.emEdicao) cta = `<button class="btn" onclick="abrirVistoria('${e.emEdicao.id}')">📋 Passo 3 — Continuar vistoria</button>` + trava;
   else cta = '<button class="btn" onclick="abrirEscolhaTipoVistoria()">📋 Passo 3 — Fazer vistoria</button>' + trava;
-  document.getElementById('imovel-painel').innerHTML = `<div class="card" style="cursor:default;margin-bottom:16px">
-    <div class="card-sub" style="margin:0 0 6px">Status do imóvel</div>
-    <span class="selo ${e.classe}">${esc(e.rotulo)}</span>${e.naoSync ? ' <span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}
-    <div class="card-sub" style="margin:8px 0 12px">${esc(e.proximo)}</div>
+  document.getElementById('imovel-painel').innerHTML = `<div class="card card-estatico">
+    <div class="painel-status"><span class="selo ${e.classe}">${esc(e.rotulo)}</span>${e.naoSync ? '<span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}</div>
+    <div class="card-sub" style="margin:6px 0 14px">${esc(e.proximo)}</div>
     ${cta}
   </div>`;
 }
@@ -1605,7 +1791,7 @@ async function renderizarListaVistorias() {
   const todas = await idbTodos('vistorias');
   const doImovel = todas.filter(v => v.imovel_id === imovelAtual.id).sort((a, b) => (b.data_vistoria || '').localeCompare(a.data_vistoria || ''));
   const el = document.getElementById('lista-vistorias');
-  if (!doImovel.length) { el.innerHTML = `<div class="vazio">Nenhuma vistoria ainda. Use o botão do Passo 3 acima.</div>`; return; }
+  if (!doImovel.length) { el.innerHTML = `<div class="vazio" style="padding:28px 20px"><div class="vazio-icone">📋</div>Nenhuma vistoria ainda. Use o botão do Passo 3 acima.</div>`; return; }
   const fila = await idbTodos('fila');
   el.innerHTML = doImovel.map(v => {
     const pendente = fila.some(f => (f.tipo === 'criar_vistoria' && f.payload.id === v.id));
@@ -1614,10 +1800,11 @@ async function renderizarListaVistorias() {
     const concluir = v.status !== 'finalizado' ? `<button class="btn-mini" onclick="event.stopPropagation();concluirVistoria('${v.id}')">✅ Concluir</button>` : '';
     return `<div class="card" onclick="abrirVistoria('${v.id}')">
       <div class="card-linha">
-        <div style="flex:1">
-          <div class="card-titulo">${TIPO_LABEL[v.tipo] || v.tipo} — ${formatarDataBR(v.data_vistoria)}</div>
-          <div class="card-sub">${selo}${sync}${v.responsavel ? ' · ' + esc(v.responsavel) : ''}</div>
-        </div>${concluir}
+        <div style="flex:1;min-width:0">
+          <div class="card-titulo">Vistoria de ${TIPO_LABEL[v.tipo] || v.tipo}</div>
+          <div class="card-sub">${formatarDataBR(v.data_vistoria)}${v.responsavel ? ' · ' + esc(v.responsavel) : ''}</div>
+          <div class="card-topo-linha" style="margin:8px 0 0">${selo}${sync}</div>
+        </div>${concluir || '<span class="card-seta"><svg class="ic"><use href="#i-seta"/></svg></span>'}
       </div>
     </div>`;
   }).join('');
@@ -1662,7 +1849,7 @@ function formatarDataBR(iso) {
 // ══════════════════════════════════════════════════════════════
 // Criar / abrir vistoria
 // ══════════════════════════════════════════════════════════════
-function abrirEscolhaTipoVistoria() { document.getElementById('modal-tipo-vistoria').classList.add('aberto'); }
+function abrirEscolhaTipoVistoria() { abrirModal('modal-tipo-vistoria'); }
 
 async function criarVistoria(tipo) {
   fecharModais();
@@ -1684,7 +1871,7 @@ async function abrirVistoria(id) {
   const todas = await idbTodos('vistorias');
   vistoriaAtual = todas.find(v => v.id === id);
   if (!vistoriaAtual) return;
-  document.getElementById('vistoria-titulo').textContent = TIPO_LABEL[vistoriaAtual.tipo] || vistoriaAtual.tipo;
+  document.getElementById('vistoria-titulo').textContent = 'Vistoria de ' + (TIPO_LABEL[vistoriaAtual.tipo] || vistoriaAtual.tipo);
   document.getElementById('vistoria-sub').textContent = [formatarDataBR(vistoriaAtual.data_vistoria), vistoriaAtual.responsavel].filter(Boolean).join(' · ');
   renderPassos('passos-vistoria', 3);
   mostrarTela('tela-vistoria');
@@ -1698,7 +1885,7 @@ async function abrirVistoria(id) {
 function abrirEscolhaComodo() {
   document.getElementById('lista-comodos-comuns').innerHTML = COMODOS_COMUNS.map(n => `<button onclick="adicionarComodo('${n}')">${n}</button>`).join('');
   document.getElementById('comodo-custom').value = '';
-  document.getElementById('modal-comodo').classList.add('aberto');
+  abrirModal('modal-comodo');
 }
 function confirmarComodoCustom() {
   const nome = document.getElementById('comodo-custom').value.trim();
@@ -1715,6 +1902,8 @@ async function adicionarComodo(nomeBase) {
   await idbSalvar('comodos', registro);
   await enfileirar('criar_comodo', registro);
   await renderizarComodos();
+  const novoEl = document.getElementById('comodo-' + registro.id);
+  if (novoEl) { novoEl.classList.add('aberto'); novoEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 }
 
 async function renderizarComodos() {
@@ -1725,35 +1914,40 @@ async function renderizarComodos() {
   el.classList.toggle('travada', travada);
   document.getElementById('fab-comodo').style.display = travada ? 'none' : '';
   await renderizarFotosGerais();
-  if (!doAtual.length) { el.innerHTML = `<div class="vazio">Nenhum cômodo ainda. Toque em "+ Cômodo" pra adicionar.</div>`; return; }
+  if (!doAtual.length) { el.innerHTML = `<div class="vazio"><div class="vazio-icone">🚪</div>Nenhum cômodo ainda.<br/>Toque em "Cômodo" pra adicionar.</div>`; return; }
   const fotos = await idbTodos('fotos');
+  // Mantém abertos os cômodos que já estavam abertos antes de redesenhar
+  const abertos = new Set([...el.querySelectorAll('.comodo.aberto')].map(d => d.id));
   el.innerHTML = '';
   for (const c of doAtual) {
     const div = document.createElement('div');
-    div.className = 'comodo'; div.id = 'comodo-' + c.id;
+    div.className = 'comodo' + (abertos.has('comodo-' + c.id) ? ' aberto' : ''); div.id = 'comodo-' + c.id;
     const fotosDoComodo = fotos.filter(f => f.comodo_id === c.id);
+    const rotEstado = e => e === 'NA' ? 'N/A' : e.charAt(0) + e.slice(1).toLowerCase();
     div.innerHTML = `
       <div class="comodo-cab" onclick="toggleComodo('${c.id}')">
-        <span class="comodo-nome">${c.nome}</span>
-        <span class="estado-badge estado-${c.estado}">${c.estado}</span>
-        <button class="remover-comodo" onclick="event.stopPropagation();removerComodo('${c.id}')">🗑️</button>
+        <span class="comodo-nome">${esc(c.nome)}</span>
+        ${fotosDoComodo.length ? `<span class="comodo-fotos">📷 ${fotosDoComodo.length}</span>` : ''}
+        <span class="estado-badge estado-${c.estado}">${rotEstado(c.estado)}</span>
+        <svg class="ic comodo-seta" style="width:20px;height:20px"><use href="#i-baixo"/></svg>
       </div>
       <div class="comodo-corpo">
         <span class="rotulo">Estado de conservação</span>
         <div class="estados-linha">
-          ${['BOM', 'REGULAR', 'RUIM', 'NA'].map(e => `<button class="estado-btn ${c.estado === e ? 'sel-' + e : ''}" onclick="mudarEstadoComodo('${c.id}','${e}')">${e}</button>`).join('')}
+          ${['BOM', 'REGULAR', 'RUIM', 'NA'].map(e => `<button class="estado-btn ${c.estado === e ? 'sel-' + e : ''}" onclick="mudarEstadoComodo('${c.id}','${e}')">${rotEstado(e)}</button>`).join('')}
         </div>
         <span class="rotulo">Observações</span>
-        <textarea onblur="mudarObsComodo('${c.id}',this.value)" placeholder="Observações do cômodo...">${c.observacoes || ''}</textarea>
+        <textarea onblur="mudarObsComodo('${c.id}',this.value)" placeholder="Observações do cômodo...">${esc(c.observacoes || '')}</textarea>
         <span class="rotulo">Fotos</span>
         <div class="fotos-grid" id="fotos-${c.id}">
-          <div class="foto-add" onclick="document.getElementById('foto-input-${c.id}').click()">📷</div>
+          <div class="foto-add" onclick="document.getElementById('foto-input-${c.id}').click()">📷<small>Adicionar</small></div>
           ${fotosDoComodo.map(f => f.previewUrl
             ? `<div class="foto-mini"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`
             : `<div class="foto-mini" id="foto-pendente-${f.id}" style="display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text3)">📷</div>`
           ).join('')}
         </div>
         <input type="file" id="foto-input-${c.id}" accept="image/*" capture="environment" style="display:none" onchange="tirarFotoComodo('${c.id}',this)"/>
+        <button class="remover-comodo remover-comodo-link" onclick="removerComodo('${c.id}')"><svg class="ic" style="width:17px;height:17px"><use href="#i-lixo"/></svg>Remover cômodo</button>
       </div>`;
     el.appendChild(div);
   }
@@ -1761,7 +1955,7 @@ async function renderizarComodos() {
   rodape.style.cssText = 'margin-top:14px';
   rodape.innerHTML = travada
     ? `<div class="banner-ok">✅ Vistoria concluída</div><button class="btn btn-secundario" onclick="reabrirVistoria('${vistoriaAtual.id}')">Reabrir para editar</button>`
-    : `<button class="btn" onclick="concluirVistoria('${vistoriaAtual.id}', true)">✅ Concluir vistoria</button><div class="card-sub" style="margin-top:8px;text-align:center">Ao concluir, o Passo 4 (contrato) é liberado.</div>`;
+    : `<button class="btn" style="background:var(--green);color:#06281a;box-shadow:0 6px 16px rgba(46,204,138,.22)" onclick="concluirVistoria('${vistoriaAtual.id}', true)">✅ Concluir vistoria</button><div class="dica">Ao concluir, o Passo 4 (contrato) é liberado.</div>`;
   el.appendChild(rodape);
 }
 
@@ -1770,11 +1964,11 @@ async function renderizarFotosGerais() {
   const el = document.getElementById('fotos-gerais-sec');
   const travada = vistoriaAtual.status === 'finalizado';
   const fotos = (await idbTodos('fotos')).filter(f => f.vistoria_id === vistoriaAtual.id && !f.comodo_id);
-  el.innerHTML = `<div class="comodo" style="padding:13px 14px">
+  el.innerHTML = `<div class="comodo" style="padding:14px 16px;margin-bottom:0">
     <div class="comodo-nome" style="margin-bottom:2px">📷 Fotos gerais do imóvel</div>
-    <div class="card-sub" style="margin:0 0 10px">Fachada, vista externa, etc.</div>
+    <div class="card-sub" style="margin:0 0 12px">Fachada, vista externa, etc.</div>
     <div class="fotos-grid">
-      ${travada ? '' : `<div class="foto-add" onclick="document.getElementById('foto-geral-input').click()">📷</div>`}
+      ${travada ? '' : `<div class="foto-add" onclick="document.getElementById('foto-geral-input').click()">📷<small>Adicionar</small></div>`}
       ${fotos.map(f => f.previewUrl
         ? `<div class="foto-mini"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`
         : `<div class="foto-mini" style="display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text3)">📷</div>`
