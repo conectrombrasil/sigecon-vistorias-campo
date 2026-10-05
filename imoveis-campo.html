@@ -239,6 +239,18 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     justify-content:center;font-size:24px;color:var(--blue2);cursor:pointer;background:rgba(90,166,238,.05);}
   .foto-add small{font-size:10.5px;font-weight:700;}
   .foto-add-galeria{color:var(--text2);}
+  .doc-acoes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+  .doc-acoes button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:62px;
+    background:var(--navy3);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-size:20px;cursor:pointer;}
+  .doc-acoes button span{font-size:12px;font-weight:700;color:var(--text2);}
+  .doc-acoes button:active{background:var(--navy4);}
+  .sc-doc-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .sc-doc-item:last-child{border-bottom:none;}
+  .sc-doc-info{flex:1;min-width:0;}
+  .sc-doc-nome{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sc-doc-meta{font-size:11.5px;color:var(--text3);margin-top:2px;}
+  .sc-doc-st{font-size:11px;font-weight:700;white-space:nowrap;}
+  .sc-doc-st.enviado{color:var(--ok-txt);} .sc-doc-st.erro{color:var(--err-txt);} .sc-doc-st.enviando{color:var(--info-txt);}
   .mobilia-card{background:var(--navy2);border:1px solid var(--border);border-radius:var(--raio);padding:14px 14px 10px 16px;}
   .mobilia-cab{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
   .mobilia-cab .btn-add-movel{margin-left:auto;background:rgba(90,166,238,.1);border:1px solid var(--border2);color:var(--blue2);
@@ -541,6 +553,33 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
           <div id="sc-planilha-lista"></div>
           <button type="button" class="btn-add-linha" onclick="adicionarLinhaPlanilha()">+ Adicionar item</button>
           <div class="planilha-total" id="sc-planilha-total">Total: R$ 0,00</div>
+        </div>
+      </div>
+
+      <div class="secao-opcional aberta" id="sec-docs-sc">
+        <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-docs-sc')">📎 Documentos <span style="font-weight:500;color:var(--text3);font-size:12.5px">(opcional)</span><span class="secao-opcional-seta">▶</span></div>
+        <div class="secao-opcional-corpo">
+          <span class="rotulo">Tipo do documento</span>
+          <div class="campo"><select id="sc-doc-tipo">
+            <option value="proposta_comercial">Proposta Comercial</option>
+            <option value="proposta_tecnica">Proposta Técnica</option>
+            <option value="planilha_precos">Planilha de Preços</option>
+            <option value="memorial_descritivo">Memorial Descritivo</option>
+            <option value="ficha_tecnica">Ficha Técnica do Equipamento</option>
+            <option value="certificado">Certificado / Habilitação</option>
+            <option value="outros" selected>Outros</option>
+          </select></div>
+          <div class="doc-acoes">
+            <button type="button" onclick="document.getElementById('sc-doc-pdf').click()">📄<span>Arquivo PDF</span></button>
+            <button type="button" onclick="document.getElementById('sc-doc-camera').click()">📷<span>Fotografar</span></button>
+            <button type="button" onclick="document.getElementById('sc-doc-galeria').click()">🖼️<span>Da galeria</span></button>
+          </div>
+          <input type="file" id="sc-doc-pdf" accept=".pdf,application/pdf" multiple style="display:none" onchange="anexarDocsSolicitacao(this)"/>
+          <input type="file" id="sc-doc-camera" accept="image/*" capture="environment" style="display:none" onchange="anexarDocsSolicitacao(this)"/>
+          <input type="file" id="sc-doc-galeria" accept="image/*" multiple style="display:none" onchange="anexarDocsSolicitacao(this)"/>
+          <div id="sc-docs-lista"></div>
+          <div id="sc-docs-status" style="font-size:12.5px;color:var(--text2);margin-top:8px"></div>
+          <div style="font-size:12px;color:var(--text3);margin-top:8px;line-height:1.45">Só PDF, porque o documento vai junto com o contrato na assinatura eletrônica. Foto vira PDF sozinha (várias fotos de uma vez = um PDF com várias páginas, ex.: frente e verso). Máx. 10 MB por arquivo.</div>
         </div>
       </div>
 
@@ -2673,6 +2712,128 @@ const OPCOES_RESP = ['Contratante', 'Contratado', 'Ambos', 'Contratante/Contrata
 let _responsabilidadesAtuais = [];  // [{item, resp}] — começa com o padrão, mas dá pra adicionar/remover livremente
 let _planilhaAtual = [];             // [{descricao, unidade, quantidade, precoUnitario}] — planilha de preços, toda opcional
 
+// ══════════════════════════════════════════════════════════════
+// Documentos da solicitação — mesmo vínculo do módulo web (tabela
+// solicitacoes_documentos, mesmos tipos), mas o arquivo vai pro Supabase
+// Storage (bucket privado), não mais pro Drive.
+// ══════════════════════════════════════════════════════════════
+const BUCKET_DOCS_SOLICITACAO = 'solicitacoes-documentos';
+const TIPO_DOC_SOLICITACAO = {
+  proposta_comercial: 'Proposta Comercial', proposta_tecnica: 'Proposta Técnica', planilha_precos: 'Planilha de Preços',
+  memorial_descritivo: 'Memorial Descritivo', ficha_tecnica: 'Ficha Técnica do Equipamento',
+  certificado: 'Certificado / Habilitação', outros: 'Outros',
+};
+const TAMANHO_MAX_DOC = 10 * 1024 * 1024;
+let _docsSolicitacao = []; // [{ id, tipo, nome, tamanho, blob, status: 'pendente'|'enviando'|'enviado'|'erro' }]
+
+function _fmtTamanho(b) { return b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+function _nomeArquivoSeguro(nome) {
+  return String(nome || 'documento.pdf').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.\-]+/g, '_').slice(-120);
+}
+
+function _renderizarDocsSolicitacao() {
+  const el = document.getElementById('sc-docs-lista');
+  if (!el) return;
+  const rot = { pendente: 'Pronto', enviando: 'Enviando…', enviado: 'Enviado ✓', erro: 'Erro' };
+  el.innerHTML = _docsSolicitacao.map(d => `<div class="sc-doc-item">
+    <div style="font-size:24px">📄</div>
+    <div class="sc-doc-info">
+      <div class="sc-doc-nome">${esc(d.nome)}</div>
+      <div class="sc-doc-meta">${esc(TIPO_DOC_SOLICITACAO[d.tipo] || d.tipo)} · ${_fmtTamanho(d.tamanho)}</div>
+    </div>
+    <span class="sc-doc-st ${d.status}">${rot[d.status] || ''}</span>
+    ${d.status === 'pendente' || d.status === 'erro' ? `<button type="button" class="btn-remover-linha" aria-label="Remover" onclick="removerDocSolicitacao('${d.id}')">🗑️</button>` : ''}
+  </div>`).join('');
+}
+function removerDocSolicitacao(id) {
+  _docsSolicitacao = _docsSolicitacao.filter(d => d.id !== id);
+  _renderizarDocsSolicitacao();
+  salvarRascunhoSolicitacao();
+}
+
+// Fotos viram um PDF (uma página por foto, A4, ajustada à página)
+async function _fotosParaPdf(arquivos) {
+  if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Gerador de PDF não carregou — confira a internet e tente de novo.');
+  const { jsPDF } = window.jspdf;
+  let doc = null;
+  for (const arq of arquivos) {
+    const { dataUrl } = await comprimirImagem(arq, 1700, 0.8);
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl; });
+    const paisagem = img.width > img.height;
+    const pW = paisagem ? 297 : 210, pH = paisagem ? 210 : 297, m = 8;
+    const esc2 = Math.min((pW - 2 * m) / img.width, (pH - 2 * m) / img.height);
+    const w = img.width * esc2, h = img.height * esc2;
+    if (!doc) doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: paisagem ? 'landscape' : 'portrait' });
+    else doc.addPage('a4', paisagem ? 'landscape' : 'portrait');
+    doc.addImage(dataUrl, 'JPEG', (pW - w) / 2, (pH - h) / 2, w, h);
+  }
+  return doc.output('blob');
+}
+
+async function anexarDocsSolicitacao(input) {
+  const arquivos = [...input.files];
+  input.value = '';
+  if (!arquivos.length) return;
+  const tipo = document.getElementById('sc-doc-tipo').value;
+  const pdfs = arquivos.filter(a => a.type === 'application/pdf' || /\.pdf$/i.test(a.name));
+  const imagens = arquivos.filter(a => (a.type || '').startsWith('image/'));
+  const ignorados = arquivos.length - pdfs.length - imagens.length;
+  const novos = [];
+  for (const a of pdfs) {
+    if (a.size > TAMANHO_MAX_DOC) { mostrarToast(`"${a.name}" passa de 10 MB.`, 'erro'); continue; }
+    novos.push({ nome: a.name, tamanho: a.size, blob: a });
+  }
+  if (imagens.length) {
+    try {
+      mostrarToast(imagens.length > 1 ? `Gerando PDF com ${imagens.length} páginas…` : 'Gerando PDF da foto…');
+      const blob = await _fotosParaPdf(imagens);
+      if (blob.size > TAMANHO_MAX_DOC) mostrarToast('O PDF das fotos passou de 10 MB — tente com menos fotos.', 'erro');
+      else {
+        const rotulo = (TIPO_DOC_SOLICITACAO[tipo] || 'Documento').replace(/[^\wÀ-ú]+/g, '_');
+        novos.push({ nome: `${rotulo}_${new Date().toISOString().slice(0, 10)}_${Date.now() % 100000}.pdf`, tamanho: blob.size, blob });
+      }
+    } catch (e) { mostrarToast('Não deu pra transformar a foto em PDF: ' + (e.message || e), 'erro'); }
+  }
+  if (ignorados) mostrarToast('Só dá pra anexar PDF ou foto.', 'erro');
+  novos.forEach(n => _docsSolicitacao.push({ id: crypto.randomUUID(), tipo, status: 'pendente', ...n }));
+  if (novos.length) {
+    _renderizarDocsSolicitacao();
+    salvarRascunhoSolicitacao();
+    mostrarToast(novos.length > 1 ? `${novos.length} documentos anexados` : 'Documento anexado', 'sucesso');
+  }
+}
+
+// Sobe os documentos e vincula à solicitação já criada. Retorna quantos falharam.
+async function _enviarDocsSolicitacao(solicitacaoId) {
+  let falhas = 0;
+  for (const d of _docsSolicitacao) {
+    if (d.status === 'enviado') continue;
+    d.status = 'enviando'; _renderizarDocsSolicitacao();
+    const caminho = `${solicitacaoId}/${Date.now()}_${_nomeArquivoSeguro(d.nome)}`;
+    try {
+      const { error: errUp } = await sb.storage.from(BUCKET_DOCS_SOLICITACAO).upload(caminho, d.blob, { contentType: 'application/pdf', upsert: false });
+      if (errUp) throw errUp;
+      const { error: errIns } = await sb.from('solicitacoes_documentos').insert({
+        solicitacao_id: solicitacaoId, tipo_documento: d.tipo, nome_arquivo: d.nome,
+        mime_type: 'application/pdf', tamanho_bytes: d.tamanho,
+        // drive_id vazio = arquivo no Supabase Storage. drive_url guarda o
+        // endereço do arquivo no bucket (privado — abre com link temporário)
+        drive_id: null, drive_url: `${SUPABASE_URL}/storage/v1/object/${BUCKET_DOCS_SOLICITACAO}/${caminho}`,
+        enviado_por: sessaoAtual.user.id,
+      });
+      if (errIns) {
+        try { await sb.storage.from(BUCKET_DOCS_SOLICITACAO).remove([caminho]); } catch (e) {}
+        throw errIns;
+      }
+      d.status = 'enviado';
+    } catch (e) {
+      d.status = 'erro'; d.erro = e.message || String(e); falhas++;
+    }
+    _renderizarDocsSolicitacao();
+  }
+  return falhas;
+}
+
 async function abrirSolicitarContrato() {
   if (!imovelAtual.fornecedor_id) { mostrarToast('Este imóvel está sem fornecedor. Toque em Editar e escolha um (Passo 1).', 'erro'); return; }
   const [vist, sols] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes')]);
@@ -2706,6 +2867,8 @@ async function abrirSolicitarContrato() {
   // então toda vez que abrir de novo volta ao padrão
   _responsabilidadesAtuais = RESPONSABILIDADES_LOCACAO_IMOVEL.map(r => ({ ...r }));
   _planilhaAtual = PLANILHA_PADRAO_LOCACAO.map(it => ({ ...it }));
+  _docsSolicitacao = [];
+  document.getElementById('sc-docs-status').textContent = '';
 
   // O rascunho precisa ser restaurado ANTES da testemunha automática —
   // senão, um rascunho antigo com os campos de testemunha vazios
@@ -2726,6 +2889,7 @@ async function abrirSolicitarContrato() {
 
   _renderizarResponsabilidades();
   _renderizarPlanilha();
+  _renderizarDocsSolicitacao();
 
   mostrarTela('tela-solicitar-contrato');
 }
@@ -2738,7 +2902,8 @@ function salvarRascunhoSolicitacao() {
   if (!imovelAtual) return;
   const campos = {};
   CAMPOS_RASCUNHO_SC.forEach(id => { campos[id] = document.getElementById(id).value; });
-  idbSalvar('sessao', { chave: _chaveRascunhoSc(), valor: { campos, responsabilidades: _responsabilidadesAtuais, planilha: _planilhaAtual } }).catch(() => {});
+  idbSalvar('sessao', { chave: _chaveRascunhoSc(), valor: { campos, responsabilidades: _responsabilidadesAtuais, planilha: _planilhaAtual,
+    docs: _docsSolicitacao.filter(d => d.status !== 'enviado').map(d => ({ id: d.id, tipo: d.tipo, nome: d.nome, tamanho: d.tamanho, blob: d.blob })) } }).catch(() => {});
 }
 async function _restaurarRascunhoSolicitacao() {
   const r = await idbPegar('sessao', _chaveRascunhoSc());
@@ -2747,6 +2912,7 @@ async function _restaurarRascunhoSolicitacao() {
   CAMPOS_RASCUNHO_SC.forEach(id => { if (d.campos && d.campos[id] != null) document.getElementById(id).value = d.campos[id]; });
   if (Array.isArray(d.responsabilidades)) _responsabilidadesAtuais = d.responsabilidades;
   if (Array.isArray(d.planilha)) _planilhaAtual = d.planilha;
+  if (Array.isArray(d.docs)) _docsSolicitacao = d.docs.filter(x => x && x.blob).map(x => ({ ...x, status: 'pendente' }));
 }
 
 function _renderizarResponsabilidades() {
@@ -2998,6 +3164,17 @@ async function enviarSolicitacaoContrato() {
       anexoStatus.textContent = 'Nenhuma vistoria encontrada pra esse imóvel — solicitação enviada sem anexo.';
     }
 
+    let falhasDocs = 0;
+    if (_docsSolicitacao.length) {
+      const stEl = document.getElementById('sc-docs-status');
+      stEl.textContent = 'Enviando documentos…';
+      falhasDocs = await _enviarDocsSolicitacao(sol.id);
+      const ok = _docsSolicitacao.length - falhasDocs;
+      stEl.textContent = falhasDocs
+        ? `⚠️ ${ok} de ${_docsSolicitacao.length} documento(s) anexado(s). Os que falharam podem ser anexados depois pelo módulo web. (${_docsSolicitacao.find(d => d.status === 'erro')?.erro || ''})`
+        : `✅ ${ok} documento(s) anexado(s).`;
+    }
+
     await sb.from('solicitacoes_mensagens').insert({
       solicitacao_id: sol.id, autor_id: sessaoAtual.user.id, tipo: 'sistema',
       conteudo: `📋 Solicitação criada pelo app de campo em ${new Date().toLocaleString('pt-BR')}.\n👤 Testemunha: ${testNome}${testTel ? ' · Tel: ' + testTel : ''}${testEmail ? ' · E-mail: ' + testEmail : ''}`,
@@ -3009,7 +3186,7 @@ async function enviarSolicitacaoContrato() {
     document.getElementById('sc-btn-voltar').style.display = '';
     await idbRemover('sessao', _chaveRascunhoSc());
     await idbSalvar('solicitacoes', { imovel_id: imovelAtual.id, solicitacao_id: sol.id, status: 'pendente', numero_sequencial: numeroSequencial, numero_ano: numeroAno });
-    mostrarToast('Solicitação de contrato enviada!', 'sucesso');
+    mostrarToast(falhasDocs ? 'Solicitação enviada, mas algum documento não subiu.' : 'Solicitação de contrato enviada!', falhasDocs ? 'erro' : 'sucesso');
   } catch (e) {
     erroEl.textContent = e.message;
     btn.disabled = false; btn.textContent = 'Enviar Solicitação';
