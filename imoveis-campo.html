@@ -1181,8 +1181,11 @@ function base64ParaBlob(base64, mimeType) {
 }
 
 async function enviarFotoParaServidor(p) {
-  const caminho = p.movelId ? `movel/${p.movelId}/${Date.now()}_${p.nomeArquivo}`
-    : p.comodoId ? `${p.comodoId}/${Date.now()}_${p.nomeArquivo}` : `geral/${p.vistoriaId}/${Date.now()}_${p.nomeArquivo}`;
+  // O Supabase recusa (erro 400) nome de arquivo com acento ou caractere especial
+  // no caminho — ex.: "ônibus.jpg". O nome original continua salvo no registro.
+  const nomeSeguro = sgNomeSeguro(p.nomeArquivo);
+  const caminho = p.movelId ? `movel/${p.movelId}/${Date.now()}_${nomeSeguro}`
+    : p.comodoId ? `${p.comodoId}/${Date.now()}_${nomeSeguro}` : `geral/${p.vistoriaId}/${Date.now()}_${nomeSeguro}`;
   const blob = base64ParaBlob(p.base64, p.mimeType);
   const { error: errUpload } = await sb.storage.from(BUCKET_FOTOS_CAMPO).upload(caminho, blob, { contentType: p.mimeType, upsert: false });
   if (errUpload) throw errUpload;
