@@ -239,6 +239,12 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     justify-content:center;font-size:24px;color:var(--blue2);cursor:pointer;background:rgba(90,166,238,.05);}
   .foto-add small{font-size:10.5px;font-weight:700;}
   .foto-add-galeria{color:var(--text2);}
+  .sc-info{background:var(--navy2);border:1px solid var(--border2);border-radius:14px;padding:12px 14px;margin:4px 0 14px;font-size:13.5px;line-height:1.5;}
+  .sc-info b{font-size:15px;} .sc-info .sc-info-aviso{color:var(--warn-txt);font-weight:600;margin-top:6px;}
+  #sc-formulario.somente-leitura .doc-acoes,#sc-formulario.somente-leitura .btn-add-linha,#sc-formulario.somente-leitura .btn-remover-linha,
+  #sc-formulario.somente-leitura #sc-doc-tipo-wrap{display:none!important;}
+  .sc-doc-item.removido > div:first-child,.sc-doc-item.removido .sc-doc-info{opacity:.45;}
+  .sc-doc-item.removido .sc-doc-nome{text-decoration:line-through;}
   /* ===== Abas do imóvel + gestão ===== */
   .abas-imovel{display:flex;gap:6px;padding:10px 16px;background:var(--navy2);border-bottom:1px solid var(--border);}
   .abas-imovel button{flex:1;min-height:42px;border-radius:11px;border:1px solid var(--border2);background:var(--navy3);color:var(--text2);font-weight:700;font-size:13.5px;cursor:pointer;}
@@ -548,7 +554,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
 <div class="tela" id="tela-solicitar-contrato">
   <div class="topo">
     <button class="topo-voltar" aria-label="Voltar" onclick="abrirImovel(imovelAtual.id)"><svg class="ic"><use href="#i-voltar"/></svg></button>
-    <div class="topo-textos"><div class="topo-titulo">Solicitar contrato</div></div>
+    <div class="topo-textos"><div class="topo-titulo" id="sc-titulo-tela">Solicitar contrato</div></div>
   </div>
   <div class="passos" id="passos-sc"></div>
   <div class="conteudo conteudo-form">
@@ -559,6 +565,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     <datalist id="dl-planilha-desc"><option value="Aluguel"><option value="Caução"><option value="Condomínio"><option value="IPTU"></datalist>
     <datalist id="dl-planilha-un"><option value="mês"><option value="un"><option value="dia"><option value="ano"><option value="m²"><option value="vb"></datalist>
     <div id="sc-formulario" oninput="salvarRascunhoSolicitacao()" onchange="salvarRascunhoSolicitacao()">
+      <div class="sc-info" id="sc-info-edicao" style="display:none"></div>
       <div class="selo-numero" id="sc-numero-gerado" style="display:none"></div>
 
       <span class="rotulo">Objeto / Descrição</span>
@@ -605,7 +612,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
       <div class="secao-opcional aberta" id="sec-docs-sc">
         <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-docs-sc')">📎 Documentos <span style="font-weight:500;color:var(--text3);font-size:12.5px">(opcional)</span><span class="secao-opcional-seta">▶</span></div>
         <div class="secao-opcional-corpo">
-          <span class="rotulo">Tipo do documento</span>
+          <div id="sc-doc-tipo-wrap"><span class="rotulo">Tipo do documento</span>
           <div class="campo"><select id="sc-doc-tipo">
             <option value="proposta_comercial">Proposta Comercial</option>
             <option value="proposta_tecnica">Proposta Técnica</option>
@@ -614,7 +621,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
             <option value="ficha_tecnica">Ficha Técnica do Equipamento</option>
             <option value="certificado">Certificado / Habilitação</option>
             <option value="outros" selected>Outros</option>
-          </select></div>
+          </select></div></div>
           <div class="doc-acoes">
             <button type="button" onclick="document.getElementById('sc-doc-pdf').click()">📄<span>Arquivo PDF</span></button>
             <button type="button" onclick="document.getElementById('sc-doc-camera').click()">📷<span>Fotografar</span></button>
@@ -2934,7 +2941,8 @@ async function _renderizarPainelImovel() {
   renderPassos('passos-imovel', e.passoAtual, e.feitos);
   const trava = '<div class="dica">🔒 O Passo 4 (contrato) libera quando você concluir a vistoria.</div>';
   let cta;
-  if (e.solicitacao && !e.reprovada) cta = '<button class="btn btn-secundario" onclick="abrirSolicitarContrato()">📄 Enviar nova solicitação</button>';
+  if (e.solicitacao && !e.reprovada) cta = `<button class="btn" onclick="abrirSolicitacaoExistente()">${_solicitacaoEditavel(e.solicitacao.status) ? '✏️ Ver e editar solicitação' : '👁️ Ver solicitação'}</button>
+    <button class="btn btn-secundario" style="margin-top:8px" onclick="abrirSolicitarContrato()">📄 Enviar nova solicitação</button>`;
   else if (e.concluida || e.reprovada) cta = '<button class="btn" onclick="abrirSolicitarContrato()">📄 Passo 4 — Solicitar contrato de locação</button>';
   else if (e.emEdicao) cta = `<button class="btn" onclick="abrirVistoria('${e.emEdicao.id}')">📋 Passo 3 — Continuar vistoria</button>` + trava;
   else cta = '<button class="btn" onclick="abrirEscolhaTipoVistoria()">📋 Passo 3 — Fazer vistoria</button>' + trava;
@@ -3620,7 +3628,19 @@ function _renderizarDocsSolicitacao() {
   const el = document.getElementById('sc-docs-lista');
   if (!el) return;
   const rot = { pendente: 'Pronto', enviando: 'Enviando…', enviado: 'Enviado ✓', erro: 'Erro' };
-  el.innerHTML = _docsSolicitacao.map(d => `<div class="sc-doc-item">
+  const existentes = _solEdicao ? _solEdicao.docs.map(d => {
+    const removido = _solEdicao.remover.has(d.id);
+    return `<div class="sc-doc-item ${removido ? 'removido' : ''}">
+      <div style="font-size:24px">📄</div>
+      <div class="sc-doc-info">
+        <div class="sc-doc-nome">${esc(d.nome_arquivo || 'documento')}</div>
+        <div class="sc-doc-meta">${esc(TIPO_DOC_SOLICITACAO[d.tipo_documento] || d.tipo_documento || '')}${d.tamanho_bytes ? ' · ' + _fmtTamanho(d.tamanho_bytes) : ''}${removido ? ' · será removido ao salvar' : ' · já anexado'}</div>
+      </div>
+      ${!removido && sgTemArquivo(d) ? `<button type="button" class="gest-btn" onclick="sgAbrirPorChave('${sgGuardar(d)}')">Abrir</button>` : ''}
+      ${_solEdicao.editavel ? `<button type="button" class="gest-btn" onclick="alternarRemoverDocExistente('${d.id}')">${removido ? 'Manter' : 'Remover'}</button>` : ''}
+    </div>`;
+  }).join('') : '';
+  el.innerHTML = existentes + _docsSolicitacao.map(d => `<div class="sc-doc-item">
     <div style="font-size:24px">📄</div>
     <div class="sc-doc-info">
       <div class="sc-doc-nome">${esc(d.nome)}</div>
@@ -3720,6 +3740,7 @@ async function abrirSolicitarContrato() {
   if (!jaEnviada0 && !vist.some(v => v.imovel_id === imovelAtual.id && v.status === 'finalizado')) { mostrarToast('Conclua a vistoria antes (Passo 3).', 'erro'); return; }
   const jaEnviada = sols.find(x => x.imovel_id === imovelAtual.id);
   if (jaEnviada && !_rotuloStatusSolicitacao(jaEnviada.status).reprovada && !confirm(`Este imóvel já tem a ${_numSolicitacao(jaEnviada)}. Enviar outra mesmo assim?`)) return;
+  _sairModoEdicaoSc();
   renderPassos('passos-sc', 4);
   const bloqueio = document.getElementById('sc-bloqueio-offline');
   const form = document.getElementById('sc-formulario');
@@ -3778,7 +3799,7 @@ async function abrirSolicitarContrato() {
 const CAMPOS_RASCUNHO_SC = ['sc-objeto', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-dia-aluguel', 'sc-test-nome', 'sc-test-tel', 'sc-test-email'];
 function _chaveRascunhoSc() { return 'rascunho_sc_' + imovelAtual.id; }
 function salvarRascunhoSolicitacao() {
-  if (!imovelAtual) return;
+  if (!imovelAtual || _solEdicao) return; // na edição de uma solicitação já enviada, não mexe no rascunho
   const campos = {};
   CAMPOS_RASCUNHO_SC.forEach(id => { campos[id] = document.getElementById(id).value; });
   idbSalvar('sessao', { chave: _chaveRascunhoSc(), valor: { campos, responsabilidades: _responsabilidadesAtuais, planilha: _planilhaAtual,
@@ -3918,7 +3939,174 @@ async function _gerarPdfVistoriaRecente() {
   return { base64, tamanho: blob.size, nomeArquivo: `Vistoria_${(endereco || 'imovel').replace(/[^\w]+/g, '_')}_${vistoria.data_vistoria}.pdf` };
 }
 
+// ══════════════════════════════════════════════════════════════
+// Ver / editar uma solicitação já enviada — enquanto ela ainda não
+// entrou em elaboração (status "pendente" ou "aprovado"). Só online.
+// O vínculo com o imóvel não muda (mesma regra do módulo web).
+// ══════════════════════════════════════════════════════════════
+const STATUS_SOLICITACAO_EDITAVEL = ['pendente', 'aprovado'];
+function _solicitacaoEditavel(status) { return STATUS_SOLICITACAO_EDITAVEL.includes(String(status || 'pendente').toLowerCase()); }
+let _solEdicao = null; // { id, itemId, status, editavel, original, docs, remover:Set }
+
+function _sairModoEdicaoSc() {
+  _solEdicao = null;
+  document.getElementById('sc-titulo-tela').textContent = 'Solicitar contrato';
+  document.getElementById('sc-info-edicao').style.display = 'none';
+  const form = document.getElementById('sc-formulario');
+  form.classList.remove('somente-leitura');
+  form.querySelectorAll('input,textarea,select').forEach(el => { el.disabled = false; });
+  document.getElementById('sc-valor').disabled = false;
+}
+
+async function abrirSolicitacaoExistente() {
+  const local = (await idbTodos('solicitacoes')).find(x => x.imovel_id === imovelAtual.id);
+  if (!local || !local.solicitacao_id) { mostrarToast('Solicitação não encontrada neste aparelho. Atualize a lista com internet.', 'erro'); return; }
+  if (!navigator.onLine) { mostrarToast('Precisa de internet pra abrir a solicitação.', 'erro'); return; }
+  const id = local.solicitacao_id;
+  mostrarToast('Abrindo solicitação…');
+  const [rSol, rItem, rSub, rResp, rDocs] = await Promise.all([
+    sb.from('solicitacoes_contratos').select('*').eq('id', id).maybeSingle(),
+    sb.from('solicitacao_itens').select('id,imovel_id').eq('solicitacao_id', id),
+    sb.from('solicitacao_subitens').select('*').eq('solicitacao_id', id).order('ordem'),
+    sb.from('solicitacoes_responsabilidades').select('*').eq('solicitacao_id', id).order('ordem'),
+    sb.from('solicitacoes_documentos').select('*').eq('solicitacao_id', id).order('criado_em'),
+  ]);
+  const sol = rSol.data;
+  if (rSol.error || !sol) { mostrarToast('Não foi possível abrir a solicitação' + (rSol.error ? ': ' + rSol.error.message : '.'), 'erro'); return; }
+  const item = (rItem.data || []).find(i => i.imovel_id === imovelAtual.id) || (rItem.data || [])[0] || null;
+  const podePorPerfil = sol.criado_por === sessaoAtual.user.id || ehGestorImoveis();
+  const editavel = _solicitacaoEditavel(sol.status) && sol.tipo_solicitacao !== 'distrato' && podePorPerfil;
+  _solEdicao = { id, itemId: item ? item.id : null, status: sol.status, editavel, original: sol, docs: rDocs.data || [], remover: new Set() };
+
+  // Tela no modo "solicitação existente"
+  renderPassos('passos-sc', 4);
+  document.getElementById('sc-bloqueio-offline').style.display = 'none';
+  const form = document.getElementById('sc-formulario');
+  form.style.display = 'block';
+  document.getElementById('sc-titulo-tela').textContent = editavel ? 'Editar solicitação' : 'Solicitação';
+  document.getElementById('sc-numero-gerado').style.display = 'none';
+  document.getElementById('sc-erro').textContent = '';
+  document.getElementById('sc-docs-status').textContent = '';
+  const st = _rotuloStatusSolicitacao(sol.status);
+  const motivo = editavel ? '' : !_solicitacaoEditavel(sol.status)
+    ? 'Já entrou em elaboração (ou foi finalizada) — não dá mais pra editar por aqui.'
+    : !podePorPerfil ? 'Só quem fez a solicitação (ou o gestor) pode editar.' : 'Este tipo de solicitação não pode ser editado por aqui.';
+  const info = document.getElementById('sc-info-edicao');
+  info.style.display = 'block';
+  info.innerHTML = `<b>${esc(_numSolicitacao(sol) || 'Solicitação')}</b> · <span class="selo ${st.classe}">${esc(st.txt)}</span>
+    <div class="card-sub" style="margin-top:4px">Enviada em ${sol.criado_em ? new Date(sol.criado_em).toLocaleDateString('pt-BR') : '—'}</div>
+    ${motivo ? `<div class="sc-info-aviso">🔒 ${esc(motivo)}</div>` : '<div class="card-sub" style="margin-top:4px">As alterações ficam registradas no histórico da solicitação.</div>'}`;
+
+  // Preenche com o que está no sistema
+  const ce = sol.campos_especificos || {};
+  const t = ce.testemunha || {};
+  const set = (idc, v) => { document.getElementById(idc).value = v == null ? '' : v; };
+  set('sc-objeto', sol.objeto); set('sc-inicio', sol.data_inicio); set('sc-fim', sol.data_fim);
+  set('sc-caucao-meses', ce.caucao_meses); set('sc-caucao-valor', ce.caucao_valor);
+  set('sc-caucao-data', ce.data_pgto_caucao); set('sc-dia-aluguel', ce.dia_pgto_aluguel);
+  set('sc-test-nome', t.nome); set('sc-test-tel', t.telefone); set('sc-test-email', t.email);
+  _responsabilidadesAtuais = (rResp.data || []).map(r => ({ item: r.item, resp: r.responsavel || 'A definir' }));
+  _planilhaAtual = (rSub.data || []).filter(si => !_solEdicao.itemId || !si.item_id || si.item_id === _solEdicao.itemId)
+    .map(si => ({ descricao: si.descricao || '', unidade: si.unidade || '', quantidade: si.quantidade ?? '', precoUnitario: si.preco_unitario ?? '' }));
+  _docsSolicitacao = [];
+  _renderizarResponsabilidades();
+  _renderizarPlanilha();
+  _renderizarDocsSolicitacao();
+
+  form.classList.toggle('somente-leitura', !editavel);
+  form.querySelectorAll('input,textarea,select').forEach(el => { if (el.id !== 'sc-valor') el.disabled = !editavel; });
+  const btn = document.getElementById('sc-btn-enviar');
+  btn.style.display = editavel ? '' : 'none';
+  btn.disabled = false; btn.textContent = 'Salvar alterações';
+  document.getElementById('sc-btn-voltar').style.display = editavel ? 'none' : '';
+  mostrarTela('tela-solicitar-contrato');
+}
+
+function alternarRemoverDocExistente(id) {
+  if (!_solEdicao) return;
+  if (_solEdicao.remover.has(id)) _solEdicao.remover.delete(id); else _solEdicao.remover.add(id);
+  _renderizarDocsSolicitacao();
+}
+
+async function salvarEdicaoSolicitacao() {
+  const ed = _solEdicao;
+  const erroEl = document.getElementById('sc-erro');
+  erroEl.textContent = '';
+  if (!navigator.onLine) { erroEl.textContent = 'Sem internet — conecte pra salvar as alterações.'; return; }
+  const objeto = document.getElementById('sc-objeto').value.trim();
+  if (!objeto) { erroEl.textContent = 'Descreva o objeto da locação.'; return; }
+  const testNome = document.getElementById('sc-test-nome').value.trim();
+  const testTel = document.getElementById('sc-test-tel').value.trim();
+  const testEmail = document.getElementById('sc-test-email').value.trim();
+  if (!testNome || (!testTel && !testEmail)) { erroEl.textContent = 'Informe a testemunha: nome e pelo menos um contato (telefone ou e-mail).'; return; }
+
+  const btn = document.getElementById('sc-btn-enviar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    // Confere de novo no servidor: pode ter entrado em elaboração enquanto a tela estava aberta
+    const { data: atual, error: eSt } = await sb.from('solicitacoes_contratos').select('status').eq('id', ed.id).maybeSingle();
+    if (eSt) throw eSt;
+    if (!atual || !_solicitacaoEditavel(atual.status)) throw new Error('A solicitação acabou de entrar em elaboração — não dá mais pra editar por aqui.');
+
+    const num = idc => document.getElementById(idc).value;
+    const campos = {
+      ...(ed.original.campos_especificos || {}),
+      caucao_meses: num('sc-caucao-meses') ? parseInt(num('sc-caucao-meses'), 10) : null,
+      caucao_valor: num('sc-caucao-valor') ? parseFloat(num('sc-caucao-valor')) : null,
+      data_pgto_caucao: num('sc-caucao-data') || null,
+      dia_pgto_aluguel: num('sc-dia-aluguel') ? parseInt(num('sc-dia-aluguel'), 10) : null,
+      testemunha: { nome: testNome, telefone: testTel || null, email: testEmail || null },
+    };
+    const { data: upd, error: eUp } = await sb.from('solicitacoes_contratos').update({
+      objeto, campos_especificos: campos,
+      valor_estimado: num('sc-valor') ? parseFloat(num('sc-valor')) : null,
+      data_inicio: num('sc-inicio') || null, data_fim: num('sc-fim') || null,
+    }).eq('id', ed.id).select('id');
+    if (eUp) throw eUp;
+    if (!upd || !upd.length) throw new Error('O sistema não deixou salvar (sem permissão).');
+
+    // Responsabilidades e planilha: grava as novas ANTES de apagar as antigas (se algo falhar, nada se perde)
+    const { data: respAntigas } = await sb.from('solicitacoes_responsabilidades').select('id').eq('solicitacao_id', ed.id);
+    const respNovas = _responsabilidadesAtuais.filter(r => r.item && r.item.trim())
+      .map((r, i) => ({ solicitacao_id: ed.id, item: r.item.trim(), responsavel: r.resp, ordem: i }));
+    if (respNovas.length) { const { error } = await sb.from('solicitacoes_responsabilidades').insert(respNovas); if (error) throw error; }
+    if ((respAntigas || []).length) { const { error } = await sb.from('solicitacoes_responsabilidades').delete().in('id', respAntigas.map(r => r.id)); if (error) throw error; }
+
+    if (ed.itemId) {
+      const { data: subAntigos } = await sb.from('solicitacao_subitens').select('id').eq('solicitacao_id', ed.id).eq('item_id', ed.itemId);
+      const subNovos = _planilhaAtual.filter(it => it.descricao && it.descricao.trim()).map((it, i) => {
+        const qtd = parseFloat(it.quantidade) || 0, preco = parseFloat(it.precoUnitario) || 0;
+        return { item_id: ed.itemId, solicitacao_id: ed.id, codigo: String(i + 1), descricao: it.descricao.trim(), unidade: it.unidade ? it.unidade.trim() : '',
+          quantidade: qtd, preco_unitario: preco, total: qtd * preco, origem: 'contrato_original', item_ref_codigo: String(i + 1), qtd_acumulada: qtd, ordem: i };
+      });
+      if (subNovos.length) { const { error } = await sb.from('solicitacao_subitens').insert(subNovos); if (error) throw error; }
+      if ((subAntigos || []).length) { const { error } = await sb.from('solicitacao_subitens').delete().in('id', subAntigos.map(x => x.id)); if (error) throw error; }
+    }
+
+    // Documentos: remove os marcados e sobe os novos
+    for (const docId of ed.remover) {
+      const d = ed.docs.find(x => x.id === docId);
+      const { error } = await sb.from('solicitacoes_documentos').delete().eq('id', docId);
+      if (error) throw error;
+      if (d) await sgRemoverArquivo(d);
+    }
+    let falhasDocs = 0;
+    if (_docsSolicitacao.length) falhasDocs = await _enviarDocsSolicitacao(ed.id);
+
+    await sb.from('solicitacoes_mensagens').insert({
+      solicitacao_id: ed.id, autor_id: sessaoAtual.user.id, tipo: 'sistema',
+      conteudo: `✏️ Solicitação editada pelo app de campo em ${new Date().toLocaleString('pt-BR')}.`,
+    });
+    mostrarToast(falhasDocs ? 'Alterações salvas, mas algum documento não subiu.' : 'Alterações salvas!', falhasDocs ? 'erro' : 'sucesso');
+    await abrirSolicitacaoExistente(); // recarrega do sistema
+  } catch (e) {
+    erroEl.textContent = e.message || String(e);
+    btn.disabled = false; btn.textContent = 'Salvar alterações';
+  }
+}
+
 async function enviarSolicitacaoContrato() {
+  if (_solEdicao) return salvarEdicaoSolicitacao();
   const erroEl = document.getElementById('sc-erro');
   erroEl.textContent = '';
   if (!navigator.onLine) { erroEl.textContent = 'Perdeu a conexão — não dá pra continuar com segurança. Tente de novo quando estiver online.'; return; }
