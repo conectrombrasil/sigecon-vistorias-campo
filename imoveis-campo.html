@@ -1216,7 +1216,9 @@ async function processarItemFila(item) {
       await idbSalvar('fila', item); // não reenviar as imagens se o update falhar
       const local = await idbPegar('vistorias', p.id);
       if (local && local.assinatura && local.assinatura.codigo === p.campos.assinatura.codigo && local.assinatura.em === p.campos.assinatura.em) {
-        local.assinatura = { ...p.campos.assinatura }; await idbSalvar('vistorias', local);
+        // guarda uma cópia da imagem no aparelho, pra mostrar/imprimir mesmo sem internet
+        const copia = String(local.assinatura.imagem || '').startsWith('data:') ? local.assinatura.imagem : local.assinatura.imagem_local;
+        local.assinatura = { ...p.campos.assinatura, imagem_local: copia || null }; await idbSalvar('vistorias', local);
       }
     }
     const { error } = await sb.from('imovel_vistorias').update(p.campos).eq('id', p.id);
@@ -1395,7 +1397,7 @@ async function removerFotoDoServidor(p) {
     // Nada apagado: ou já não existia (ok), ou o sistema não deixou
     const { data: aindaExiste } = await sb.from('documentos').select('id').eq('id', p.docId);
     if (aindaExiste && aindaExiste.length) {
-      const e = new Error('O sistema não permitiu apagar uma foto (sem permissão). Ela continua no sistema.');
+      const e = new Error('O sistema não permitiu apagar uma foto (sem permissão). Ela continua no sistema e volta a aparecer quando a lista for atualizada.');
       e.naoTravarFila = true;
       throw e;
     }
@@ -1653,6 +1655,12 @@ async function carregarImoveisDoServidor() {
     const comPendencia = new Set(filaVist.filter(f => ['atualizar_vistoria', 'anular_assinatura_vistoria'].includes(f.tipo)).map(f => f.payload.id));
     // Gestão (contrato, colaboradores, contas…) guardada pra consultar offline — em segundo plano
     _carregarGestaoDoServidor(ids).catch(() => {});
+    // Mantém a cópia local da imagem da assinatura (pra imprimir offline)
+    const locaisVist = new Map((await idbTodos('vistorias')).map(v => [v.id, v]));
+    for (const v of (vistorias || [])) {
+      const l = locaisVist.get(v.id);
+      if (v.assinatura && l && l.assinatura && l.assinatura.imagem_local && l.assinatura.codigo === v.assinatura.codigo) v.assinatura.imagem_local = l.assinatura.imagem_local;
+    }
     await idbSalvarVarios('vistorias', (vistorias || []).filter(v => !comPendencia.has(v.id)));
     await _removerVistoriasQueNaoDevemMaisAparecer(vistorias || []);
     if (vistorias && vistorias.length) {
@@ -3370,7 +3378,7 @@ async function _srcImagemAssinatura(val) {
 }
 async function _blocoAssinaturaVistoria(a) {
   if (!a) return '';
-  const [img, selfie] = await Promise.all([_srcImagemAssinatura(a.imagem), _srcImagemAssinatura(a.selfie)]);
+  const [img, selfie] = await Promise.all([a.imagem_local || _srcImagemAssinatura(a.imagem), _srcImagemAssinatura(a.selfie)]);
   const gps = a.gps && a.gps.lat != null
     ? `<a href="https://maps.google.com/?q=${a.gps.lat},${a.gps.lng}" target="_blank" rel="noopener">${a.gps.lat}, ${a.gps.lng}</a> (±${a.gps.precisao_m} m)`
     : 'não registrada' + (a.gps && a.gps.erro ? ' (' + esc(a.gps.erro) + ')' : '');
@@ -3447,7 +3455,8 @@ async function reabrirVistoria(id) {
     ? `\n\nEste imóvel já tem a ${_numSolicitacao(sol)} enviada: ela fica sem vistoria assinada até você concluir e assinar de novo.` : '';
   if (v.assinatura && !confirm('Reabrir para editar? A assinatura desta vistoria será anulada (fica no histórico) e você vai precisar assinar de novo ao concluir.' + avisoSol)) return;
   if (!v.assinatura && avisoSol && !confirm('Reabrir para editar?' + avisoSol)) return;
-  const anulada = v.assinatura;
+  const { imagem_local: _semCopia, ...anuladaSemCopia } = v.assinatura || {};
+  const anulada = v.assinatura ? anuladaSemCopia : null;
   v.status = 'rascunho';
   v.finalizado_em = null;
   v.assinatura = null;
@@ -3456,6 +3465,153 @@ async function reabrirVistoria(id) {
   await enfileirar('atualizar_vistoria', { id, campos: anulada ? { status: 'rascunho', finalizado_em: null, assinatura: null } : { status: 'rascunho', finalizado_em: null } });
   vistoriaAtual = v;
   await renderizarComodos();
+}
+
+// ══════════════════════════════════════════════════════════════
+// Relatório impresso da vistoria (mesmo modelo do módulo web): abre numa
+// aba pronta pra imprimir ou "Salvar como PDF". Usa o que está no aparelho;
+// fotos que ainda estão só no servidor precisam de internet pra aparecer.
+// Assinaturas: vistoriador (eletrônica) + campo em branco pro locador.
+// ══════════════════════════════════════════════════════════════
+async function _dataUrlParaImpressao(src) {
+  if (!src) return null;
+  if (String(src).startsWith('data:')) return src;
+  if (!navigator.onLine) return src;
+  try {
+    const r = await fetch(src);
+    if (!r.ok) return src;
+    const b = await r.blob();
+    return await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => ok(src); fr.readAsDataURL(b); });
+  } catch (e) { return src; }
+}
+function _fmtDocImpressao(d) {
+  const n = String(d || '').replace(/\D/g, '');
+  if (n.length === 11) return n.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  if (n.length === 14) return n.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  return d || '';
+}
+async function imprimirRelatorioVistoria(id) {
+  // Abre a aba já no toque (antes de qualquer espera), senão o navegador bloqueia
+  const win = window.open('', '_blank');
+  if (!win) { mostrarToast('O navegador bloqueou a nova aba. Permita pop-ups para este site e tente de novo.', 'erro'); return; }
+  win.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gerando relatório...</title></head><body style="font-family:sans-serif;color:#7a96ad;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div>⏳ Gerando relatório, aguarde...</div></body></html>');
+  try {
+    const v = await idbPegar('vistorias', id);
+    const im = (await idbTodos('imoveis')).find(x => x.id === v.imovel_id) || imovelAtual || {};
+    const [comodosT, moveisT, fotosT, fornT] = await Promise.all([idbTodos('comodos'), idbTodos('moveis'), idbTodos('fotos'), idbTodos('fornecedores')]);
+    const comodos = comodosT.filter(c => c.vistoria_id === id).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    const moveis = moveisT.filter(m => m.vistoria_id === id);
+    const fotos = fotosT.filter(f => !f.excluida && f.previewUrl);
+    const srcs = async lista => (await Promise.all(lista.map(f => _dataUrlParaImpressao(f.previewUrl)))).filter(Boolean);
+    const fotosGerais = await srcs(fotos.filter(f => f.vistoria_id === id && !f.comodo_id && !f.movel_id));
+    const comodosC = [];
+    for (const c of comodos) comodosC.push({ ...c, fotos: await srcs(fotos.filter(f => f.comodo_id === c.id)) });
+    const moveisC = [];
+    for (const m of moveis) moveisC.push({ ...m, fotos: await srcs(fotos.filter(f => f.movel_id === m.id)) });
+    const locador = fornT.find(f => f.id === im.fornecedor_id) || null;
+    const a = v.assinatura || null;
+    const imgAssin = !a ? null : a.imagem_local || (String(a.imagem || '').startsWith('data:') ? a.imagem : a.imagem ? await _dataUrlParaImpressao(await _srcImagemAssinatura(a.imagem)) : null);
+    let empresa = null;
+    if (navigator.onLine) {
+      try { ({ data: empresa } = await sb.from('empresa_config').select('razao_social,nome_fantasia,logo_base64').eq('matriz', true).eq('ativa', true).limit(1).maybeSingle()); } catch (e) { }
+      if (empresa) await idbSalvar('sessao', { chave: 'empresa_relatorio', valor: empresa }); // guarda pra imprimir offline
+    }
+    if (!empresa) { const r = await idbPegar('sessao', 'empresa_relatorio'); empresa = r ? r.valor : null; }
+    const endereco = [im.logradouro, im.numero].filter(Boolean).join(', ') + (im.complemento ? ' - ' + im.complemento : '')
+      + (im.bairro ? ', ' + im.bairro : '') + ((im.cidade || im.estado) ? ' - ' + [im.cidade, im.estado].filter(Boolean).join('/') : '');
+    const estadoCor = { BOM: '#1a9e5f', REGULAR: '#b07d10', RUIM: '#c0392b', NA: '#7a96ad' };
+    const rotEst = e => !e ? '—' : e === 'NA' ? 'N/A' : e.charAt(0) + e.slice(1).toLowerCase();
+    const gradeFotos = l => l.length ? `<div class="fotos">${l.map(s => `<div class="foto"><img src="${s}"/></div>`).join('')}</div>` : '';
+    const quando = a && a.em ? new Date(a.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+    const gps = a && a.gps && a.gps.lat != null ? `${a.gps.lat}, ${a.gps.lng}` : '';
+    const tipoTxt = v.tipo === 'entrada' ? 'VISTORIA DE ENTRADA' : v.tipo === 'saida' ? 'VISTORIA DE SAÍDA' : 'VISTORIA PERIÓDICA';
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatório de Vistoria — ${esc(endereco)}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;color:#1a2533;padding:28px;max-width:900px;margin:0 auto;font-size:13px;line-height:1.5;background:#fff}
+  .cab{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:3px solid #1a3a5c;padding-bottom:14px;margin-bottom:20px}
+  .cab h1{font-size:19px;color:#1a3a5c}
+  .tipo{display:inline-block;margin-top:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:#dbeafe;color:#1e40af}
+  .objetivo{font-size:12.5px;color:#3d5a73;background:#f7f9fc;border-left:3px solid #1a3a5c;border-radius:4px;padding:10px 14px;margin-bottom:20px;line-height:1.6;text-align:justify}
+  .secao{margin-bottom:22px}
+  .secao-titulo{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#1a3a5c;border-bottom:2px solid #eee;padding-bottom:6px;margin-bottom:10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+  .campo{background:#f7f9fc;border-radius:6px;padding:10px 12px}
+  .campo .l{font-size:10px;text-transform:uppercase;color:#7a96ad;margin-bottom:2px}
+  .campo .v{font-size:13px;font-weight:600}
+  .comodo{border:1px solid #dce3ea;border-radius:8px;margin-bottom:14px;overflow:hidden;page-break-inside:avoid}
+  .comodo-h{display:flex;justify-content:space-between;align-items:center;background:#f7f9fc;padding:10px 14px;font-weight:700}
+  .estado-tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:#fff}
+  .comodo-b{padding:12px 14px}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:12px}
+  th{text-align:left;background:#f0f4f8;padding:6px 8px;font-size:10px;text-transform:uppercase;color:#7a96ad}
+  td{padding:6px 8px;border-bottom:1px solid #eee}
+  .fotos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .foto img{width:270px;max-width:100%;height:200px;object-fit:contain;background:#f0f4f8;border-radius:6px;border:1px solid #dce3ea}
+  .item-foto-titulo{font-size:10px;color:#7a96ad;text-transform:uppercase;margin:8px 0 4px}
+  .assinaturas{display:flex;gap:40px;margin-top:40px;page-break-inside:avoid}
+  .assinatura{flex:1;text-align:center}
+  .assin-area{height:80px;display:flex;align-items:flex-end;justify-content:center}
+  .assin-area img{max-height:78px;max-width:100%;object-fit:contain}
+  .linha{border-top:1px solid #1a2533;margin-bottom:6px;padding-top:6px;font-size:12px;line-height:1.4}
+  .trilha{font-size:9.5px;color:#7a96ad;line-height:1.4}
+  .barra{position:sticky;top:0;background:#1a3a5c;color:#fff;margin:-28px -28px 18px;padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;font-size:13px}
+  .barra button{background:#F15A24;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:700;font-size:14px}
+  @media (max-width:560px){.assinaturas{flex-direction:column;gap:26px}.foto img{width:100%}}
+  @media print{body{padding:14px}.barra{display:none}}
+</style></head><body>
+  <div class="barra"><span>Relatório de vistoria</span><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
+  <div class="cab">
+    ${empresa && empresa.logo_base64 ? `<img src="${empresa.logo_base64}" style="max-height:52px;max-width:150px;object-fit:contain"/>` : ''}
+    <div style="flex:1">
+      <h1>Relatório de Vistoria de Imóvel</h1>
+      ${empresa && empresa.razao_social ? `<div style="font-size:11px;color:#7a96ad;margin:2px 0 4px">${esc(empresa.nome_fantasia || empresa.razao_social)}</div>` : ''}
+      <div class="tipo">${tipoTxt}</div>
+    </div>
+    <div style="text-align:right;font-size:11px;color:#7a96ad">Gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
+  </div>
+  <div class="objetivo">Este relatório tem como objetivo verificar as condições sanitárias e de conforto para moradia, seguindo a NR-24, assim como registrar os bens materiais e estado do imóvel, visando um ambiente seguro para os colaboradores da ${esc(String((empresa && empresa.razao_social) || 'CONECTROM LTDA').toUpperCase())} e assegurando a empresa de possíveis danos materiais.</div>
+  <div class="secao"><div class="secao-titulo">Identificação do Imóvel</div><div class="grid">
+    <div class="campo"><div class="l">Endereço</div><div class="v">${esc(endereco || '—')}</div></div>
+    <div class="campo"><div class="l">Data da vistoria</div><div class="v">${v.data_vistoria ? formatarDataBR(v.data_vistoria) : '—'}</div></div>
+    <div class="campo"><div class="l">Responsável</div><div class="v">${esc(v.responsavel || (a && a.nome) || '—')}</div></div>
+    ${v.status !== 'finalizado' ? '<div class="campo"><div class="l">Situação</div><div class="v" style="color:#b07d10">Em edição (rascunho)</div></div>' : ''}
+  </div></div>
+  ${v.observacoes_gerais ? `<div class="secao"><div class="secao-titulo">Observações Gerais</div><div class="campo">${esc(v.observacoes_gerais)}</div></div>` : ''}
+  ${fotosGerais.length ? `<div class="secao"><div class="secao-titulo">Fotos Gerais do Imóvel</div>${gradeFotos(fotosGerais)}</div>` : ''}
+  ${moveisC.length ? `<div class="secao"><div class="secao-titulo">Mobília do Imóvel</div>
+    <table><thead><tr><th>Item</th><th>Qtd.</th><th>Estado</th></tr></thead><tbody>
+    ${moveisC.map(m => `<tr><td>${esc(m.descricao || '—')}</td><td>${parseInt(m.quantidade, 10) || 1}</td><td>${rotEst(m.estado)}</td></tr>`).join('')}
+    </tbody></table>
+    ${moveisC.filter(m => m.fotos.length).map(m => `<div class="item-foto-titulo">Fotos — ${esc(m.descricao || 'item')}</div>${gradeFotos(m.fotos)}`).join('')}
+  </div>` : ''}
+  <div class="secao"><div class="secao-titulo">Cômodos e Estado de Conservação</div>
+    ${comodosC.length ? comodosC.map(c => `<div class="comodo">
+      <div class="comodo-h"><span>${esc(c.nome)}</span><span class="estado-tag" style="background:${estadoCor[c.estado] || '#7a96ad'}">${rotEst(c.estado)}</span></div>
+      <div class="comodo-b">${c.observacoes ? `<p style="margin-bottom:8px;color:#3d5a73">${esc(c.observacoes)}</p>` : ''}${gradeFotos(c.fotos)}${!c.observacoes && !c.fotos.length ? '<span style="color:#7a96ad">Sem observações.</span>' : ''}</div>
+    </div>`).join('') : '<p style="color:#7a96ad">Nenhum cômodo registrado.</p>'}
+  </div>
+  <div class="assinaturas">
+    <div class="assinatura">
+      <div class="assin-area">${imgAssin ? `<img src="${imgAssin}" alt="Assinatura"/>` : ''}</div>
+      <div class="linha"><b>${esc((a && a.nome) || v.responsavel || '')}</b><br/>Responsável pela vistoria</div>
+      ${a ? `<div class="trilha">Assinado eletronicamente em ${esc(quando)}${gps ? ' · local ' + esc(gps) : ''}<br/>Código do conteúdo <b>${esc(a.codigo || '')}</b></div>` : '<div class="trilha">Vistoria ainda não assinada.</div>'}
+    </div>
+    <div class="assinatura">
+      <div class="assin-area"></div>
+      <div class="linha"><b>${esc((locador && locador.razao_social) || '')}</b>${locador && locador.cpf_cnpj ? '<br/>CPF/CNPJ ' + esc(_fmtDocImpressao(locador.cpf_cnpj)) : ''}<br/>Locador</div>
+      <div class="trilha">Assina quando a vistoria entrar como anexo do contrato.</div>
+    </div>
+  </div>
+  <script>window.onload = () => setTimeout(() => window.print(), 700);<\/script>
+</body></html>`;
+    if (win.closed) return;
+    win.document.open(); win.document.write(html); win.document.close();
+  } catch (e) {
+    try { win.close(); } catch (e2) { }
+    mostrarToast('Não foi possível gerar o relatório: ' + (e.message || e), 'erro');
+  }
 }
 
 function formatarDataBR(iso) {
@@ -3765,7 +3921,8 @@ async function renderizarComodos() {
         : `<div class="banner-alerta">✍️ Vistoria concluída, mas falta assinar. Sem a assinatura não dá pra enviar a solicitação do contrato.</div>
            <button class="btn btn-assinar" onclick="assinarVistoria('${vId}')">✍️ Assinar vistoria</button><div style="height:8px"></div>`)
       + (trava ? `<div class="banner-trava"><b>🔒 Vistoria travada</b>Situação atual: ${esc(_rotuloStatusSolicitacao(sol.status).txt)}. A partir da aprovação a vistoria não pode mais ser alterada — só destrava se o status voltar.</div>`
-        : `<button class="btn btn-secundario" onclick="reabrirVistoria('${vId}')">Reabrir para editar</button>${a ? '<div class="dica">Reabrir anula a assinatura — ao concluir, assina de novo.</div>' : ''}`);
+        : `<button class="btn btn-secundario" onclick="reabrirVistoria('${vId}')">Reabrir para editar</button>${a ? '<div class="dica">Reabrir anula a assinatura — ao concluir, assina de novo.</div>' : ''}`)
+      + `<button class="btn btn-secundario" style="margin-top:10px" onclick="imprimirRelatorioVistoria('${vId}')">🖨️ Imprimir relatório</button>`;
     el.appendChild(rodape);
     if (a) {
       const html = await _blocoAssinaturaVistoria(a);
@@ -3773,7 +3930,8 @@ async function renderizarComodos() {
       if (alvo && vistoriaAtual && vistoriaAtual.id === vId) alvo.innerHTML = html;
     }
   } else {
-    rodape.innerHTML = `<button class="btn btn-assinar" onclick="concluirVistoria('${vId}', true)">✍️ Concluir e assinar vistoria</button><div class="dica">Ao concluir e assinar, o Passo 4 (contrato) é liberado.</div>`;
+    rodape.innerHTML = `<button class="btn btn-assinar" onclick="concluirVistoria('${vId}', true)">✍️ Concluir e assinar vistoria</button><div class="dica">Ao concluir e assinar, o Passo 4 (contrato) é liberado.</div>
+      <button class="btn btn-secundario" style="margin-top:10px" onclick="imprimirRelatorioVistoria('${vId}')">🖨️ Relatório (rascunho)</button>`;
     el.appendChild(rodape);
   }
 }
