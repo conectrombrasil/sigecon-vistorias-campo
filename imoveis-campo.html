@@ -1134,7 +1134,16 @@ async function processarItemFila(item) {
     if (error) throw error;
   } else if (item.tipo === 'criar_fornecedor') {
     const { error } = await sb.from('fornecedores').insert(p);
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        // Já subiu numa tentativa anterior (resposta perdida)? Então está ok.
+        const { data: jaExiste } = await sb.from('fornecedores').select('id').eq('id', p.id).maybeSingle();
+        if (jaExiste) return;
+        // Outra pessoa cadastrou o mesmo CPF/CNPJ enquanto este estava offline: usa o existente
+        if (await _resolverFornecedorDuplicado(item)) return;
+      }
+      throw error;
+    }
   } else if (item.tipo === 'atualizar_fornecedor') {
     const { error } = await sb.from('fornecedores').update(p.campos).eq('id', p.id);
     if (error) throw error;
@@ -1146,7 +1155,7 @@ async function processarItemFila(item) {
     if (error) throw error;
   } else if (item.tipo === 'vincular_categoria_fornecedor') {
     const { error } = await sb.from('fornecedor_categorias_vinculo').insert(p);
-    if (error) throw error;
+    if (error && error.code !== '23505') throw error; // já vinculado = ok
   } else if (item.tipo === 'enviar_documento_fornecedor') {
     await enviarDocumentoFornecedorParaServidor(p);
   } else if (item.tipo === 'criar_vistoria') {
@@ -1178,6 +1187,35 @@ async function processarItemFila(item) {
   } else if (item.tipo === 'foto_comodo' || item.tipo === 'foto_geral' || item.tipo === 'foto_movel') {
     await enviarFotoParaServidor(p);
   }
+}
+
+// Fornecedor criado offline bateu com um CPF/CNPJ que já existe no sistema:
+// troca, no aparelho e na fila, o fornecedor novo pelo existente.
+async function _resolverFornecedorDuplicado(item) {
+  const p = item.payload;
+  const d = sgSoDigitos(p.cpf_cnpj);
+  if (!d) return false;
+  let existente = null;
+  try { existente = await sgBuscarFornecedorPorDoc(d, p.id); } catch (e) { return false; }
+  if (!existente) return false;
+  const de = p.id, para = existente.id;
+  await idbRemover('fornecedores', de);
+  if (!(await idbPegar('fornecedores', para))) await idbSalvar('fornecedores', { ...p, id: para, razao_social: existente.razao_social, cpf_cnpj: d });
+  for (const im of (await idbTodos('imoveis')).filter(i => i.fornecedor_id === de)) { im.fornecedor_id = para; await idbSalvar('imoveis', im); }
+  if (typeof imovelAtual !== 'undefined' && imovelAtual && imovelAtual.fornecedor_id === de) imovelAtual.fornecedor_id = para;
+  for (const f of await idbTodos('fila')) {
+    if (f.seq === item.seq) continue;
+    const pl = f.payload || {};
+    let mudou = false, remover = false;
+    if (f.tipo === 'criar_imovel' && pl.fornecedor_id === de) { pl.fornecedor_id = para; mudou = true; }
+    if (f.tipo === 'atualizar_imovel' && pl.campos && pl.campos.fornecedor_id === de) { pl.campos.fornecedor_id = para; mudou = true; }
+    if ((f.tipo === 'vincular_categoria_fornecedor' || f.tipo === 'criar_contato_fornecedor') && pl.fornecedor_id === de) { pl.fornecedor_id = para; mudou = true; }
+    if (f.tipo === 'enviar_documento_fornecedor' && pl.fornecedorId === de) { pl.fornecedorId = para; mudou = true; }
+    if (f.tipo === 'atualizar_fornecedor' && pl.id === de) remover = true; // não sobrescreve o cadastro de outra pessoa
+    if (remover) await idbRemover('fila', f.seq); else if (mudou) await idbSalvar('fila', f);
+  }
+  mostrarToast(`"${existente.razao_social}" já estava cadastrado — o imóvel foi ligado ao cadastro existente.`, 'sucesso');
+  return true;
 }
 
 let _sincronizando = false;
@@ -2122,7 +2160,7 @@ function _selecionarTipoPessoaFornecedor(tipo) {
   document.getElementById('nf-btn-pf').classList.toggle('sel', tipo === 'PF');
   document.getElementById('nf-btn-pj').classList.toggle('sel', tipo === 'PJ');
   document.getElementById('nf-rotulo-nome').textContent = tipo === 'PF' ? 'Nome' : 'Razão Social';
-  document.getElementById('nf-rotulo-doc').textContent = tipo === 'PF' ? 'CPF' : 'CNPJ';
+  document.getElementById('nf-rotulo-doc').textContent = tipo === 'PF' ? 'CPF *' : 'CNPJ *';
   document.getElementById('bloco-nf-representante').style.display = tipo === 'PJ' ? 'block' : 'none';
   renderizarCategoriasFornecedor(); // o checklist de documentos muda conforme PF/PJ (aplica_pf / aplica_pj)
 }
@@ -2178,11 +2216,82 @@ async function anexarDocumentoFornecedor(input, tipoId) {
   } catch (e) { mostrarToast('Erro ao processar o arquivo: ' + e.message, 'erro'); }
 }
 
+// ── CPF/CNPJ: validação (dígitos verificadores) e busca de duplicado ──
+// Mesma regra no módulo web e no app de campo. O banco também barra
+// duplicados (índice único), isto aqui só avisa antes e de forma clara.
+function sgSoDigitos(v) { return String(v || '').replace(/\D/g, ''); }
+function sgValidarCpfCnpj(valor, tipoPessoa) {
+  const d = sgSoDigitos(valor);
+  if (!d) return { ok: false, msg: 'Informe o ' + (tipoPessoa === 'PF' ? 'CPF' : tipoPessoa === 'PJ' ? 'CNPJ' : 'CPF ou CNPJ') + ' — é obrigatório pra evitar cadastro duplicado.' };
+  if (tipoPessoa === 'PF' && d.length !== 11) return { ok: false, msg: 'CPF precisa ter 11 números.' };
+  if (tipoPessoa === 'PJ' && d.length !== 14) return { ok: false, msg: 'CNPJ precisa ter 14 números.' };
+  if (d.length !== 11 && d.length !== 14) return { ok: false, msg: 'CPF tem 11 números e CNPJ tem 14.' };
+  if (/^(\d)\1+$/.test(d)) return { ok: false, msg: (d.length === 11 ? 'CPF' : 'CNPJ') + ' inválido.' };
+  if (d.length === 11) {
+    const dv = (n) => { let s = 0; for (let i = 0; i < n; i++) s += +d[i] * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
+    if (dv(9) !== +d[9] || dv(10) !== +d[10]) return { ok: false, msg: 'CPF inválido — confira os números.' };
+  } else {
+    const dv = (n) => { const pesos = n === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2]; let s = 0; for (let i = 0; i < n; i++) s += +d[i] * pesos[i]; const r = s % 11; return r < 2 ? 0 : 11 - r; };
+    if (dv(12) !== +d[12] || dv(13) !== +d[13]) return { ok: false, msg: 'CNPJ inválido — confira os números.' };
+  }
+  return { ok: true, digitos: d, tipo: d.length === 11 ? 'PF' : 'PJ' };
+}
+function sgFormatarCpfCnpj(d) {
+  d = sgSoDigitos(d);
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  return d;
+}
+// Procura no banco outro fornecedor com o mesmo CPF/CNPJ (com ou sem pontuação)
+async function sgBuscarFornecedorPorDoc(digitos, ignorarId) {
+  const { data, error } = await sb.from('fornecedores').select('id,razao_social,ativo,cpf_cnpj')
+    .or(`cpf_cnpj.eq.${digitos},cpf_cnpj.eq."${sgFormatarCpfCnpj(digitos)}"`).limit(5);
+  if (error) throw error;
+  return (data || []).find(f => f.id !== ignorarId) || null;
+}
+
+// Já existe fornecedor com esse CPF/CNPJ (no aparelho ou no sistema)? Oferece usar o existente.
+async function _fornecedorDuplicado(doc, ignorarId) {
+  const local = (await idbTodos('fornecedores')).find(f => f.id !== ignorarId && sgSoDigitos(f.cpf_cnpj) === doc);
+  if (local) return local;
+  if (!navigator.onLine) return null;
+  try {
+    const remoto = await sgBuscarFornecedorPorDoc(doc, ignorarId);
+    if (remoto && remoto.ativo !== false) await idbSalvar('fornecedores', { ...remoto, cpf_cnpj: sgSoDigitos(remoto.cpf_cnpj) });
+    return remoto;
+  } catch (e) { return null; } // sem checagem online: o banco ainda barra na sincronização
+}
+
 async function salvarNovoFornecedor() {
   const erroEl = document.getElementById('nf-erro');
+  erroEl.textContent = '';
   const nome = document.getElementById('nf-nome').value.trim();
   const doc = document.getElementById('nf-cpf-cnpj').value.replace(/\D/g, '');
   if (!nome) { erroEl.textContent = 'Informe o nome.'; return; }
+  // CPF/CNPJ obrigatório e válido — é o que impede cadastrar o mesmo fornecedor duas vezes
+  const vDoc = sgValidarCpfCnpj(doc, _tipoPessoaFornecedorAtual);
+  if (!vDoc.ok) { erroEl.textContent = vDoc.msg; return; }
+  const dup = await _fornecedorDuplicado(doc, _fornecedorEditandoId);
+  if (dup) {
+    const rotulo = doc.length === 11 ? 'CPF' : 'CNPJ';
+    if (_fornecedorEditandoId || dup.ativo === false) {
+      erroEl.textContent = `Esse ${rotulo} já é do fornecedor "${dup.razao_social || ''}"${dup.ativo === false ? ' (inativo — reative pelo módulo web)' : ''}.`;
+      return;
+    }
+    if (confirm(`Já existe um fornecedor com esse ${rotulo}:\n\n${dup.razao_social || '(sem nome)'}\n\nUsar esse cadastro em vez de criar outro?`)) {
+      if (_origemNovoFornecedor === 'imovel') {
+        await _preencherSelectsImovelForm();
+        document.getElementById('ni-fornecedor').value = dup.id;
+        mostrarTela('tela-novo-imovel');
+      } else {
+        await abrirNovoImovel(dup.id);
+      }
+      mostrarToast('Fornecedor existente selecionado.', 'sucesso');
+    } else {
+      erroEl.textContent = `Não dá pra cadastrar: o ${rotulo} já pertence a "${dup.razao_social || ''}".`;
+    }
+    return;
+  }
 
   const camposComuns = {
     tipo_pessoa: _tipoPessoaFornecedorAtual,
