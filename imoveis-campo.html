@@ -239,6 +239,47 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     justify-content:center;font-size:24px;color:var(--blue2);cursor:pointer;background:rgba(90,166,238,.05);}
   .foto-add small{font-size:10.5px;font-weight:700;}
   .foto-add-galeria{color:var(--text2);}
+  /* ===== Abas do imóvel + gestão ===== */
+  .abas-imovel{display:flex;gap:6px;padding:10px 16px;background:var(--navy2);border-bottom:1px solid var(--border);}
+  .abas-imovel button{flex:1;min-height:42px;border-radius:11px;border:1px solid var(--border2);background:var(--navy3);color:var(--text2);font-weight:700;font-size:13.5px;cursor:pointer;}
+  .abas-imovel button.ativa{background:var(--orange);border-color:var(--orange);color:#fff;}
+  .gest-faixa{background:var(--navy3);border:1px solid var(--border2);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--text2);margin-bottom:12px;}
+  .gest-faixa.offline{background:rgba(224,85,85,.12);border-color:rgba(224,85,85,.4);color:var(--err-txt);}
+  .gest-card{background:var(--navy2);border:1px solid var(--border);border-radius:var(--raio);padding:14px 14px 10px 16px;margin-bottom:12px;}
+  .gest-titulo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;margin-bottom:8px;}
+  .gest-cont{font-size:12px;font-weight:600;color:var(--text3);}
+  .gest-btn-add{margin-left:auto;background:rgba(90,166,238,.1);border:1px solid var(--border2);color:var(--blue2);border-radius:10px;min-height:36px;padding:0 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .gest-alerta{padding:9px 11px;border-radius:10px;font-size:13.5px;margin-bottom:6px;font-weight:600;}
+  .gest-alerta.erro{background:rgba(224,85,85,.13);color:var(--err-txt);} .gest-alerta.aviso{background:rgba(224,168,48,.14);color:var(--warn-txt);}
+  .gest-alerta.info{background:rgba(46,123,196,.14);color:var(--info-txt);}
+  .gest-ok{color:var(--ok-txt);font-size:13.5px;font-weight:600;padding:4px 0 6px;}
+  .gest-linha{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:13.5px;}
+  .gest-linha span{color:var(--text3);white-space:nowrap;} .gest-linha b{font-weight:600;text-align:right;word-break:break-word;}
+  .gest-acoes{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 6px;}
+  .gest-acao{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 12px;border-radius:999px;background:var(--navy3);border:1px solid var(--border2);color:var(--text);font-size:13px;font-weight:600;text-decoration:none;}
+  .gest-sep{height:1px;background:var(--border);margin:8px 0;}
+  .gest-ocup{display:flex;align-items:center;gap:10px;margin:-2px 0 4px;font-size:12.5px;color:var(--text2);}
+  .gest-ocup-barra{flex:1;height:8px;border-radius:5px;background:var(--navy4);overflow:hidden;}
+  .gest-ocup-barra i{display:block;height:100%;background:var(--green);} .gest-ocup-barra i.lotado{background:var(--amber);} .gest-ocup-barra i.cheio{background:var(--red);}
+  .gest-audit{font-size:11.5px;color:var(--text3);margin-top:10px;line-height:1.5;}
+  .gest-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);}
+  .gest-item.apagado{opacity:.7;}
+  .gest-item-ic{font-size:20px;width:26px;text-align:center;flex-shrink:0;}
+  .gest-item-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .gest-item-txt b{font-size:14px;font-weight:600;} .gest-item-txt span{font-size:12px;color:var(--text3);}
+  .gest-item-bts{display:flex;gap:6px;flex-shrink:0;}
+  .gest-btn{background:var(--navy3);border:1px solid var(--border2);color:var(--text);border-radius:10px;min-height:36px;padding:0 11px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .gest-chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  .gest-chip.paga{background:rgba(46,204,138,.15);color:var(--ok-txt);} .gest-chip.pendente{background:rgba(224,168,48,.16);color:var(--warn-txt);}
+  .gest-chip.vencida{background:rgba(224,85,85,.16);color:var(--err-txt);}
+  .gest-obrig{font-style:normal;font-size:10.5px;color:var(--warn-txt);font-weight:700;margin-left:4px;}
+  .gest-reprov{color:var(--err-txt)!important;}
+  .gest-det summary{cursor:pointer;color:var(--blue2);font-size:13px;font-weight:700;padding:8px 0;list-style:none;}
+  .gf-lista{max-height:220px;overflow:auto;border:1px solid var(--border2);border-radius:12px;margin-bottom:12px;}
+  .gf-opcao{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:12px 14px;font-size:14.5px;cursor:pointer;}
+  .gf-opcao.sel{background:rgba(241,90,36,.16);color:var(--lar-txt);font-weight:700;}
+  .gf-check{display:flex;align-items:center;gap:10px;font-size:14.5px;margin:4px 0 12px;}
+  .gf-check input{width:20px;height:20px;accent-color:var(--orange);}
   .doc-acoes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
   .doc-acoes button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:62px;
     background:var(--navy3);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-size:20px;cursor:pointer;}
@@ -436,13 +477,18 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     <button class="topo-icone" aria-label="Mais opções" onclick="abrirModal('modal-menu-imovel')"><svg class="ic"><use href="#i-menu"/></svg></button>
   </div>
   <div class="status-barra" id="status-barra-2"></div>
+  <div class="abas-imovel">
+    <button id="aba-btn-fluxo" class="ativa" onclick="mostrarAbaImovel('fluxo')">📋 Vistoria e contrato</button>
+    <button id="aba-btn-gestao" onclick="mostrarAbaImovel('gestao')">🏢 Gestão</button>
+  </div>
   <div class="passos" id="passos-imovel"></div>
-  <div class="conteudo">
+  <div class="conteudo" id="aba-fluxo">
     <div id="imovel-painel"></div>
     <div class="secao-titulo">Vistorias deste imóvel</div>
     <div id="lista-vistorias"></div>
   </div>
-  <button class="fab" onclick="abrirEscolhaTipoVistoria()"><svg class="ic"><use href="#i-mais"/></svg>Nova vistoria</button>
+  <div class="conteudo" id="aba-gestao" style="display:none"></div>
+  <button class="fab" id="fab-vistoria" onclick="abrirEscolhaTipoVistoria()"><svg class="ic"><use href="#i-mais"/></svg>Nova vistoria</button>
 </div>
 
 <!-- ================= PASSO 1: ESCOLHER FORNECEDOR ================= -->
@@ -627,6 +673,18 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   <div id="mobilia-sec" style="padding:12px 16px 0"></div>
   <div class="conteudo" id="lista-comodos"></div>
   <button class="fab" id="fab-comodo" onclick="abrirEscolhaComodo()"><svg class="ic"><use href="#i-mais"/></svg>Cômodo</button>
+</div>
+
+<!-- ================= Modal: formulários da gestão ================= -->
+<div class="modal-overlay" id="modal-gestao-form">
+  <div class="modal">
+    <div class="modal-titulo" id="gf-titulo"></div>
+    <div id="gf-corpo"></div>
+    <div class="erro-msg" id="gf-erro"></div>
+    <button class="btn" id="gf-salvar" onclick="gfSalvarClique()">Salvar</button>
+    <button class="btn btn-secundario" style="margin-top:8px" onclick="fecharModais()">Cancelar</button>
+    <button class="remover-comodo-link" id="gf-excluir" style="display:none" onclick="gfExcluirClique()"><svg class="ic" style="width:17px;height:17px"><use href="#i-lixo"/></svg><span>Excluir</span></button>
+  </div>
 </div>
 
 <!-- ================= Modal: menu do imóvel ================= -->
@@ -976,7 +1034,7 @@ let vistoriaAtual = null;
 // precisa subir pro Supabase quando a internet voltar.
 // ══════════════════════════════════════════════════════════════
 const DB_NOME = 'vistorias_campo_db';
-const DB_VERSAO = 5; // v5: acrescenta 'moveis' (mobília da vistoria) — não apaga nada. v4: v4: acrescenta 'solicitacoes' (status do contrato por imóvel) — não apaga nada. v3: acrescenta 'categorias', 'tipos_documento' e 'docs_fornecedor' — não apaga nada do que já existia
+const DB_VERSAO = 6; // v6: acrescenta 'gestao' (cache da gestão do imóvel, pra ver offline). v5: v5: acrescenta 'moveis' (mobília da vistoria) — não apaga nada. v4: v4: acrescenta 'solicitacoes' (status do contrato por imóvel) — não apaga nada. v3: acrescenta 'categorias', 'tipos_documento' e 'docs_fornecedor' — não apaga nada do que já existia
 let _dbPromise = null;
 
 function abrirDB() {
@@ -998,6 +1056,7 @@ function abrirDB() {
       if (!db.objectStoreNames.contains('docs_fornecedor')) db.createObjectStore('docs_fornecedor', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('solicitacoes')) db.createObjectStore('solicitacoes', { keyPath: 'imovel_id' });
       if (!db.objectStoreNames.contains('moveis')) db.createObjectStore('moveis', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('gestao')) db.createObjectStore('gestao', { keyPath: 'imovel_id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -1358,6 +1417,7 @@ async function iniciarAppLogado() {
   // localmente e não precisa de rede pra isso — só as CONSULTAS é que
   // precisam. Se estiver online, atualiza a lista de imóveis; se não,
   // usa o que já foi guardado da última vez.
+  await _carregarPerfilImoveis(); // gestor ou operador (online atualiza; offline usa o guardado)
   if (navigator.onLine) {
     await _carregarNomeUsuario();
     try { await carregarImoveisDoServidor(); }
@@ -1444,8 +1504,16 @@ async function carregarImoveisDoServidor() {
   const { data: tiposDocData } = await sb.from('documento_tipos').select('id,categoria_id,nome,obrigatorio,tem_validade,aplica_pf,aplica_pj').eq('ativo', true).order('nome');
   await idbSalvarVarios('tipos_documento', tiposDocData || []);
 
-  const { data: imoveis, error } = await sb.from('imoveis').select('id,logradouro,numero,complemento,bairro,cidade,estado,cep,capacidade_pessoas,obra_id,fornecedor_id,criado_por')
-    .eq('criado_por', sessaoAtual.user.id).in('obra_id', obrasIds).order('logradouro');
+  // Gestor (do módulo de imóveis): todos os imóveis das obras dele.
+  // Operador: os que ele cadastrou + os que ele mesmo solicitou contrato.
+  const uid = sessaoAtual.user.id;
+  let qImoveis = sb.from('imoveis').select('*').in('obra_id', obrasIds).order('logradouro');
+  if (!ehGestorImoveis()) {
+    const solicitados = await _idsImoveisSolicitadosPorMim();
+    await idbSalvar('sessao', { chave: 'imoveis_solicitados', valor: solicitados });
+    qImoveis = solicitados.length ? qImoveis.or(`criado_por.eq.${uid},id.in.(${solicitados.join(',')})`) : qImoveis.eq('criado_por', uid);
+  }
+  const { data: imoveis, error } = await qImoveis;
   if (error) throw error;
   await idbSalvarVarios('imoveis', imoveis || []);
   await _removerImoveisQueNaoDevemMaisAparecer(imoveis || []);
@@ -1456,12 +1524,15 @@ async function carregarImoveisDoServidor() {
   // suficiente pra saber o que já existe, não o histórico inteiro
   if (imoveis && imoveis.length) {
     const ids = imoveis.map(i => i.id);
-    // Só as vistorias do próprio usuário — cada vistoriador vê e mexe só
-    // no que é dele. Quem precisa ver de todo mundo usa o módulo web.
-    const { data: vistorias } = await sb.from('imovel_vistorias')
+    // Operador: só as vistorias dele (cada vistoriador mexe no que é dele).
+    // Gestor: as de todos, pra ver a situação real dos imóveis da obra.
+    let qVist = sb.from('imovel_vistorias')
       .select('id,imovel_id,tipo,status,data_vistoria,responsavel,criado_por')
-      .eq('criado_por', sessaoAtual.user.id)
-      .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(200);
+      .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(ehGestorImoveis() ? 500 : 200);
+    if (!ehGestorImoveis()) qVist = qVist.eq('criado_por', sessaoAtual.user.id);
+    const { data: vistorias } = await qVist;
+    // Gestão (contrato, colaboradores, contas…) guardada pra consultar offline — em segundo plano
+    _carregarGestaoDoServidor(ids).catch(() => {});
     await idbSalvarVarios('vistorias', vistorias || []);
     await _removerVistoriasQueNaoDevemMaisAparecer(vistorias || []);
     if (vistorias && vistorias.length) {
@@ -1716,8 +1787,14 @@ function filtrarImoveisPorStatus(chave) {
   renderizarListaImoveis();
 }
 
+let _somenteMeus = false; // gestor: alterna entre "todos da obra" e "só os meus"
+function alternarSomenteMeus() { _somenteMeus = !_somenteMeus; renderizarListaImoveis(); }
+
 async function renderizarListaImoveis() {
-  const imoveis = (await idbTodos('imoveis')).filter(i => !i.criado_por || i.criado_por === sessaoAtual.user.id);
+  const uid = sessaoAtual.user.id;
+  const solicitados = new Set(((await idbPegar('sessao', 'imoveis_solicitados')) || {}).valor || []);
+  const meu = i => !i.criado_por || i.criado_por === uid || solicitados.has(i.id);
+  const imoveis = (await idbTodos('imoveis')).filter(i => (ehGestorImoveis() && !_somenteMeus) ? true : meu(i));
   const el = document.getElementById('lista-imoveis');
   const elChips = document.getElementById('filtros-imoveis');
   const elSub = document.getElementById('home-sub');
@@ -1729,7 +1806,7 @@ async function renderizarListaImoveis() {
     return;
   }
   ferramentas.style.display = '';
-  elSub.textContent = `${imoveis.length} imóve${imoveis.length > 1 ? 'is' : 'l'} · Vistorias em Campo`;
+  elSub.textContent = `${imoveis.length} imóve${imoveis.length > 1 ? 'is' : 'l'} · ${ehGestorImoveis() ? (_somenteMeus ? 'Gestor · só os meus' : 'Gestor · todos da obra') : 'Vistorias em Campo'}`;
   const [vist, sols, fila, fornecedores, obras] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes'), idbTodos('fila'), idbTodos('fornecedores'), idbTodos('obras')]);
   const fornPorId = new Map(fornecedores.map(f => [f.id, f]));
   const obraPorId = new Map(obras.map(o => [o.id, o]));
@@ -1746,7 +1823,7 @@ async function renderizarListaImoveis() {
   const filtrados = _filtroStatusImovelAtual === 'todos' ? comEstado : comEstado.filter(x => x.e.filtroChave === _filtroStatusImovelAtual);
 
   // Só mostra os filtros que têm imóvel (menos rolagem lateral)
-  elChips.innerHTML = FILTROS_STATUS_IMOVEL.filter(f => f.chave === 'todos' || contagem[f.chave] || f.chave === _filtroStatusImovelAtual).map(f => {
+  elChips.innerHTML = (ehGestorImoveis() ? `<button class="chip-filtro ${_somenteMeus ? 'ativo' : ''}" onclick="alternarSomenteMeus()">👤 Só os meus</button>` : '') + FILTROS_STATUS_IMOVEL.filter(f => f.chave === 'todos' || contagem[f.chave] || f.chave === _filtroStatusImovelAtual).map(f => {
     const n = f.chave === 'todos' ? comEstado.length : (contagem[f.chave] || 0);
     return `<button class="chip-filtro ${_filtroStatusImovelAtual === f.chave ? 'ativo' : ''}" onclick="filtrarImoveisPorStatus('${f.chave}')">${f.rotulo}<span class="chip-n">${n}</span></button>`;
   }).join('');
@@ -2201,6 +2278,530 @@ async function salvarNovoFornecedor() {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// Gestão do imóvel (depois da solicitação): resumo/contrato, alertas,
+// colaboradores, contas, patrimônio e documentos.
+// · Perfil vem do módulo de imóveis em usuario_modulos: gestor gerencia,
+//   operador só consulta (e só vê os imóveis que cadastrou/solicitou).
+// · Consulta funciona offline (cache); alterações só com internet, direto
+//   no banco — evita dois gestores mexendo no mesmo dado e gerando conflito.
+// ══════════════════════════════════════════════════════════════
+const MODULOS_PERFIL_IMOVEIS = ['gestao_imoveis', 'imoveis', 'imoveis_gestao', 'gestao_de_imoveis'];
+let perfilImoveis = null; // 'gestor' | 'operador' | 'admin' | null
+function ehGestorImoveis() { return perfilImoveis === 'gestor' || perfilImoveis === 'admin'; }
+
+async function _carregarPerfilImoveis() {
+  if (navigator.onLine && sessaoAtual) {
+    try {
+      const uid = sessaoAtual.user.id;
+      const [{ data: mods, error: e1 }, { data: u }] = await Promise.all([
+        sb.from('usuario_modulos').select('modulo,perfil').eq('usuario_id', uid),
+        sb.from('usuarios').select('perfis(nome)').eq('id', uid).maybeSingle(),
+      ]);
+      if (!e1) {
+        const linhas = mods || [];
+        const m = linhas.find(x => MODULOS_PERFIL_IMOVEIS.includes(x.modulo)) || linhas.find(x => /imove/i.test(x.modulo || ''));
+        let p = m && m.perfil ? String(m.perfil).toLowerCase() : null;
+        if (String(u?.perfis?.nome || '').toLowerCase() === 'admin') p = 'admin';
+        await idbSalvar('sessao', { chave: 'perfil_imoveis', valor: p });
+      }
+    } catch (e) { /* segue com o perfil guardado */ }
+  }
+  const r = await idbPegar('sessao', 'perfil_imoveis');
+  perfilImoveis = r ? r.valor : null;
+}
+
+// Imóveis das solicitações de contrato feitas por mim (operador vê esses também)
+async function _idsImoveisSolicitadosPorMim() {
+  try {
+    const { data: sols } = await sb.from('solicitacoes_contratos').select('id').eq('criado_por', sessaoAtual.user.id).limit(1000);
+    const solIds = (sols || []).map(x => x.id);
+    if (!solIds.length) return [];
+    const { data: itens } = await sb.from('solicitacao_itens').select('imovel_id').in('solicitacao_id', solIds).not('imovel_id', 'is', null);
+    return [...new Set((itens || []).map(i => i.imovel_id))];
+  } catch (e) { return []; }
+}
+
+// ── Busca no servidor e guarda um "retrato" da gestão de cada imóvel ──
+async function _carregarGestaoDoServidor(ids) {
+  if (!navigator.onLine || !ids || !ids.length) return;
+  const lista = ids.join(',');
+  const pegar = async (p) => { try { const r = await p; return r.error ? null : (r.data || []); } catch (e) { return null; } };
+  const [ativos, colabs, contas, patr, cfgDocs, docs, imvs] = await Promise.all([
+    pegar(sb.from('contrato_ativos').select('imovel_id,contrato_id,status,contratos(numero,valor_total,data_inicio,data_fim,status,solicitacao_origem_id)').in('imovel_id', ids).eq('status', 'ativo')),
+    pegar(sb.from('imovel_colaboradores').select('*, colaboradores(nome)').in('imovel_id', ids).order('data_inicio', { ascending: false })),
+    pegar(sb.from('imovel_contas').select('*').in('imovel_id', ids).order('mes_referencia', { ascending: false })),
+    pegar(sb.from('imovel_patrimonio').select('*').in('imovel_id', ids).order('criado_em')),
+    pegar(sb.from('imovel_config_documentos').select('*').or(`imovel_id.is.null,imovel_id.in.(${lista})`).order('ordem')),
+    pegar(sb.from('documentos').select('*').eq('modulo', 'imoveis').in('registro_id', ids).order('criado_em', { ascending: false })),
+    pegar(sb.from('imoveis').select('*').in('id', ids)),
+  ]);
+  // Condições do contrato (caução, dia do aluguel) e valor do aluguel vêm da solicitação de origem
+  const solIds = [...new Set((ativos || []).map(a => a.contratos?.solicitacao_origem_id).filter(Boolean))];
+  let condPorSol = {}, aluguelPorSol = {};
+  if (solIds.length) {
+    const [sols, subs] = await Promise.all([
+      pegar(sb.from('solicitacoes_contratos').select('id,campos_especificos').in('id', solIds)),
+      pegar(sb.from('solicitacao_subitens').select('solicitacao_id,descricao,total').in('solicitacao_id', solIds).ilike('descricao', 'aluguel')),
+    ]);
+    (sols || []).forEach(x => { condPorSol[x.id] = x.campos_especificos || {}; });
+    (subs || []).forEach(x => { aluguelPorSol[x.solicitacao_id] = x.total; });
+  }
+  // Nomes de quem cadastrou/editou
+  const idsUsuarios = [...new Set((imvs || []).flatMap(i => [i.criado_por, i.atualizado_por]).filter(Boolean))];
+  const nomes = {};
+  if (idsUsuarios.length) {
+    const us = await pegar(sb.from('usuarios').select('*').in('id', idsUsuarios));
+    (us || []).forEach(u => {
+      const n = ['nome', 'nome_completo', 'full_name', 'name', 'nome_usuario'].map(k => u[k]).find(v => v && String(v).trim());
+      if (n) nomes[u.id] = String(n).trim();
+    });
+  }
+  const em = new Date().toISOString();
+  const registros = ids.map(id => {
+    const a = (ativos || []).find(x => x.imovel_id === id);
+    const solId = a?.contratos?.solicitacao_origem_id;
+    return {
+      imovel_id: id, em,
+      dados: {
+        imovel: (imvs || []).find(i => i.id === id) || null,
+        contrato: a ? { ...a.contratos, contrato_id: a.contrato_id, condicoes: solId ? (condPorSol[solId] || {}) : {}, aluguel: solId ? aluguelPorSol[solId] : null } : null,
+        colaboradores: colabs ? colabs.filter(c => c.imovel_id === id) : null,
+        contas: contas ? contas.filter(c => c.imovel_id === id) : null,
+        patrimonio: patr ? patr.filter(p => p.imovel_id === id) : null,
+        docsExigidos: cfgDocs ? cfgDocs.filter(c => !c.imovel_id || c.imovel_id === id) : null,
+        docs: docs ? docs.filter(d => d.registro_id === id) : null,
+        nomes,
+      },
+    };
+  });
+  await idbSalvarVarios('gestao', registros);
+}
+
+// ── Abas do imóvel: "Vistoria e contrato" × "Gestão" ──
+const _abaPorImovel = {};
+function mostrarAbaImovel(aba) {
+  if (imovelAtual) _abaPorImovel[imovelAtual.id] = aba;
+  const gest = aba === 'gestao';
+  document.getElementById('aba-fluxo').style.display = gest ? 'none' : '';
+  document.getElementById('aba-gestao').style.display = gest ? '' : 'none';
+  document.getElementById('passos-imovel').style.display = gest ? 'none' : 'flex';
+  document.getElementById('fab-vistoria').style.display = gest ? 'none' : '';
+  document.getElementById('aba-btn-fluxo').classList.toggle('ativa', !gest);
+  document.getElementById('aba-btn-gestao').classList.toggle('ativa', gest);
+  if (gest) abrirGestao();
+}
+
+async function abrirGestao() {
+  const id = imovelAtual.id;
+  await renderizarGestao(); // mostra o que já tem guardado na hora
+  if (navigator.onLine) {
+    const el = document.getElementById('gestao-atualizando');
+    if (el) el.style.display = '';
+    try { await _carregarGestaoDoServidor([id]); } catch (e) {}
+    if (imovelAtual && imovelAtual.id === id) await renderizarGestao();
+  }
+}
+
+// ── Formatação ──
+const TIPO_CONTA_GESTAO = { agua: 'Água', luz: 'Luz', internet: 'Internet', gas: 'Gás', outro: 'Outro' };
+const ICONE_CONTA = { agua: '💧', luz: '💡', internet: '🌐', gas: '🔥', outro: '🧾' };
+function _diasAte(iso) { if (!iso) return null; const d = new Date(iso + 'T12:00:00'); const h = new Date(hojeLocalISO() + 'T12:00:00'); return Math.round((d - h) / 86400000); }
+function _fmtMes(iso) { return iso ? new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '') : ''; }
+function _fmtDataHora(iso) { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+function _soDigitos(v) { return String(v || '').replace(/\D/g, ''); }
+
+function _alertasGestao(g, capacidade) {
+  const al = [];
+  const c = g.contrato;
+  if (c && c.data_fim) {
+    const d = _diasAte(c.data_fim);
+    if (d < 0) al.push({ t: 'erro', m: `Contrato vencido há ${-d} dia${d === -1 ? '' : 's'} (${formatarDataBR(c.data_fim)})` });
+    else if (d <= 60) al.push({ t: 'aviso', m: `Contrato vence em ${d} dia${d === 1 ? '' : 's'} (${formatarDataBR(c.data_fim)})` });
+  }
+  const contas = g.contas || [];
+  const vencidas = contas.filter(x => !x.pago && x.vencimento && _diasAte(x.vencimento) < 0);
+  if (vencidas.length) al.push({ t: 'erro', m: `${vencidas.length} conta${vencidas.length > 1 ? 's' : ''} vencida${vencidas.length > 1 ? 's' : ''} · ${_fmtMoedaSimples(vencidas.reduce((s, x) => s + (Number(x.valor) || 0), 0))}` });
+  const logo = contas.filter(x => !x.pago && x.vencimento && _diasAte(x.vencimento) >= 0 && _diasAte(x.vencimento) <= 7);
+  if (logo.length) al.push({ t: 'aviso', m: `${logo.length} conta${logo.length > 1 ? 's' : ''} vence${logo.length > 1 ? 'm' : ''} nos próximos 7 dias` });
+  const ativos = (g.colaboradores || []).filter(x => !x.data_fim).length;
+  if (capacidade && ativos > capacidade) al.push({ t: 'erro', m: `Acima da capacidade: ${ativos} pessoas pra ${capacidade} vagas` });
+  else if (capacidade && ativos === capacidade) al.push({ t: 'info', m: 'Imóvel lotado — sem vagas' });
+  const pend = _docsComStatus(g).filter(x => x.ex.obrigatorio && (!x.ultimo || x.ultimo.status === 'reprovado'));
+  if (pend.length) al.push({ t: 'aviso', m: `${pend.length} documento${pend.length > 1 ? 's' : ''} obrigatório${pend.length > 1 ? 's' : ''} pendente${pend.length > 1 ? 's' : ''}` });
+  return al;
+}
+function _docsComStatus(g) {
+  const porTipo = {};
+  (g.docs || []).forEach(d => { if (!porTipo[d.tipo]) porTipo[d.tipo] = d; }); // já vem do mais novo pro mais velho
+  return (g.docsExigidos || []).map(ex => ({ ex, ultimo: porTipo[ex.tipo_doc] || null }));
+}
+
+async function renderizarGestao() {
+  const el = document.getElementById('aba-gestao');
+  if (!el || !imovelAtual) return;
+  const reg = await idbPegar('gestao', imovelAtual.id);
+  const online = navigator.onLine;
+  const podeEditar = ehGestorImoveis() && online;
+  const atualizando = `<div id="gestao-atualizando" class="dica" style="display:none;margin:0 0 10px">Atualizando…</div>`;
+  if (!reg) {
+    el.innerHTML = atualizando + `<div class="vazio"><div class="vazio-icone">🏢</div>${online ? 'Carregando a gestão deste imóvel…' : 'Sem dados guardados deste imóvel ainda.<br/>Abra esta aba com internet uma vez pra poder consultar offline.'}</div>`;
+    return;
+  }
+  const g = reg.dados;
+  const im = { ...imovelAtual, ...(g.imovel || {}) };
+  const forn = (await idbTodos('fornecedores')).find(f => f.id === im.fornecedor_id);
+  const obra = (await idbTodos('obras')).find(o => o.id === im.obra_id);
+  const sol = (await idbTodos('solicitacoes')).find(x => x.imovel_id === im.id);
+  const cap = parseInt(im.capacidade_pessoas, 10) || 0;
+  const colabs = g.colaboradores || [];
+  const atuais = colabs.filter(x => !x.data_fim), anteriores = colabs.filter(x => x.data_fim);
+
+  // Faixa de perfil / offline
+  const faixa = !online
+    ? `<div class="gest-faixa offline">📴 Sem internet — dados de ${_fmtDataHora(reg.em)}. Pra alterar, conecte.</div>`
+    : ehGestorImoveis() ? '' : `<div class="gest-faixa">👁️ Somente consulta — quem gerencia é o gestor do módulo de imóveis.</div>`;
+
+  // Alertas
+  const al = _alertasGestao(g, cap);
+  const htmlAlertas = `<div class="gest-card">
+    <div class="gest-titulo">Atenção</div>
+    ${al.length ? al.map(a => `<div class="gest-alerta ${a.t}">${a.t === 'erro' ? '⛔' : a.t === 'aviso' ? '⚠️' : 'ℹ️'} ${esc(a.m)}</div>`).join('') : '<div class="gest-ok">✅ Nada pendente neste imóvel</div>'}
+  </div>`;
+
+  // Resumo + contrato
+  const c = g.contrato, cond = c?.condicoes || {};
+  const endereco = [im.logradouro, im.numero, im.bairro, im.cidade, im.estado].filter(Boolean).join(', ');
+  const tel = _soDigitos(forn?.telefone);
+  const telWa = tel ? (tel.length <= 11 ? '55' + tel : tel) : '';
+  const linhaItem = (rot, val) => val ? `<div class="gest-linha"><span>${rot}</span><b>${val}</b></div>` : '';
+  const ocup = cap ? `<div class="gest-ocup"><div class="gest-ocup-barra"><i style="width:${Math.min(100, Math.round(atuais.length / cap * 100))}%" class="${atuais.length > cap ? 'cheio' : atuais.length === cap ? 'lotado' : ''}"></i></div><span>${atuais.length} de ${cap} pessoas</span></div>` : '';
+  const audit = [
+    im.criado_por || im.criado_em ? `Cadastrado${g.nomes?.[im.criado_por] ? ' por ' + esc(g.nomes[im.criado_por]) : ''}${im.criado_em ? ' · ' + _fmtDataHora(im.criado_em) : ''}` : '',
+    im.atualizado_em ? `Editado${g.nomes?.[im.atualizado_por] ? ' por ' + esc(g.nomes[im.atualizado_por]) : ''} · ${_fmtDataHora(im.atualizado_em)}` : '',
+  ].filter(Boolean).join('<br/>');
+  const htmlResumo = `<div class="gest-card">
+    <div class="gest-titulo">Imóvel e contrato</div>
+    ${linhaItem('Locador', esc(forn?.razao_social || '—'))}
+    ${(tel || forn?.email) ? `<div class="gest-acoes">
+      ${tel ? `<a class="gest-acao" href="tel:${tel}">📞 Ligar</a><a class="gest-acao" href="https://wa.me/${telWa}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
+      ${forn?.email ? `<a class="gest-acao" href="mailto:${esc(forn.email)}">✉️ E-mail</a>` : ''}
+    </div>` : ''}
+    ${linhaItem('Endereço', esc(endereco || '—'))}
+    ${endereco ? `<div class="gest-acoes"><a class="gest-acao" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}" target="_blank" rel="noopener">🗺️ Abrir no mapa</a></div>` : ''}
+    ${linhaItem('Obra', esc(obra?.nome || ''))}
+    ${cap ? `<div class="gest-linha"><span>Ocupação</span></div>${ocup}` : ''}
+    <div class="gest-sep"></div>
+    ${c ? `
+      ${linhaItem('Contrato', esc(c.numero || '—'))}
+      ${linhaItem('Vigência', c.data_inicio ? `${formatarDataBR(c.data_inicio)} → ${c.data_fim ? formatarDataBR(c.data_fim) : 'indeterminada'}` : '')}
+      ${linhaItem('Aluguel', c.aluguel ? _fmtMoedaSimples(c.aluguel) + '/mês' : '')}
+      ${linhaItem('Dia do pagamento', cond.dia_pgto_aluguel ? 'Dia ' + cond.dia_pgto_aluguel : '')}
+      ${linhaItem('Caução', cond.caucao_meses || cond.caucao_valor ? [cond.caucao_meses ? cond.caucao_meses + ' meses' : '', cond.caucao_valor ? _fmtMoedaSimples(cond.caucao_valor) : ''].filter(Boolean).join(' · ') : '')}
+      ${linhaItem('Valor total', c.valor_total ? _fmtMoedaSimples(c.valor_total) : '')}`
+    : `<div class="card-sub">Sem contrato ativo ainda${sol ? ' · ' + esc(_rotuloStatusSolicitacao(sol.status).txt) + (sol.numero_ano ? ' (' + esc(_numSolicitacao(sol)) + ')' : '') : ''}.</div>`}
+    ${audit ? `<div class="gest-audit">${audit}</div>` : ''}
+  </div>`;
+
+  // Colaboradores
+  const htmlColab = g.colaboradores === null ? _cardIndisponivel('Colaboradores alocados') : `<div class="gest-card">
+    <div class="gest-titulo">Colaboradores alocados <span class="gest-cont">${atuais.length}</span>
+      ${podeEditar ? '<button class="gest-btn-add" onclick="abrirAlocarColaborador()">+ Alocar</button>' : ''}</div>
+    ${atuais.length ? atuais.map(a => `<div class="gest-item">
+        <div class="gest-item-txt"><b>${esc(a.colaboradores?.nome || '—')}</b><span>desde ${formatarDataBR(a.data_inicio)}${a.observacao ? ' · ' + esc(a.observacao) : ''}</span></div>
+        ${podeEditar ? `<button class="gest-btn" onclick="abrirEncerrarAlocacao('${a.id}')">Encerrar</button>` : ''}
+      </div>`).join('') : '<div class="card-sub">Ninguém alocado no momento.</div>'}
+    ${anteriores.length ? `<details class="gest-det"><summary>Histórico (${anteriores.length})</summary>
+      ${anteriores.map(a => `<div class="gest-item apagado"><div class="gest-item-txt"><b>${esc(a.colaboradores?.nome || '—')}</b><span>${formatarDataBR(a.data_inicio)} → ${formatarDataBR(a.data_fim)}</span></div>
+        ${podeEditar ? `<button class="gest-btn" onclick="abrirEncerrarAlocacao('${a.id}')">Editar</button>` : ''}</div>`).join('')}
+    </details>` : ''}
+  </div>`;
+
+  // Contas
+  const contas = g.contas || [];
+  const pendentes = contas.filter(x => !x.pago);
+  const itemConta = x => {
+    const venc = x.vencimento ? _diasAte(x.vencimento) : null;
+    const st = x.pago ? ['paga', 'Paga'] : (venc !== null && venc < 0) ? ['vencida', 'Vencida'] : ['pendente', 'Pendente'];
+    return `<div class="gest-item" ${podeEditar ? `onclick="abrirFormConta('${x.id}')" style="cursor:pointer"` : ''}>
+      <div class="gest-item-ic">${ICONE_CONTA[x.tipo] || '🧾'}</div>
+      <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[x.tipo] || x.tipo || 'Conta')} · ${_fmtMes(x.mes_referencia)}</b>
+        <span>${x.valor ? _fmtMoedaSimples(x.valor) : 'sem valor'}${x.vencimento ? ' · vence ' + formatarDataBR(x.vencimento) : ''}</span></div>
+      <span class="gest-chip ${st[0]}">${st[1]}</span>
+      ${podeEditar && !x.pago ? `<button class="gest-btn" onclick="event.stopPropagation();marcarContaPaga('${x.id}')">✓ Paga</button>` : ''}
+    </div>`;
+  };
+  const htmlContas = g.contas === null ? _cardIndisponivel('Contas') : `<div class="gest-card">
+    <div class="gest-titulo">Contas <span class="gest-cont">${pendentes.length ? pendentes.length + ' em aberto · ' + _fmtMoedaSimples(pendentes.reduce((s, x) => s + (Number(x.valor) || 0), 0)) : 'em dia'}</span>
+      ${podeEditar ? '<button class="gest-btn-add" onclick="abrirFormConta()">+ Conta</button>' : ''}</div>
+    ${contas.length ? contas.slice(0, 8).map(itemConta).join('') : '<div class="card-sub">Nenhuma conta lançada.</div>'}
+    ${contas.length > 8 ? `<details class="gest-det"><summary>Mais antigas (${contas.length - 8})</summary>${contas.slice(8).map(itemConta).join('')}</details>` : ''}
+  </div>`;
+
+  // Patrimônio
+  const patr = g.patrimonio || [];
+  const htmlPatr = g.patrimonio === null ? _cardIndisponivel('Patrimônio da empresa') : `<div class="gest-card">
+    <div class="gest-titulo">Patrimônio da empresa <span class="gest-cont">${patr.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 1), 0)} ite${patr.length === 1 ? 'm' : 'ns'}</span>
+      ${podeEditar ? '<button class="gest-btn-add" onclick="abrirFormPatrimonio()">+ Item</button>' : ''}</div>
+    <div class="card-sub" style="margin:-4px 0 6px">Móveis e equipamentos da empresa neste imóvel (não do locador).</div>
+    ${patr.length ? patr.map(p => `<div class="gest-item" ${podeEditar ? `onclick="abrirFormPatrimonio('${p.id}')" style="cursor:pointer"` : ''}>
+      <div class="gest-item-txt"><b>${esc(p.descricao)}${(parseInt(p.quantidade, 10) || 1) > 1 ? ' × ' + p.quantidade : ''}</b>
+        <span>${p.numero_patrimonio ? 'Nº ' + esc(p.numero_patrimonio) : 'Sem nº de patrimônio'}${p.observacao ? ' · ' + esc(p.observacao) : ''}</span></div>
+    </div>`).join('') : '<div class="card-sub">Nenhum item cadastrado.</div>'}
+  </div>`;
+
+  // Documentos
+  const lstDocs = _docsComStatus(g);
+  _gdocTipos = lstDocs.map(x => x.ex.tipo_doc);
+  const htmlDocs = (g.docsExigidos === null || g.docs === null) ? _cardIndisponivel('Documentos do imóvel') : `<div class="gest-card">
+    <div class="gest-titulo">Documentos do imóvel <span class="gest-cont">${lstDocs.filter(x => x.ultimo && x.ultimo.status === 'aprovado').length}/${lstDocs.length} aprovados</span></div>
+    ${lstDocs.length ? lstDocs.map(({ ex, ultimo }, iDoc) => {
+      const st = ultimo?.status;
+      const ic = !ultimo ? '⏳' : st === 'aprovado' ? '✅' : st === 'reprovado' ? '❌' : '📎';
+      return `<div class="gest-item">
+        <div class="gest-item-ic">${ic}</div>
+        <div class="gest-item-txt"><b>${esc(ex.descricao || ex.tipo_doc)}${ex.obrigatorio ? ' <em class="gest-obrig">obrigatório</em>' : ''}</b>
+          <span>${ultimo ? esc(ultimo.nome_arquivo || 'arquivo') + ' · ' + esc(st || 'enviado') : 'não enviado'}</span>
+          ${st === 'reprovado' && ultimo.observacao_gestor ? `<span class="gest-reprov">⚠️ ${esc(ultimo.observacao_gestor)}</span>` : ''}</div>
+        <div class="gest-item-bts">
+          ${ultimo && sgTemArquivo(ultimo) && online ? `<button class="gest-btn" onclick="sgAbrirPorChave('${sgGuardar(ultimo)}')">Abrir</button>` : ''}
+          ${podeEditar ? `<button class="gest-btn" onclick="document.getElementById('gdoc-${iDoc}').click()">${ultimo ? 'Trocar' : 'Anexar'}</button>
+            <input type="file" id="gdoc-${iDoc}" accept="image/*,application/pdf" style="display:none" onchange="anexarDocImovel(${iDoc},this)"/>` : ''}
+        </div>
+      </div>`;
+    }).join('') : '<div class="card-sub">Nenhum documento configurado pra imóveis.</div>'}
+  </div>`;
+
+  el.innerHTML = atualizando + faixa + htmlAlertas + htmlResumo + htmlColab + htmlContas + htmlPatr + htmlDocs +
+    `<div class="dica" style="margin:6px 0 4px">Atualizado em ${_fmtDataHora(reg.em)}</div>`;
+}
+function _cardIndisponivel(titulo) {
+  return `<div class="gest-card"><div class="gest-titulo">${titulo}</div><div class="card-sub">Não foi possível carregar (sem permissão ou tabela indisponível).</div></div>`;
+}
+
+// ── Formulário genérico (bottom sheet) ──
+let _gfSalvar = null, _gfExcluir = null;
+function abrirFormGestao({ titulo, html, rotuloSalvar, onSalvar, onExcluir, rotuloExcluir }) {
+  document.getElementById('gf-titulo').textContent = titulo;
+  document.getElementById('gf-corpo').innerHTML = html;
+  document.getElementById('gf-erro').textContent = '';
+  const bs = document.getElementById('gf-salvar');
+  bs.textContent = rotuloSalvar || 'Salvar'; bs.disabled = false;
+  const be = document.getElementById('gf-excluir');
+  be.style.display = onExcluir ? '' : 'none';
+  be.querySelector('span').textContent = rotuloExcluir || 'Excluir';
+  _gfSalvar = onSalvar; _gfExcluir = onExcluir;
+  abrirModal('modal-gestao-form');
+}
+async function _gfExecutar(fn) {
+  if (!fn) return;
+  if (!navigator.onLine) { document.getElementById('gf-erro').textContent = 'Sem internet — alterações da gestão precisam de conexão.'; return; }
+  const bs = document.getElementById('gf-salvar');
+  bs.disabled = true;
+  try {
+    const ok = await fn();
+    if (ok === false) { bs.disabled = false; return; }
+    fecharModais();
+    await _carregarGestaoDoServidor([imovelAtual.id]);
+    await renderizarGestao();
+  } catch (e) {
+    document.getElementById('gf-erro').textContent = 'Erro: ' + (e.message || e);
+    bs.disabled = false;
+  }
+}
+function gfSalvarClique() { _gfExecutar(_gfSalvar); }
+function gfExcluirClique() { _gfExecutar(_gfExcluir); }
+function _gfValor(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function _gfErro(msg) { document.getElementById('gf-erro').textContent = msg; return false; }
+async function _gestaoAtual() { return ((await idbPegar('gestao', imovelAtual.id)) || {}).dados || {}; }
+
+// ── Colaboradores ──
+let _colabsAtivosCache = null;
+async function abrirAlocarColaborador() {
+  if (!navigator.onLine) { mostrarToast('Sem internet — conecte pra alocar.', 'erro'); return; }
+  abrirFormGestao({
+    titulo: 'Alocar colaborador', rotuloSalvar: 'Alocar',
+    html: `<span class="rotulo">Colaborador</span>
+      <div class="busca" style="margin-bottom:8px"><svg class="ic" style="width:19px;height:19px"><use href="#i-busca"/></svg>
+        <input type="search" id="gf-colab-busca" placeholder="Buscar pelo nome" oninput="_filtrarColabsForm()"/></div>
+      <input type="hidden" id="gf-colab-id"/>
+      <div id="gf-colab-lista" class="gf-lista"><div class="card-sub">Carregando…</div></div>
+      <span class="rotulo">Data de entrada</span>
+      <div class="campo"><input type="date" id="gf-colab-inicio" value="${hojeLocalISO()}"/></div>
+      <span class="rotulo">Observação (opcional)</span>
+      <div class="campo"><input type="text" id="gf-colab-obs"/></div>`,
+    onSalvar: salvarAlocacao,
+  });
+  if (!_colabsAtivosCache) {
+    const { data, error } = await sb.from('colaboradores').select('id,nome').eq('ativo', true).order('nome');
+    if (error) { document.getElementById('gf-colab-lista').innerHTML = '<div class="card-sub">Não foi possível carregar os colaboradores.</div>'; return; }
+    _colabsAtivosCache = data || [];
+  }
+  _filtrarColabsForm();
+}
+function _filtrarColabsForm() {
+  const termo = _normalizar(_gfValor('gf-colab-busca'));
+  const sel = _gfValor('gf-colab-id');
+  const lista = (_colabsAtivosCache || []).filter(c => !termo || _normalizar(c.nome).includes(termo)).slice(0, 40);
+  document.getElementById('gf-colab-lista').innerHTML = lista.length
+    ? lista.map(c => `<button type="button" class="gf-opcao ${c.id === sel ? 'sel' : ''}" onclick="_escolherColab('${c.id}')">${esc(c.nome)}</button>`).join('')
+    : '<div class="card-sub">Nenhum colaborador encontrado.</div>';
+}
+function _escolherColab(id) { document.getElementById('gf-colab-id').value = id; _filtrarColabsForm(); }
+async function salvarAlocacao() {
+  const colaboradorId = _gfValor('gf-colab-id'), dataInicio = _gfValor('gf-colab-inicio');
+  if (!colaboradorId) return _gfErro('Escolha o colaborador.');
+  if (!dataInicio) return _gfErro('Informe a data de entrada.');
+  const g = await _gestaoAtual();
+  const cap = parseInt((g.imovel || imovelAtual).capacidade_pessoas, 10) || 0;
+  const ativos = (g.colaboradores || []).filter(x => !x.data_fim);
+  if (ativos.some(x => x.colaborador_id === colaboradorId)) return _gfErro('Esse colaborador já está alocado aqui.');
+  if (cap && ativos.length >= cap && !confirm(`O imóvel já está com ${ativos.length} de ${cap} vagas ocupadas. Alocar mesmo assim?`)) return false;
+  // Um colaborador só fica em um imóvel por vez — encerra a alocação anterior (mesma regra do módulo web)
+  const { data: aberta } = await sb.from('imovel_colaboradores').select('id,imovel_id').eq('colaborador_id', colaboradorId).is('data_fim', null).maybeSingle();
+  if (aberta) {
+    if (!confirm('Esse colaborador está alocado em outro imóvel. A alocação anterior será encerrada um dia antes da entrada aqui. Continuar?')) return false;
+    const fim = new Date(dataInicio + 'T12:00:00'); fim.setDate(fim.getDate() - 1);
+    const { error: e1 } = await sb.from('imovel_colaboradores').update({ data_fim: fim.toISOString().slice(0, 10) }).eq('id', aberta.id);
+    if (e1) throw e1;
+  }
+  const { error } = await sb.from('imovel_colaboradores').insert({
+    imovel_id: imovelAtual.id, colaborador_id: colaboradorId, data_inicio: dataInicio,
+    observacao: _gfValor('gf-colab-obs') || null, criado_por: sessaoAtual.user.id,
+  });
+  if (error) throw error;
+  mostrarToast('Colaborador alocado!', 'sucesso');
+}
+async function abrirEncerrarAlocacao(id) {
+  const a = ((await _gestaoAtual()).colaboradores || []).find(x => x.id === id);
+  if (!a) return;
+  abrirFormGestao({
+    titulo: a.data_fim ? 'Editar saída' : 'Encerrar alocação', rotuloSalvar: a.data_fim ? 'Salvar' : 'Encerrar',
+    html: `<div class="card-sub" style="margin-bottom:6px"><b>${esc(a.colaboradores?.nome || '')}</b> · entrou em ${formatarDataBR(a.data_inicio)}</div>
+      <span class="rotulo">Data de saída</span>
+      <div class="campo"><input type="date" id="gf-enc-fim" value="${a.data_fim || hojeLocalISO()}" min="${a.data_inicio}"/></div>`,
+    onSalvar: async () => {
+      const fim = _gfValor('gf-enc-fim');
+      if (!fim) return _gfErro('Informe a data de saída.');
+      if (fim < a.data_inicio) return _gfErro('A saída não pode ser antes da entrada.');
+      const { error } = await sb.from('imovel_colaboradores').update({ data_fim: fim }).eq('id', id);
+      if (error) throw error;
+      mostrarToast('Alocação atualizada.', 'sucesso');
+    },
+    rotuloExcluir: 'Apagar este registro (lançado por engano)',
+    onExcluir: async () => {
+      if (!confirm('Apagar este registro de alocação? Use só se foi lançado por engano.')) return false;
+      const { error } = await sb.from('imovel_colaboradores').delete().eq('id', id);
+      if (error) throw error;
+    },
+  });
+}
+
+// ── Contas ──
+async function abrirFormConta(id) {
+  const c = id ? ((await _gestaoAtual()).contas || []).find(x => x.id === id) : null;
+  if (id && !c) return;
+  const mesAtual = hojeLocalISO().slice(0, 7);
+  abrirFormGestao({
+    titulo: c ? 'Editar conta' : 'Lançar conta',
+    html: `<span class="rotulo">Tipo</span>
+      <div class="campo"><select id="gf-conta-tipo">${Object.entries(TIPO_CONTA_GESTAO).map(([k, v]) => `<option value="${k}" ${(c?.tipo || 'agua') === k ? 'selected' : ''}>${ICONE_CONTA[k]} ${v}</option>`).join('')}</select></div>
+      <div style="display:flex;gap:10px">
+        <div class="campo" style="flex:1"><span class="rotulo">Mês de referência</span><input type="month" id="gf-conta-mes" value="${c?.mes_referencia ? c.mes_referencia.slice(0, 7) : mesAtual}"/></div>
+        <div class="campo" style="flex:1"><span class="rotulo">Valor (R$)</span><input type="number" id="gf-conta-valor" step="0.01" min="0" inputmode="decimal" value="${c?.valor ?? ''}"/></div>
+      </div>
+      <span class="rotulo">Vencimento</span>
+      <div class="campo"><input type="date" id="gf-conta-venc" value="${c?.vencimento || ''}"/></div>
+      <label class="gf-check"><input type="checkbox" id="gf-conta-pago" ${c?.pago ? 'checked' : ''}/> Já está paga</label>`,
+    onSalvar: async () => {
+      const mes = _gfValor('gf-conta-mes');
+      if (!mes) return _gfErro('Informe o mês de referência.');
+      const payload = {
+        tipo: _gfValor('gf-conta-tipo'), mes_referencia: mes + '-01',
+        valor: _gfValor('gf-conta-valor') ? parseFloat(_gfValor('gf-conta-valor')) : null,
+        vencimento: _gfValor('gf-conta-venc') || null, pago: document.getElementById('gf-conta-pago').checked,
+      };
+      const { error } = c
+        ? await sb.from('imovel_contas').update(payload).eq('id', c.id)
+        : await sb.from('imovel_contas').insert({ ...payload, imovel_id: imovelAtual.id, criado_por: sessaoAtual.user.id });
+      if (error) throw error;
+      mostrarToast('Conta salva!', 'sucesso');
+    },
+    onExcluir: c ? async () => {
+      if (!confirm('Excluir esta conta?')) return false;
+      const { error } = await sb.from('imovel_contas').delete().eq('id', c.id);
+      if (error) throw error;
+    } : null,
+  });
+}
+async function marcarContaPaga(id) {
+  if (!navigator.onLine) { mostrarToast('Sem internet — conecte pra alterar.', 'erro'); return; }
+  const { error } = await sb.from('imovel_contas').update({ pago: true }).eq('id', id);
+  if (error) { mostrarToast('Erro: ' + error.message, 'erro'); return; }
+  mostrarToast('Conta marcada como paga.', 'sucesso');
+  await _carregarGestaoDoServidor([imovelAtual.id]);
+  await renderizarGestao();
+}
+
+// ── Patrimônio ──
+async function abrirFormPatrimonio(id) {
+  const p = id ? ((await _gestaoAtual()).patrimonio || []).find(x => x.id === id) : null;
+  if (id && !p) return;
+  abrirFormGestao({
+    titulo: p ? 'Editar item' : 'Novo item de patrimônio',
+    html: `<span class="rotulo">Descrição</span>
+      <div class="campo"><input type="text" id="gf-patr-desc" placeholder="Ex.: Sofá 3 lugares" value="${esc(p?.descricao || '')}"/></div>
+      <div style="display:flex;gap:10px">
+        <div class="campo" style="flex:2"><span class="rotulo">Nº de patrimônio</span><input type="text" id="gf-patr-num" placeholder="Opcional" value="${esc(p?.numero_patrimonio || '')}"/></div>
+        <div class="campo" style="flex:1"><span class="rotulo">Qtd</span><input type="number" id="gf-patr-qtd" min="1" inputmode="numeric" value="${p?.quantidade || 1}"/></div>
+      </div>
+      <span class="rotulo">Observação</span>
+      <div class="campo"><input type="text" id="gf-patr-obs" placeholder="Opcional" value="${esc(p?.observacao || '')}"/></div>`,
+    onSalvar: async () => {
+      const descricao = _gfValor('gf-patr-desc');
+      if (!descricao) return _gfErro('Informe a descrição.');
+      const payload = { descricao, numero_patrimonio: _gfValor('gf-patr-num') || null,
+        quantidade: parseInt(_gfValor('gf-patr-qtd'), 10) || 1, observacao: _gfValor('gf-patr-obs') || null };
+      const { error } = p
+        ? await sb.from('imovel_patrimonio').update(payload).eq('id', p.id)
+        : await sb.from('imovel_patrimonio').insert({ ...payload, imovel_id: imovelAtual.id, criado_por: sessaoAtual.user.id });
+      if (error) throw error;
+      mostrarToast('Patrimônio salvo!', 'sucesso');
+    },
+    onExcluir: p ? async () => {
+      if (!confirm('Excluir este item de patrimônio?')) return false;
+      const { error } = await sb.from('imovel_patrimonio').delete().eq('id', p.id);
+      if (error) throw error;
+    } : null,
+  });
+}
+
+// ── Documentos do imóvel ──
+let _gdocTipos = [];
+async function anexarDocImovel(iDoc, input) {
+  const tipoDoc = _gdocTipos[iDoc];
+  const arq = input.files[0];
+  input.value = '';
+  if (!arq) return;
+  if (!navigator.onLine) { mostrarToast('Sem internet — conecte pra anexar.', 'erro'); return; }
+  if (arq.size > 15 * 1024 * 1024) { mostrarToast('Arquivo muito grande (máx. 15 MB).', 'erro'); return; }
+  try {
+    mostrarToast('Enviando documento…');
+    const env = await sgEnviarArquivo(arq, { modulo: 'imoveis', registroId: imovelAtual.id, nomeArquivo: arq.name, mimeType: arq.type });
+    const { error } = await sb.from('documentos').insert({
+      modulo: 'imoveis', registro_id: imovelAtual.id, tipo: tipoDoc, descricao: arq.name,
+      nome_arquivo: arq.name, mime_type: arq.type, tamanho_bytes: arq.size,
+      drive_id: null, drive_url: env.drive_url, download_url: env.download_url,
+      versao: 1, status: 'enviado', criado_por: sessaoAtual.user.id,
+    });
+    if (error) { await sgRemoverArquivo(env); throw error; }
+    mostrarToast('Documento enviado! Fica aguardando aprovação no módulo web.', 'sucesso');
+    await _carregarGestaoDoServidor([imovelAtual.id]);
+    await renderizarGestao();
+  } catch (e) { mostrarToast('Erro ao enviar: ' + (e.message || e), 'erro'); }
+}
+
+
 async function abrirImovel(id) {
   const imoveis = await idbTodos('imoveis');
   imovelAtual = imoveis.find(i => i.id === id);
@@ -2209,6 +2810,13 @@ async function abrirImovel(id) {
   document.getElementById('imovel-sub').textContent = [imovelAtual.bairro, imovelAtual.cidade].filter(Boolean).join(' — ');
   mostrarTela('tela-imovel');
   await renderizarListaVistorias();
+  // Depois da solicitação, a gestão vira a aba principal (dá pra trocar)
+  let aba = _abaPorImovel[id];
+  if (!aba) {
+    const sol = (await idbTodos('solicitacoes')).find(x => x.imovel_id === id);
+    aba = sol && !_rotuloStatusSolicitacao(sol.status).reprovada ? 'gestao' : 'fluxo';
+  }
+  mostrarAbaImovel(aba);
 }
 
 async function _renderizarPainelImovel() {
