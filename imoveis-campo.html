@@ -3995,7 +3995,7 @@ async function abrirSolicitacaoExistente() {
   info.style.display = 'block';
   info.innerHTML = `<b>${esc(_numSolicitacao(sol) || 'Solicitação')}</b> · <span class="selo ${st.classe}">${esc(st.txt)}</span>
     <div class="card-sub" style="margin-top:4px">Enviada em ${sol.criado_em ? new Date(sol.criado_em).toLocaleDateString('pt-BR') : '—'}</div>
-    ${motivo ? `<div class="sc-info-aviso">🔒 ${esc(motivo)}</div>` : '<div class="card-sub" style="margin-top:4px">As alterações ficam registradas no histórico da solicitação.</div>'}`;
+    ${motivo ? `<div class="sc-info-aviso">🔒 ${esc(motivo)}</div>` : `<div class="card-sub" style="margin-top:4px">As alterações ficam registradas no histórico da solicitação.${String(sol.status) === 'aprovado' ? ' <b>Atenção:</b> ao salvar, ela volta para aprovação (mesma regra do módulo web).' : ''}</div>`}`;
 
   // Preenche com o que está no sistema
   const ce = sol.campos_especificos || {};
@@ -4057,7 +4057,9 @@ async function salvarEdicaoSolicitacao() {
       dia_pgto_aluguel: num('sc-dia-aluguel') ? parseInt(num('sc-dia-aluguel'), 10) : null,
       testemunha: { nome: testNome, telefone: testTel || null, email: testEmail || null },
     };
+    // Mesma regra do módulo web: editou, volta pra "pendente" (precisa ser aprovada de novo)
     const { data: upd, error: eUp } = await sb.from('solicitacoes_contratos').update({
+      status: 'pendente', editado_por: sessaoAtual.user.id, editado_em: new Date().toISOString(),
       objeto, campos_especificos: campos,
       valor_estimado: num('sc-valor') ? parseFloat(num('sc-valor')) : null,
       data_inicio: num('sc-inicio') || null, data_fim: num('sc-fim') || null,
@@ -4095,8 +4097,10 @@ async function salvarEdicaoSolicitacao() {
 
     await sb.from('solicitacoes_mensagens').insert({
       solicitacao_id: ed.id, autor_id: sessaoAtual.user.id, tipo: 'sistema',
-      conteudo: `✏️ Solicitação editada pelo app de campo em ${new Date().toLocaleString('pt-BR')}.`,
+      conteudo: `✏️ Solicitação editada pelo app de campo em ${new Date().toLocaleString('pt-BR')}.${String(atual.status) === 'aprovado' ? ' Estava aprovada — voltou para aprovação.' : ''}`,
     });
+    const loc = (await idbTodos('solicitacoes')).find(x => x.solicitacao_id === ed.id);
+    if (loc) { loc.status = 'pendente'; await idbSalvar('solicitacoes', loc); }
     mostrarToast(falhasDocs ? 'Alterações salvas, mas algum documento não subiu.' : 'Alterações salvas!', falhasDocs ? 'erro' : 'sucesso');
     await abrirSolicitacaoExistente(); // recarrega do sistema
   } catch (e) {
