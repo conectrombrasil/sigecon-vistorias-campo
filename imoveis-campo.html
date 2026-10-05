@@ -239,6 +239,8 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     justify-content:center;font-size:24px;color:var(--blue2);cursor:pointer;background:rgba(90,166,238,.05);}
   .foto-add small{font-size:10.5px;font-weight:700;}
   .foto-add-galeria{color:var(--text2);}
+  /* campos lado a lado (ex.: duas datas) não estouram a tela no celular */
+  .campo{min-width:0;} .campo input{min-width:0;max-width:100%;} input[type=date]{-webkit-min-logical-width:0;}
   .sc-info{background:var(--navy2);border:1px solid var(--border2);border-radius:14px;padding:12px 14px;margin:4px 0 14px;font-size:13.5px;line-height:1.5;}
   .sc-info b{font-size:15px;} .sc-info .sc-info-aviso{color:var(--warn-txt);font-weight:600;margin-top:6px;}
   #sc-formulario.somente-leitura .doc-acoes,#sc-formulario.somente-leitura .btn-add-linha,#sc-formulario.somente-leitura .btn-remover-linha,
@@ -578,7 +580,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
         <div class="campo" style="flex:1"><span class="rotulo">Fim previsto</span><input type="date" id="sc-fim"/></div>
       </div>
 
-      <div class="secao-opcional" id="sec-condicoes">
+      <div class="secao-opcional aberta" id="sec-condicoes">
         <div class="secao-opcional-cab" onclick="toggleSecaoOpcional('sec-condicoes')">💰 Condições de locação<span class="secao-opcional-seta">▶</span></div>
         <div class="secao-opcional-corpo">
           <div style="display:flex;gap:10px">
@@ -586,9 +588,10 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
             <div class="campo" style="flex:1"><span class="rotulo">Valor caução (R$)</span><input type="number" id="sc-caucao-valor" min="0" step="0.01" inputmode="decimal"/></div>
           </div>
           <div style="display:flex;gap:10px">
-            <div class="campo" style="flex:1"><span class="rotulo">Data pgto. caução</span><input type="date" id="sc-caucao-data"/></div>
-            <div class="campo" style="flex:1"><span class="rotulo">Dia pgto. aluguel</span><input type="number" id="sc-dia-aluguel" min="1" max="31" inputmode="numeric"/></div>
+            <div class="campo" style="flex:1"><span class="rotulo">Data pgto. caução</span><input type="date" id="sc-caucao-data" onchange="_sugerirDataPrimeiroAluguel()"/></div>
+            <div class="campo" style="flex:1"><span class="rotulo">1º pgto. do aluguel</span><input type="date" id="sc-aluguel-data-ref" oninput="_aluguelDataManual=true"/></div>
           </div>
+          <div style="font-size:12px;color:var(--text3);margin-top:-6px">O 1º aluguel vem preenchido 1 mês depois do caução (pode mudar). Depois disso, o pagamento é todo mês nesse dia.</div>
         </div>
       </div>
 
@@ -3761,7 +3764,9 @@ async function abrirSolicitarContrato() {
 
   const endereco = [imovelAtual.logradouro, imovelAtual.numero].filter(Boolean).join(', ');
   document.getElementById('sc-objeto').value = `Locação do imóvel situado em ${endereco || '(endereço a confirmar)'}.`;
-  ['sc-valor', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-dia-aluguel', 'sc-test-nome', 'sc-test-tel', 'sc-test-email'].forEach(id => { document.getElementById(id).value = ''; });
+  _aluguelDataManual = false;
+  document.getElementById('sec-condicoes').classList.add('aberta');
+  ['sc-valor', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-aluguel-data-ref', 'sc-test-nome', 'sc-test-tel', 'sc-test-email'].forEach(id => { document.getElementById(id).value = ''; });
 
   // Cópia do template — editar aqui não mexe na constante original,
   // então toda vez que abrir de novo volta ao padrão
@@ -3794,15 +3799,35 @@ async function abrirSolicitarContrato() {
   mostrarTela('tela-solicitar-contrato');
 }
 
+// 1º pagamento do aluguel: por padrão, 1 mês depois do caução (mesma regra do
+// módulo web). Se a pessoa mexer na data, para de sugerir.
+let _aluguelDataManual = false;
+function _somarUmMes(dataISO) {
+  const [ano, mes, dia] = dataISO.split('-').map(Number);
+  let m = mes + 1, a = ano;
+  if (m > 12) { m = 1; a++; }
+  const ultimo = new Date(a, m, 0).getDate();
+  return `${a}-${String(m).padStart(2, '0')}-${String(Math.min(dia, ultimo)).padStart(2, '0')}`;
+}
+function _sugerirDataPrimeiroAluguel() {
+  if (_aluguelDataManual) return;
+  const caucao = document.getElementById('sc-caucao-data').value;
+  if (caucao) document.getElementById('sc-aluguel-data-ref').value = _somarUmMes(caucao);
+}
+function _camposAluguelSc() {
+  const ref = document.getElementById('sc-aluguel-data-ref').value || null;
+  return { data_ref_pgto_aluguel: ref, dia_pgto_aluguel: ref ? parseInt(ref.split('-')[2], 10) : null };
+}
+
 // Rascunho: o que foi digitado na solicitação fica guardado por imóvel, pra
 // não precisar redigitar se sair da tela. Some quando a solicitação é enviada.
-const CAMPOS_RASCUNHO_SC = ['sc-objeto', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-dia-aluguel', 'sc-test-nome', 'sc-test-tel', 'sc-test-email'];
+const CAMPOS_RASCUNHO_SC = ['sc-objeto', 'sc-inicio', 'sc-fim', 'sc-caucao-meses', 'sc-caucao-valor', 'sc-caucao-data', 'sc-aluguel-data-ref', 'sc-test-nome', 'sc-test-tel', 'sc-test-email'];
 function _chaveRascunhoSc() { return 'rascunho_sc_' + imovelAtual.id; }
 function salvarRascunhoSolicitacao() {
   if (!imovelAtual || _solEdicao) return; // na edição de uma solicitação já enviada, não mexe no rascunho
   const campos = {};
   CAMPOS_RASCUNHO_SC.forEach(id => { campos[id] = document.getElementById(id).value; });
-  idbSalvar('sessao', { chave: _chaveRascunhoSc(), valor: { campos, responsabilidades: _responsabilidadesAtuais, planilha: _planilhaAtual,
+  idbSalvar('sessao', { chave: _chaveRascunhoSc(), valor: { campos, aluguelManual: _aluguelDataManual, responsabilidades: _responsabilidadesAtuais, planilha: _planilhaAtual,
     docs: _docsSolicitacao.filter(d => d.status !== 'enviado').map(d => ({ id: d.id, tipo: d.tipo, nome: d.nome, tamanho: d.tamanho, blob: d.blob })) } }).catch(() => {});
 }
 async function _restaurarRascunhoSolicitacao() {
@@ -3812,6 +3837,7 @@ async function _restaurarRascunhoSolicitacao() {
   CAMPOS_RASCUNHO_SC.forEach(id => { if (d.campos && d.campos[id] != null) document.getElementById(id).value = d.campos[id]; });
   if (Array.isArray(d.responsabilidades)) _responsabilidadesAtuais = d.responsabilidades;
   if (Array.isArray(d.planilha)) _planilhaAtual = d.planilha;
+  _aluguelDataManual = !!d.aluguelManual;
   if (Array.isArray(d.docs)) _docsSolicitacao = d.docs.filter(x => x && x.blob).map(x => ({ ...x, status: 'pendente' }));
 }
 
@@ -4003,7 +4029,16 @@ async function abrirSolicitacaoExistente() {
   const set = (idc, v) => { document.getElementById(idc).value = v == null ? '' : v; };
   set('sc-objeto', sol.objeto); set('sc-inicio', sol.data_inicio); set('sc-fim', sol.data_fim);
   set('sc-caucao-meses', ce.caucao_meses); set('sc-caucao-valor', ce.caucao_valor);
-  set('sc-caucao-data', ce.data_pgto_caucao); set('sc-dia-aluguel', ce.dia_pgto_aluguel);
+  set('sc-caucao-data', ce.data_pgto_caucao);
+  document.getElementById('sec-condicoes').classList.add('aberta');
+  _aluguelDataManual = !!ce.data_ref_pgto_aluguel;
+  set('sc-aluguel-data-ref', ce.data_ref_pgto_aluguel);
+  if (!ce.data_ref_pgto_aluguel && ce.data_pgto_caucao) {
+    // Solicitação antiga (só tinha o "dia"): sugere 1 mês depois do caução, no dia informado
+    let ref = _somarUmMes(ce.data_pgto_caucao);
+    if (ce.dia_pgto_aluguel) { const [a, m] = ref.split('-'); ref = `${a}-${m}-${String(Math.min(+ce.dia_pgto_aluguel, new Date(+a, +m, 0).getDate())).padStart(2, '0')}`; }
+    set('sc-aluguel-data-ref', ref);
+  }
   set('sc-test-nome', t.nome); set('sc-test-tel', t.telefone); set('sc-test-email', t.email);
   _responsabilidadesAtuais = (rResp.data || []).map(r => ({ item: r.item, resp: r.responsavel || 'A definir' }));
   _planilhaAtual = (rSub.data || []).filter(si => !_solEdicao.itemId || !si.item_id || si.item_id === _solEdicao.itemId)
@@ -4054,7 +4089,7 @@ async function salvarEdicaoSolicitacao() {
       caucao_meses: num('sc-caucao-meses') ? parseInt(num('sc-caucao-meses'), 10) : null,
       caucao_valor: num('sc-caucao-valor') ? parseFloat(num('sc-caucao-valor')) : null,
       data_pgto_caucao: num('sc-caucao-data') || null,
-      dia_pgto_aluguel: num('sc-dia-aluguel') ? parseInt(num('sc-dia-aluguel'), 10) : null,
+      ..._camposAluguelSc(),
       testemunha: { nome: testNome, telefone: testTel || null, email: testEmail || null },
     };
     // Mesma regra do módulo web: editou, volta pra "pendente" (precisa ser aprovada de novo)
@@ -4151,7 +4186,7 @@ async function enviarSolicitacaoContrato() {
       caucao_meses: document.getElementById('sc-caucao-meses').value ? parseInt(document.getElementById('sc-caucao-meses').value, 10) : null,
       caucao_valor: document.getElementById('sc-caucao-valor').value ? parseFloat(document.getElementById('sc-caucao-valor').value) : null,
       data_pgto_caucao: document.getElementById('sc-caucao-data').value || null,
-      dia_pgto_aluguel: document.getElementById('sc-dia-aluguel').value ? parseInt(document.getElementById('sc-dia-aluguel').value, 10) : null,
+      ..._camposAluguelSc(),
       testemunha: { nome: testNome, telefone: testTel || null, email: testEmail || null },
     };
 
