@@ -795,6 +795,172 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const DRIVE_GAS_URL = 'https://script.google.com/macros/s/AKfycbywWdSN8x1sq2K5lrwcveNKqgMvPODrP9ULtJpwo2pB4Gf-QoehBlaM08od_slvdM5j/exec';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+// ════════════════ SIGECON ARQUIVOS v1 — início (bloco igual em todos os módulos) ════════════════
+// Arquivos novos vão pro Supabase Storage. Arquivos antigos (drive_id preenchido)
+// continuam abrindo pelo Drive até serem migrados. A geração do contrato no
+// Google Docs NÃO usa isto (continua no Drive, pra poder editar no Docs).
+//
+// Onde fica cada coisa:
+//   · Documentos (CPF, NF, comprovantes, contratos anexos, chats…) → bucket PRIVADO
+//     'sigecon-docs' — só abre com login, por link temporário.
+//   · Fotos de vistoria → bucket PÚBLICO 'vistorias-campo-fotos' (o app usa offline).
+// No banco: drive_id = null; drive_url (e download_url, onde existir) guardam o
+// endereço do arquivo no Storage: .../storage/v1/object/<bucket>/<caminho>
+// (ou .../object/public/<bucket>/<caminho> quando o bucket é público).
+const SG_BUCKET_DOCS = 'sigecon-docs';
+const SG_BUCKET_FOTOS = 'vistorias-campo-fotos';
+const SG_MODULOS_FOTO_PUBLICA = ['vistoria_comodo', 'vistoria_geral', 'vistoria_movel'];
+
+function _sgGasUrl() {
+  if (typeof DRIVE_GAS_URL !== 'undefined' && DRIVE_GAS_URL) return DRIVE_GAS_URL;
+  if (typeof GAS_DRIVE_URL !== 'undefined' && GAS_DRIVE_URL) return GAS_DRIVE_URL;
+  return null;
+}
+async function _sgUsuarioId() {
+  try { const { data } = await sb.auth.getSession(); return data?.session?.user?.id || ''; } catch (e) { return ''; }
+}
+async function _sgTokenGas() { return btoa((await _sgUsuarioId()) + ':' + Date.now() + ':' + (typeof SG_SUFIXO_TOKEN !== 'undefined' ? SG_SUFIXO_TOKEN : 'sigecon')); }
+function sgNomeSeguro(nome) {
+  return String(nome || 'arquivo').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^\w.\-]+/g, '_').replace(/_+/g, '_').slice(-120) || 'arquivo';
+}
+
+// Onde está o arquivo de um registro (linha de documentos, solicitacoes_documentos, mensagens…)
+function sgLocalArquivo(reg) {
+  if (!reg) return null;
+  if (reg.drive_id && reg.drive_id !== 'null') return { tipo: 'drive', driveId: reg.drive_id };
+  for (const u of [reg.download_url, reg.drive_url, reg.url]) {
+    const m = String(u || '').match(/\/storage\/v1\/object\/(?:(public|sign|authenticated)\/)?([^/?#]+)\/([^?#]+)/);
+    if (m) return { tipo: 'storage', bucket: m[2], caminho: decodeURIComponent(m[3]), publico: m[1] === 'public' };
+  }
+  return null;
+}
+function sgTemArquivo(reg) { return !!sgLocalArquivo(reg); }
+
+// Link pra abrir/baixar. Privado → link temporário (padrão 15 min).
+async function sgUrlArquivo(reg, opcoes) {
+  const o = opcoes || {};
+  const loc = sgLocalArquivo(reg);
+  if (!loc) return null;
+  if (loc.tipo === 'drive') {
+    const gas = _sgGasUrl();
+    return gas ? `${gas}?acao=baixar&driveId=${encodeURIComponent(loc.driveId)}&token=${await _sgTokenGas()}` : null;
+  }
+  if (loc.publico && !o.nomeDownload) return sb.storage.from(loc.bucket).getPublicUrl(loc.caminho).data.publicUrl;
+  const { data, error } = await sb.storage.from(loc.bucket)
+    .createSignedUrl(loc.caminho, o.segundos || 900, o.nomeDownload ? { download: o.nomeDownload } : undefined);
+  if (error) throw new Error('Não foi possível gerar o link do arquivo: ' + error.message);
+  return data.signedUrl;
+}
+
+// Conteúdo do arquivo (pra juntar PDFs, gerar .zip, relatório etc.)
+async function sgBytesArquivo(reg) {
+  const loc = sgLocalArquivo(reg);
+  if (!loc) throw new Error('Arquivo sem endereço');
+  if (loc.tipo === 'drive') {
+    const gas = _sgGasUrl();
+    if (!gas) throw new Error('Endereço do Drive não configurado');
+    const resp = await fetch(`${gas}?acao=base64&driveId=${encodeURIComponent(loc.driveId)}&token=${await _sgTokenGas()}`);
+    const json = await resp.json();
+    if (!json.sucesso) throw new Error(json.erro || 'Falha ao baixar do Drive');
+    const bin = atob(json.base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { bytes, mimeType: json.mimeType || reg.mime_type || 'application/octet-stream' };
+  }
+  const { data, error } = await sb.storage.from(loc.bucket).download(loc.caminho);
+  if (error) throw new Error('Falha ao baixar do Supabase: ' + error.message);
+  return { bytes: new Uint8Array(await data.arrayBuffer()), mimeType: data.type || reg.mime_type || 'application/octet-stream' };
+}
+function _sgBytesParaBase64(bytes) {
+  let bin = '';
+  for (let k = 0; k < bytes.length; k += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(k, k + 0x8000));
+  return btoa(bin);
+}
+async function sgBase64Arquivo(reg) {
+  const { bytes, mimeType } = await sgBytesArquivo(reg);
+  return { base64: _sgBytesParaBase64(bytes), mimeType };
+}
+async function sgDataUrlArquivo(reg) {
+  const { base64, mimeType } = await sgBase64Arquivo(reg);
+  return `data:${mimeType};base64,${base64}`;
+}
+
+// Abre numa aba nova (abre a aba já, senão o navegador bloqueia o pop-up)
+async function sgAbrirArquivo(reg) {
+  const janela = window.open('', '_blank');
+  try {
+    const url = await sgUrlArquivo(reg);
+    if (!url) throw new Error('Arquivo sem endereço');
+    if (janela) janela.location.href = url; else window.location.href = url;
+  } catch (e) {
+    if (janela) janela.close();
+    _sgAviso('Não foi possível abrir o arquivo: ' + (e.message || e));
+  }
+}
+// Baixa direto (salva no aparelho com o nome certo)
+async function sgBaixarArquivo(reg, nomeArquivo) {
+  try {
+    const nome = nomeArquivo || reg.nome_arquivo || 'arquivo';
+    const { bytes, mimeType } = await sgBytesArquivo(reg);
+    const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+    const a = document.createElement('a');
+    a.href = url; a.download = nome;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch (e) {
+    _sgAviso('Não foi possível baixar o arquivo: ' + (e.message || e));
+  }
+}
+function _sgAviso(msg) {
+  if (typeof mostrarToast === 'function') mostrarToast(msg, 'erro');
+  else if (typeof toast === 'function') toast(msg, 'erro');
+  else alert(msg);
+}
+
+// Envia pro Supabase Storage. Aceita File/Blob ou base64 (string).
+// Devolve os campos pra gravar no registro: { drive_id, drive_url, download_url, caminho, bucket }
+async function sgEnviarArquivo(arquivo, opcoes) {
+  const o = opcoes || {};
+  const publico = o.publico != null ? o.publico : SG_MODULOS_FOTO_PUBLICA.includes(o.modulo);
+  const bucket = o.bucket || (publico ? SG_BUCKET_FOTOS : SG_BUCKET_DOCS);
+  const nome = o.nomeArquivo || arquivo?.name || 'arquivo';
+  const mimeType = o.mimeType || arquivo?.type || 'application/octet-stream';
+  let corpo = arquivo;
+  if (typeof arquivo === 'string') {
+    const bin = atob(arquivo.includes(',') ? arquivo.split(',')[1] : arquivo);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    corpo = new Blob([bytes], { type: mimeType });
+  }
+  const pasta = [sgNomeSeguro(o.modulo || 'geral'), sgNomeSeguro(o.registroId || 'sem-registro')].join('/');
+  const caminho = `${pasta}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${sgNomeSeguro(nome)}`;
+  const { error } = await sb.storage.from(bucket).upload(caminho, corpo, { contentType: mimeType, upsert: false });
+  if (error) throw new Error('Erro ao enviar o arquivo: ' + error.message);
+  const url = publico
+    ? sb.storage.from(bucket).getPublicUrl(caminho).data.publicUrl
+    : `${SUPABASE_URL}/storage/v1/object/${bucket}/${caminho}`;
+  return { drive_id: null, drive_url: url, download_url: url, caminho, bucket };
+}
+
+// Apaga o arquivo do Storage (arquivo do Drive não é apagado — fica como histórico)
+async function sgRemoverArquivo(reg) {
+  const loc = sgLocalArquivo(reg);
+  if (!loc || loc.tipo !== 'storage') return;
+  try { await sb.storage.from(loc.bucket).remove([loc.caminho]); } catch (e) { /* não impede o resto */ }
+}
+
+// Pra botões em HTML gerado: guarda o registro e usa só uma chave no onclick
+// Ex.: `<button onclick="sgAbrirPorChave('${sgGuardar(doc)}')">Abrir</button>`
+const _sgRegistros = {};
+function sgGuardar(reg) {
+  const chave = String(reg?.id || ('r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)));
+  _sgRegistros[chave] = reg;
+  return chave;
+}
+function sgAbrirPorChave(chave) { const r = _sgRegistros[chave]; if (r) sgAbrirArquivo(r); }
+function sgBaixarPorChave(chave, nome) { const r = _sgRegistros[chave]; if (r) sgBaixarArquivo(r, nome); }
+// ════════════════ SIGECON ARQUIVOS v1 — fim ════════════════
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -1071,22 +1237,17 @@ async function removerFotoDoServidor(p) {
 // Mesmo modelo "trampolim" das fotos de vistoria: documento de
 // fornecedor sobe pro Supabase Storage por enquanto — migrar pro Drive
 // fica pra uma etapa futura, quando isso for configurado
-const BUCKET_DOCS_FORNECEDOR = 'fornecedores-campo-docs';
 
 async function enviarDocumentoFornecedorParaServidor(p) {
-  const caminho = `${p.fornecedorId}/${Date.now()}_${p.nomeArquivo}`;
-  const blob = base64ParaBlob(p.base64, p.mimeType);
-  const { error: errUpload } = await sb.storage.from(BUCKET_DOCS_FORNECEDOR).upload(caminho, blob, { contentType: p.mimeType, upsert: false });
-  if (errUpload) throw errUpload;
-
-  const { data: urlData } = sb.storage.from(BUCKET_DOCS_FORNECEDOR).getPublicUrl(caminho);
+  // Documento de fornecedor (CPF, contrato social…) vai pro bucket PRIVADO do sistema
+  const arq = await sgEnviarArquivo(p.base64, { modulo: 'fornecedores', registroId: p.fornecedorId, nomeArquivo: p.nomeArquivo, mimeType: p.mimeType });
   const { error } = await sb.from('documentos').insert({
     modulo: 'fornecedores', registro_id: p.fornecedorId, tipo: 'exigido', documento_tipo_id: p.documentoTipoId,
     nome_arquivo: p.nomeArquivo, mime_type: p.mimeType, tamanho_bytes: p.tamanhoBytes,
-    drive_id: null, drive_url: urlData.publicUrl, download_url: urlData.publicUrl, // drive_url não aceita nulo no banco — usa a mesma URL do Storage até migrar pro Drive de verdade
+    drive_id: null, drive_url: arq.drive_url, download_url: arq.download_url,
     versao: 1, status: 'enviado', criado_por: p.usuarioId,
   });
-  if (error) throw error;
+  if (error) { await sgRemoverArquivo(arq); throw error; }
 }
 
 window.addEventListener('online', () => { atualizarBarraStatus(); tentarSincronizar(); });
@@ -1364,6 +1525,14 @@ async function _mesclarFotosDoServidor(docs, campoPai) { // campoPai: 'comodo_id
   const paisComDoc = new Set(docs.map(d => d.registro_id));
   for (const f of locais) {
     if (f.status === 'sincronizado' && !f.existente && f[campoPai] && paisComDoc.has(f[campoPai])) await idbRemover('fotos', f.id);
+  }
+  // Foto que foi migrada do Drive pro Supabase depois de guardada aqui: atualiza o endereço
+  const porId = new Map(docs.map(d => [d.id, d]));
+  for (const f of await idbTodos('fotos')) {
+    const d = porId.get(f.id);
+    if (d && f.existente && f.driveId && !d.drive_id && d.download_url) {
+      f.driveId = null; f.previewUrl = d.download_url; await idbSalvar('fotos', f);
+    }
   }
   const jaSalvas = new Set((await idbTodos('fotos')).map(f => f.id));
   const novas = docs.filter(d => !jaSalvas.has(d.id)).map(d => {
@@ -2717,7 +2886,6 @@ let _planilhaAtual = [];             // [{descricao, unidade, quantidade, precoU
 // solicitacoes_documentos, mesmos tipos), mas o arquivo vai pro Supabase
 // Storage (bucket privado), não mais pro Drive.
 // ══════════════════════════════════════════════════════════════
-const BUCKET_DOCS_SOLICITACAO = 'solicitacoes-documentos';
 const TIPO_DOC_SOLICITACAO = {
   proposta_comercial: 'Proposta Comercial', proposta_tecnica: 'Proposta Técnica', planilha_precos: 'Planilha de Preços',
   memorial_descritivo: 'Memorial Descritivo', ficha_tecnica: 'Ficha Técnica do Equipamento',
@@ -2727,9 +2895,6 @@ const TAMANHO_MAX_DOC = 10 * 1024 * 1024;
 let _docsSolicitacao = []; // [{ id, tipo, nome, tamanho, blob, status: 'pendente'|'enviando'|'enviado'|'erro' }]
 
 function _fmtTamanho(b) { return b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
-function _nomeArquivoSeguro(nome) {
-  return String(nome || 'documento.pdf').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.\-]+/g, '_').slice(-120);
-}
 
 function _renderizarDocsSolicitacao() {
   const el = document.getElementById('sc-docs-lista');
@@ -2809,22 +2974,16 @@ async function _enviarDocsSolicitacao(solicitacaoId) {
   for (const d of _docsSolicitacao) {
     if (d.status === 'enviado') continue;
     d.status = 'enviando'; _renderizarDocsSolicitacao();
-    const caminho = `${solicitacaoId}/${Date.now()}_${_nomeArquivoSeguro(d.nome)}`;
     try {
-      const { error: errUp } = await sb.storage.from(BUCKET_DOCS_SOLICITACAO).upload(caminho, d.blob, { contentType: 'application/pdf', upsert: false });
-      if (errUp) throw errUp;
+      const arq = await sgEnviarArquivo(d.blob, { modulo: 'solicitacao_contratos', registroId: solicitacaoId, nomeArquivo: d.nome, mimeType: 'application/pdf' });
       const { error: errIns } = await sb.from('solicitacoes_documentos').insert({
         solicitacao_id: solicitacaoId, tipo_documento: d.tipo, nome_arquivo: d.nome,
         mime_type: 'application/pdf', tamanho_bytes: d.tamanho,
-        // drive_id vazio = arquivo no Supabase Storage. drive_url guarda o
-        // endereço do arquivo no bucket (privado — abre com link temporário)
-        drive_id: null, drive_url: `${SUPABASE_URL}/storage/v1/object/${BUCKET_DOCS_SOLICITACAO}/${caminho}`,
+        // drive_id vazio = arquivo no Supabase Storage (bucket privado — abre com link temporário)
+        drive_id: null, drive_url: arq.drive_url,
         enviado_por: sessaoAtual.user.id,
       });
-      if (errIns) {
-        try { await sb.storage.from(BUCKET_DOCS_SOLICITACAO).remove([caminho]); } catch (e) {}
-        throw errIns;
-      }
+      if (errIns) { await sgRemoverArquivo(arq); throw errIns; }
       d.status = 'enviado';
     } catch (e) {
       d.status = 'erro'; d.erro = e.message || String(e); falhas++;
@@ -3129,34 +3288,20 @@ async function enviarSolicitacaoContrato() {
       });
     if (subitens.length) await sb.from('solicitacao_subitens').insert(subitens);
 
-    // Anexo: gera o PDF da vistoria mais recente e sobe direto pro Drive
-    // (nessa etapa já estamos garantidamente online, não precisa do
-    // "trampolim" pelo Supabase)
+    // Anexo: gera o PDF da vistoria mais recente e guarda no sistema (Supabase)
     const anexoStatus = document.getElementById('sc-anexo-status');
     const pdfVistoria = ANEXAR_RELATORIO_VISTORIA ? await _gerarPdfVistoriaRecente() : null;
     if (pdfVistoria) {
       anexoStatus.textContent = 'Enviando o PDF da vistoria...';
       try {
-        const token = btoa(sessaoAtual.user.id + ':' + Date.now() + ':sigecon');
-        const gasResp = await fetch(DRIVE_GAS_URL, {
-          method: 'POST', headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            acao: 'drive.upload', token, modulo: 'Contratos', subpasta: 'Contratos/Solicitacoes',
-            nomeArquivo: pdfVistoria.nomeArquivo, mimeType: 'application/pdf', base64: pdfVistoria.base64,
-            idRegistro: sol.id, enviadoPor: sessaoAtual.user.id,
-          }),
+        const arq = await sgEnviarArquivo(pdfVistoria.base64, { modulo: 'solicitacao_contratos', registroId: sol.id, nomeArquivo: pdfVistoria.nomeArquivo, mimeType: 'application/pdf' });
+        const { error: errAnexo } = await sb.from('solicitacoes_documentos').insert({
+          solicitacao_id: sol.id, tipo_documento: 'outros', nome_arquivo: pdfVistoria.nomeArquivo,
+          mime_type: 'application/pdf', tamanho_bytes: pdfVistoria.tamanho,
+          drive_id: null, drive_url: arq.drive_url, enviado_por: sessaoAtual.user.id,
         });
-        const gasJson = await gasResp.json();
-        if (gasJson.sucesso) {
-          await sb.from('solicitacoes_documentos').insert({
-            solicitacao_id: sol.id, tipo_documento: 'Relatório de Vistoria', nome_arquivo: pdfVistoria.nomeArquivo,
-            mime_type: 'application/pdf', tamanho_bytes: pdfVistoria.tamanho,
-            drive_id: gasJson.dados.driveId, drive_url: gasJson.dados.driveUrl, enviado_por: sessaoAtual.user.id,
-          });
-          anexoStatus.textContent = '✅ PDF da vistoria anexado.';
-        } else {
-          anexoStatus.textContent = '⚠️ A solicitação foi criada, mas o PDF da vistoria não subiu: ' + (gasJson.erro || 'erro desconhecido') + '. Pode anexar depois pelo módulo web.';
-        }
+        if (errAnexo) { await sgRemoverArquivo(arq); throw errAnexo; }
+        anexoStatus.textContent = '✅ PDF da vistoria anexado.';
       } catch (e) {
         anexoStatus.textContent = '⚠️ A solicitação foi criada, mas o PDF da vistoria não subiu: ' + e.message + '. Pode anexar depois pelo módulo web.';
       }
