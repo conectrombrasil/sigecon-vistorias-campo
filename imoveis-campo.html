@@ -239,6 +239,19 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     justify-content:center;font-size:24px;color:var(--blue2);cursor:pointer;background:rgba(90,166,238,.05);}
   .foto-add small{font-size:10.5px;font-weight:700;}
   .foto-add-galeria{color:var(--text2);}
+  .mobilia-card{background:var(--navy2);border:1px solid var(--border);border-radius:var(--raio);padding:14px 14px 10px 16px;}
+  .mobilia-cab{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+  .mobilia-cab .btn-add-movel{margin-left:auto;background:rgba(90,166,238,.1);border:1px solid var(--border2);color:var(--blue2);
+    border-radius:10px;min-height:38px;padding:0 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .mobilia-card .comodo{background:var(--navy3);margin:8px 0 4px;}
+  .mobilia-card .comodo-cab{min-height:52px;}
+  .movel-qtd{font-size:12px;color:var(--text2);white-space:nowrap;}
+  .qtd-linha{display:flex;align-items:center;gap:10px;}
+  .qtd-linha button{width:46px;height:46px;border-radius:12px;border:1px solid var(--border2);background:var(--navy2);color:var(--text);font-size:22px;font-weight:700;cursor:pointer;}
+  .qtd-linha button:active{background:var(--navy4);}
+  .qtd-linha .qtd-valor{min-width:44px;text-align:center;font-size:20px;font-weight:800;}
+  .estados-movel{grid-template-columns:repeat(4,1fr);}
+  .estado-btn.sel-NI{background:rgba(138,165,190,0.22);border-color:var(--text2);color:var(--text);}
   .foto-mini{cursor:pointer;}
   .foto-mini:active{opacity:.8;}
   .visor-overlay{background:#05080d !important;align-items:stretch;z-index:110;}
@@ -572,6 +585,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   </div>
   <div class="passos" id="passos-vistoria"></div>
   <div id="fotos-gerais-sec" style="padding:14px 16px 0"></div>
+  <div id="mobilia-sec" style="padding:12px 16px 0"></div>
   <div class="conteudo" id="lista-comodos"></div>
   <button class="fab" id="fab-comodo" onclick="abrirEscolhaComodo()"><svg class="ic"><use href="#i-mais"/></svg>Cômodo</button>
 </div>
@@ -619,6 +633,21 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     <div class="visor-dica" id="visor-dica">Substituir troca esta foto pela nova</div>
     <input type="file" id="foto-subst-camera" accept="image/*" capture="environment" style="display:none" onchange="substituirFotoVisualizada(this)"/>
     <input type="file" id="foto-subst-galeria" accept="image/*" style="display:none" onchange="substituirFotoVisualizada(this)"/>
+  </div>
+</div>
+
+<!-- ================= Modal: adicionar item de mobília ================= -->
+<div class="modal-overlay" id="modal-movel">
+  <div class="modal">
+    <div class="modal-titulo">Adicionar mobília</div>
+    <div class="card-sub" style="margin:-6px 0 14px">Itens que acompanham a locação.</div>
+    <div class="opcao-lista opcao-grade" id="lista-moveis-comuns"></div>
+    <span class="rotulo">Outro item</span>
+    <div class="linha-add">
+      <div class="campo"><input type="text" id="movel-custom" placeholder="Ex.: Rack, Beliche..." enterkeyhint="done" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarMovelCustom();}"/></div>
+      <button class="btn" onclick="confirmarMovelCustom()">Adicionar</button>
+    </div>
+    <button class="btn btn-secundario" style="margin-top:8px" onclick="fecharModais()">Cancelar</button>
   </div>
 </div>
 
@@ -742,7 +771,7 @@ let vistoriaAtual = null;
 // precisa subir pro Supabase quando a internet voltar.
 // ══════════════════════════════════════════════════════════════
 const DB_NOME = 'vistorias_campo_db';
-const DB_VERSAO = 4; // v4: acrescenta 'solicitacoes' (status do contrato por imóvel) — não apaga nada. v3: acrescenta 'categorias', 'tipos_documento' e 'docs_fornecedor' — não apaga nada do que já existia
+const DB_VERSAO = 5; // v5: acrescenta 'moveis' (mobília da vistoria) — não apaga nada. v4: v4: acrescenta 'solicitacoes' (status do contrato por imóvel) — não apaga nada. v3: acrescenta 'categorias', 'tipos_documento' e 'docs_fornecedor' — não apaga nada do que já existia
 let _dbPromise = null;
 
 function abrirDB() {
@@ -763,6 +792,7 @@ function abrirDB() {
       if (!db.objectStoreNames.contains('tipos_documento')) db.createObjectStore('tipos_documento', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('docs_fornecedor')) db.createObjectStore('docs_fornecedor', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('solicitacoes')) db.createObjectStore('solicitacoes', { keyPath: 'imovel_id' });
+      if (!db.objectStoreNames.contains('moveis')) db.createObjectStore('moveis', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -867,12 +897,21 @@ async function processarItemFila(item) {
   } else if (item.tipo === 'atualizar_comodo') {
     const { error } = await sb.from('vistoria_comodos').update(p.campos).eq('id', p.id);
     if (error) throw error;
+  } else if (item.tipo === 'criar_movel') {
+    const { error } = await sb.from('vistoria_comodo_moveis').insert(p);
+    if (error) throw error;
+  } else if (item.tipo === 'atualizar_movel') {
+    const { error } = await sb.from('vistoria_comodo_moveis').update(p.campos).eq('id', p.id);
+    if (error) throw error;
+  } else if (item.tipo === 'remover_movel') {
+    const { error } = await sb.from('vistoria_comodo_moveis').delete().eq('id', p.id);
+    if (error) throw error;
   } else if (item.tipo === 'remover_comodo') {
     const { error } = await sb.from('vistoria_comodos').delete().eq('id', p.id);
     if (error) throw error;
   } else if (item.tipo === 'remover_foto') {
     await removerFotoDoServidor(p);
-  } else if (item.tipo === 'foto_comodo' || item.tipo === 'foto_geral') {
+  } else if (item.tipo === 'foto_comodo' || item.tipo === 'foto_geral' || item.tipo === 'foto_movel') {
     await enviarFotoParaServidor(p);
   }
 }
@@ -937,14 +976,15 @@ function base64ParaBlob(base64, mimeType) {
 }
 
 async function enviarFotoParaServidor(p) {
-  const caminho = p.comodoId ? `${p.comodoId}/${Date.now()}_${p.nomeArquivo}` : `geral/${p.vistoriaId}/${Date.now()}_${p.nomeArquivo}`;
+  const caminho = p.movelId ? `movel/${p.movelId}/${Date.now()}_${p.nomeArquivo}`
+    : p.comodoId ? `${p.comodoId}/${Date.now()}_${p.nomeArquivo}` : `geral/${p.vistoriaId}/${Date.now()}_${p.nomeArquivo}`;
   const blob = base64ParaBlob(p.base64, p.mimeType);
   const { error: errUpload } = await sb.storage.from(BUCKET_FOTOS_CAMPO).upload(caminho, blob, { contentType: p.mimeType, upsert: false });
   if (errUpload) throw errUpload;
 
   const { data: urlData } = sb.storage.from(BUCKET_FOTOS_CAMPO).getPublicUrl(caminho);
   const { data: docSalvo, error } = await sb.from('documentos').insert({
-    modulo: p.comodoId ? 'vistoria_comodo' : 'vistoria_geral', registro_id: p.comodoId || p.vistoriaId, tipo: 'foto', descricao: p.nomeArquivo,
+    modulo: p.movelId ? 'vistoria_movel' : p.comodoId ? 'vistoria_comodo' : 'vistoria_geral', registro_id: p.movelId || p.comodoId || p.vistoriaId, tipo: 'foto', descricao: p.nomeArquivo,
     nome_arquivo: p.nomeArquivo, mime_type: p.mimeType, tamanho_bytes: p.tamanhoBytes,
     // drive_id fica nulo de propósito — é o próprio sinal de "subiu pro
     // Supabase mas ainda não foi migrado pro Drive" (sem precisar de
@@ -1148,6 +1188,10 @@ async function _removerVistoriasQueNaoDevemMaisAparecer(vistoriasDoServidor) {
       for (const f of fotosOrfas) await idbRemover('fotos', f.id);
     }
     for (const f of (await idbTodos('fotos')).filter(x => x.vistoria_id === v.id)) await idbRemover('fotos', f.id);
+    for (const m of (await idbTodos('moveis')).filter(x => x.vistoria_id === v.id)) {
+      for (const f of (await idbTodos('fotos')).filter(x => x.movel_id === m.id)) await idbRemover('fotos', f.id);
+      await idbRemover('moveis', m.id);
+    }
   }
 }
 
@@ -1164,7 +1208,10 @@ async function _removerImoveisQueNaoDevemMaisAparecer(imoveisDoServidor) {
     const vIds = new Set(vs.map(v => v.id));
     const cs = (await idbTodos('comodos')).filter(c => vIds.has(c.vistoria_id));
     const cIds = new Set(cs.map(c => c.id));
-    for (const f of (await idbTodos('fotos')).filter(f => cIds.has(f.comodo_id) || vIds.has(f.vistoria_id))) await idbRemover('fotos', f.id);
+    const ms = (await idbTodos('moveis')).filter(m => vIds.has(m.vistoria_id));
+    const mIds = new Set(ms.map(m => m.id));
+    for (const f of (await idbTodos('fotos')).filter(f => cIds.has(f.comodo_id) || vIds.has(f.vistoria_id) || mIds.has(f.movel_id))) await idbRemover('fotos', f.id);
+    for (const m of ms) await idbRemover('moveis', m.id);
     for (const c of cs) await idbRemover('comodos', c.id);
     for (const v of vs) await idbRemover('vistorias', v.id);
     await idbRemover('solicitacoes', im.id);
@@ -1219,6 +1266,19 @@ async function carregarImoveisDoServidor() {
       const { data: comodos } = await sb.from('vistoria_comodos').select('*').in('vistoria_id', idsVist);
       await idbSalvarVarios('comodos', comodos || []);
 
+      // Mobília da vistoria (geral, sem cômodo — mesmo modelo do módulo web)
+      const { data: moveis, error: erroMoveis } = await sb.from('vistoria_comodo_moveis').select('id,vistoria_id,comodo_id,descricao,quantidade,estado')
+        .in('vistoria_id', idsVist).is('comodo_id', null);
+      if (!erroMoveis) {
+        await idbSalvarVarios('moveis', moveis || []);
+        await _removerMoveisQueSairamDoServidor(idsVist, moveis || []);
+        if (moveis && moveis.length) {
+          const { data: docsMoveis } = await sb.from('documentos').select('id,registro_id,drive_id,download_url,mime_type,nome_arquivo,descricao')
+            .eq('modulo', 'vistoria_movel').in('registro_id', moveis.map(m => m.id));
+          await _mesclarFotosDoServidor(docsMoveis, 'movel_id');
+        }
+      }
+
       // Fotos gerais do imóvel (fachada etc.) — ficam no nível da vistoria
       const { data: docsGerais } = await sb.from('documentos').select('id,registro_id,drive_id,download_url,mime_type,nome_arquivo,descricao')
         .eq('modulo', 'vistoria_geral').in('registro_id', idsVist);
@@ -1242,7 +1302,21 @@ async function carregarImoveisDoServidor() {
 // foto que ESTE aparelho enviou (id diferente do registro no servidor) é
 // trocada pela do servidor, senão a foto apareceria duas vezes. Foto ainda
 // pendente de envio nunca é mexida.
-async function _mesclarFotosDoServidor(docs, campoPai) { // campoPai: 'comodo_id' (cômodo) | 'vistoria_id' (gerais)
+// Móvel apagado no módulo web some do aparelho também — menos os que ainda
+// estão esperando pra subir (criados aqui, offline)
+async function _removerMoveisQueSairamDoServidor(idsVist, moveisDoServidor) {
+  const vistSet = new Set(idsVist);
+  const validos = new Set(moveisDoServidor.map(m => m.id));
+  const fila = await idbTodos('fila');
+  const pendentes = new Set(fila.filter(f => f.tipo === 'criar_movel').map(f => f.payload.id));
+  for (const m of await idbTodos('moveis')) {
+    if (!vistSet.has(m.vistoria_id) || validos.has(m.id) || pendentes.has(m.id)) continue;
+    await idbRemover('moveis', m.id);
+    for (const f of (await idbTodos('fotos')).filter(x => x.movel_id === m.id && x.status === 'sincronizado')) await idbRemover('fotos', f.id);
+  }
+}
+
+async function _mesclarFotosDoServidor(docs, campoPai) { // campoPai: 'comodo_id' (cômodo) | 'vistoria_id' (gerais) | 'movel_id' (mobília)
   docs = docs || [];
   const filaAtual = await idbTodos('fila');
   const exclusoesPendentes = new Set(filaAtual.filter(f => f.tipo === 'remover_foto').map(f => f.payload.docId));
@@ -1262,6 +1336,7 @@ async function _mesclarFotosDoServidor(docs, campoPai) { // campoPai: 'comodo_id
       previewUrl: d.drive_id ? null : d.download_url,
     };
     if (campoPai === 'comodo_id') base.comodo_id = d.registro_id;
+    else if (campoPai === 'movel_id') { base.movel_id = d.registro_id; base.comodo_id = null; }
     else { base.vistoria_id = d.registro_id; base.comodo_id = null; }
     return base;
   });
@@ -1513,9 +1588,12 @@ async function deletarImovelLocal(id) {
   const vIds = new Set(vistorias.map(v => v.id));
   const comodos = (await idbTodos('comodos')).filter(c => vIds.has(c.vistoria_id));
   const cIds = new Set(comodos.map(c => c.id));
-  const fotos = (await idbTodos('fotos')).filter(f => cIds.has(f.comodo_id) || vIds.has(f.vistoria_id));
+  const moveisDoImovel = (await idbTodos('moveis')).filter(m => vIds.has(m.vistoria_id));
+  const mIds = new Set(moveisDoImovel.map(m => m.id));
+  const fotos = (await idbTodos('fotos')).filter(f => cIds.has(f.comodo_id) || vIds.has(f.vistoria_id) || mIds.has(f.movel_id));
 
   for (const f of fotos) await idbRemover('fotos', f.id);
+  for (const m of moveisDoImovel) await idbRemover('moveis', m.id);
   for (const c of comodos) await idbRemover('comodos', c.id);
   for (const v of vistorias) await idbRemover('vistorias', v.id);
   await idbRemover('solicitacoes', id);
@@ -1532,6 +1610,9 @@ async function deletarImovelLocal(id) {
         case 'atualizar_comodo': case 'remover_comodo': return cIds.has(pl.id);
         case 'foto_comodo': return cIds.has(pl.comodoId);
         case 'foto_geral': return vIds.has(pl.vistoriaId);
+        case 'criar_movel': return vIds.has(pl.vistoria_id);
+        case 'atualizar_movel': case 'remover_movel': return mIds.has(pl.id);
+        case 'foto_movel': return mIds.has(pl.movelId);
         default: return false;
       }
     };
@@ -2056,6 +2137,188 @@ async function adicionarComodo(nomeBase) {
   if (novoEl) { novoEl.classList.add('aberto'); novoEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 }
 
+// ══════════════════════════════════════════════════════════════
+// Mobília da vistoria (itens que acompanham a locação) — mesmo modelo do
+// módulo web: tabela vistoria_comodo_moveis, sem cômodo (comodo_id nulo);
+// fotos em documentos com modulo 'vistoria_movel'. Tudo passa pela fila,
+// então funciona offline e sobe quando tiver internet.
+// ══════════════════════════════════════════════════════════════
+const ITENS_MOBILIA_COMUNS = ['Fogão', 'Geladeira', 'Micro-ondas', 'Máquina de Lavar', 'Sofá', 'Mesa', 'Cadeira', 'Cama', 'Guarda-roupa', 'Ar-condicionado', 'TV', 'Ventilador'];
+const ESTADOS_MOVEL = [{ v: 'BOM', t: 'Bom' }, { v: 'REGULAR', t: 'Regular' }, { v: 'RUIM', t: 'Ruim' }, { v: '', t: 'Não inf.' }];
+
+async function renderizarMobilia() {
+  const el = document.getElementById('mobilia-sec');
+  if (!el || !vistoriaAtual) return;
+  const travada = vistoriaAtual.status === 'finalizado';
+  const abertos = new Set([...el.querySelectorAll('.comodo.aberto')].map(d => d.id));
+  const moveis = (await idbTodos('moveis')).filter(m => m.vistoria_id === vistoriaAtual.id)
+    .sort((a, b) => (a.criado_local || 0) - (b.criado_local || 0) || String(a.descricao).localeCompare(String(b.descricao), 'pt-BR'));
+  const fotos = await idbTodos('fotos');
+  const totalItens = moveis.reduce((s, m) => s + (parseInt(m.quantidade, 10) || 1), 0);
+  const itens = moveis.map(m => {
+    const fs = fotos.filter(f => f.movel_id === m.id && !f.excluida);
+    const est = ESTADOS_MOVEL.find(e => e.v === (m.estado || '')) || ESTADOS_MOVEL[3];
+    return `<div class="comodo${abertos.has('movel-' + m.id) ? ' aberto' : ''}" id="movel-${m.id}">
+      <div class="comodo-cab" onclick="toggleMovel('${m.id}')">
+        <span class="comodo-nome">${esc(m.descricao)}</span>
+        <span class="movel-qtd">× ${parseInt(m.quantidade, 10) || 1}</span>
+        ${fs.length ? `<span class="comodo-fotos">📷 ${fs.length}</span>` : ''}
+        ${m.estado ? `<span class="estado-badge estado-${m.estado}">${est.t}</span>` : ''}
+        <svg class="ic comodo-seta" style="width:20px;height:20px"><use href="#i-baixo"/></svg>
+      </div>
+      <div class="comodo-corpo">
+        <span class="rotulo">Quantidade</span>
+        <div class="qtd-linha">
+          <button onclick="mudarQtdMovel('${m.id}',-1)" aria-label="Diminuir">−</button>
+          <span class="qtd-valor">${parseInt(m.quantidade, 10) || 1}</span>
+          <button onclick="mudarQtdMovel('${m.id}',1)" aria-label="Aumentar">+</button>
+        </div>
+        <span class="rotulo">Estado de conservação <span style="font-weight:400;color:var(--text3)">(opcional)</span></span>
+        <div class="estados-linha estados-movel">
+          ${ESTADOS_MOVEL.map(e => `<button class="estado-btn ${(m.estado || '') === e.v ? 'sel-' + (e.v || 'NI') : ''}" onclick="mudarEstadoMovel('${m.id}','${e.v}')">${e.t}</button>`).join('')}
+        </div>
+        <span class="rotulo">Fotos</span>
+        <div class="fotos-grid">
+          <div class="foto-add" onclick="document.getElementById('movel-cam-${m.id}').click()">📷<small>Câmera</small></div>
+          <div class="foto-add foto-add-galeria" onclick="document.getElementById('movel-gal-${m.id}').click()">🖼️<small>Galeria</small></div>
+          ${fs.map(f => f.previewUrl
+            ? `<div class="foto-mini" onclick="abrirFoto('${f.id}')"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`
+            : `<div class="foto-mini" onclick="abrirFoto('${f.id}')" style="display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text3)">📷</div>`).join('')}
+        </div>
+        <input type="file" id="movel-cam-${m.id}" accept="image/*" capture="environment" style="display:none" onchange="tirarFotoMovel('${m.id}',this)"/>
+        <input type="file" id="movel-gal-${m.id}" accept="image/*" multiple style="display:none" onchange="tirarFotoMovel('${m.id}',this)"/>
+        <button class="remover-comodo remover-comodo-link" onclick="removerMovel('${m.id}')"><svg class="ic" style="width:17px;height:17px"><use href="#i-lixo"/></svg>Remover item</button>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="mobilia-card${travada ? ' travada' : ''}">
+    <div class="mobilia-cab">
+      <div style="min-width:0">
+        <div class="comodo-nome">🛋️ Mobília do imóvel</div>
+        <div class="card-sub" style="margin-top:2px">${moveis.length ? `${moveis.length} ite${moveis.length > 1 ? 'ns' : 'm'} · ${totalItens} peça${totalItens > 1 ? 's' : ''}` : 'Itens que acompanham a locação'}</div>
+      </div>
+      ${travada ? '' : '<button class="btn-add-movel" onclick="abrirEscolhaMovel()">+ Adicionar</button>'}
+    </div>
+    ${itens || `<div class="card-sub" style="padding:8px 0 6px">${travada ? 'Nenhum item de mobília registrado.' : 'Nenhum item ainda. Se o imóvel for sem mobília, pode deixar vazio.'}</div>`}
+  </div>`;
+}
+
+function abrirEscolhaMovel() {
+  document.getElementById('lista-moveis-comuns').innerHTML = ITENS_MOBILIA_COMUNS.map((n, i) => `<button onclick="adicionarMovel(ITENS_MOBILIA_COMUNS[${i}])">${n}</button>`).join('');
+  document.getElementById('movel-custom').value = '';
+  abrirModal('modal-movel');
+}
+function confirmarMovelCustom() {
+  const nome = document.getElementById('movel-custom').value.trim();
+  if (nome) adicionarMovel(nome);
+}
+async function adicionarMovel(descricao) {
+  fecharModais();
+  // Mesmo item de novo → só aumenta a quantidade (evita linhas repetidas)
+  const existente = (await idbTodos('moveis')).find(m => m.vistoria_id === vistoriaAtual.id && _normalizar(m.descricao) === _normalizar(descricao));
+  if (existente) {
+    await mudarQtdMovel(existente.id, 1, true);
+    mostrarToast(`${descricao}: quantidade agora é ${(parseInt(existente.quantidade, 10) || 1) + 1}`);
+    return;
+  }
+  const registro = { id: crypto.randomUUID(), vistoria_id: vistoriaAtual.id, comodo_id: null, descricao, quantidade: 1, estado: null };
+  await idbSalvar('moveis', { ...registro, criado_local: Date.now() });
+  await enfileirar('criar_movel', registro);
+  await renderizarMobilia();
+  const el = document.getElementById('movel-' + registro.id);
+  if (el) { el.classList.add('aberto'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+}
+function toggleMovel(id) {
+  const el = document.getElementById('movel-' + id);
+  if (!el) return;
+  const abrindo = !el.classList.contains('aberto');
+  el.classList.toggle('aberto');
+  if (abrindo) carregarFotosMovelDoDrive(id);
+}
+async function _reabrirMovel(id) {
+  await renderizarMobilia();
+  const el = document.getElementById('movel-' + id);
+  if (el) el.classList.add('aberto');
+}
+async function mudarQtdMovel(id, delta, semRedesenharAberto) {
+  const m = await idbPegar('moveis', id);
+  if (!m) return;
+  const nova = Math.max(1, (parseInt(m.quantidade, 10) || 1) + delta);
+  if (nova === m.quantidade) return;
+  m.quantidade = nova;
+  await idbSalvar('moveis', m);
+  await enfileirar('atualizar_movel', { id, campos: { quantidade: nova } });
+  if (semRedesenharAberto) await renderizarMobilia(); else await _reabrirMovel(id);
+}
+async function mudarEstadoMovel(id, estado) {
+  const m = await idbPegar('moveis', id);
+  if (!m) return;
+  m.estado = estado || null;
+  await idbSalvar('moveis', m);
+  await enfileirar('atualizar_movel', { id, campos: { estado: m.estado } });
+  await _reabrirMovel(id);
+}
+async function removerMovel(id) {
+  const m = await idbPegar('moveis', id);
+  if (!m || !confirm(`Remover "${m.descricao}" e as fotos dele?`)) return;
+  // Fotos primeiro (cancela envio pendente ou agenda exclusão no servidor)
+  for (const f of (await idbTodos('fotos')).filter(x => x.movel_id === id)) await _excluirFoto(f);
+  const fila = await idbTodos('fila');
+  const criacaoPendente = fila.find(x => x.tipo === 'criar_movel' && x.payload.id === id);
+  if (criacaoPendente && _seqEmEnvio !== criacaoPendente.seq) {
+    // Nunca chegou ao servidor: descarta tudo dele na fila, nada vai pro sistema
+    for (const x of fila.filter(x => (x.tipo === 'criar_movel' || x.tipo === 'atualizar_movel') && x.payload.id === id)) await idbRemover('fila', x.seq);
+    atualizarBarraStatus();
+  } else {
+    await enfileirar('remover_movel', { id });
+  }
+  await idbRemover('moveis', id);
+  await renderizarMobilia();
+}
+
+async function tirarFotoMovel(movelId, input) {
+  const arquivos = [...input.files].filter(a => !a.type || a.type.startsWith('image/'));
+  input.value = '';
+  if (!arquivos.length) return;
+  let falhas = 0;
+  for (const arquivo of arquivos) {
+    try {
+      const comprimida = await comprimirImagem(arquivo, 1280, 0.72);
+      const fotoLocalId = crypto.randomUUID();
+      await idbSalvar('fotos', {
+        id: fotoLocalId, movel_id: movelId, comodo_id: null, previewUrl: comprimida.dataUrl,
+        base64: comprimida.base64, mimeType: 'image/jpeg', status: 'pendente',
+      });
+      await enfileirar('foto_movel', {
+        fotoLocalId, movelId, nomeArquivo: (arquivo.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg',
+        mimeType: 'image/jpeg', base64: comprimida.base64, tamanhoBytes: comprimida.tamanho,
+        usuarioId: sessaoAtual.user.id,
+      });
+    } catch (e) { falhas++; }
+  }
+  await _reabrirMovel(movelId);
+  _avisarResultadoFotos(arquivos.length, falhas);
+}
+
+// Fotos de móvel que estão no Drive (feitas no módulo web): busca a imagem ao abrir o item
+async function carregarFotosMovelDoDrive(movelId) {
+  if (!navigator.onLine) return;
+  const pendentes = (await idbTodos('fotos')).filter(f => f.movel_id === movelId && f.existente && f.driveId && !f.previewUrl);
+  let mudou = false;
+  for (const f of pendentes) {
+    try {
+      const token = btoa(sessaoAtual.user.id + ':' + Date.now() + ':sigecon');
+      const resp = await fetch(DRIVE_GAS_URL + '?acao=base64&driveId=' + f.driveId + '&token=' + token);
+      const json = await resp.json();
+      if (!json.sucesso) continue;
+      f.previewUrl = `data:${json.mimeType || f.mimeType};base64,${json.base64}`;
+      await idbSalvar('fotos', f);
+      mudou = true;
+    } catch (e) { /* tenta de novo na próxima vez que abrir */ }
+  }
+  if (mudou) await _reabrirMovel(movelId);
+}
+
 async function renderizarComodos() {
   const todos = await idbTodos('comodos');
   const doAtual = todos.filter(c => c.vistoria_id === vistoriaAtual.id).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
@@ -2064,6 +2327,7 @@ async function renderizarComodos() {
   el.classList.toggle('travada', travada);
   document.getElementById('fab-comodo').style.display = travada ? 'none' : '';
   await renderizarFotosGerais();
+  await renderizarMobilia();
   if (!doAtual.length) { el.innerHTML = `<div class="vazio"><div class="vazio-icone">🚪</div>Nenhum cômodo ainda.<br/>Toque em "Cômodo" pra adicionar.</div>`; return; }
   const fotos = await idbTodos('fotos');
   // Mantém abertos os cômodos que já estavam abertos antes de redesenhar
@@ -2274,6 +2538,7 @@ async function abrirFoto(id) {
   const travada = vistoriaAtual && vistoriaAtual.status === 'finalizado';
   let titulo = 'Fotos gerais do imóvel';
   if (f.comodo_id) { const c = await idbPegar('comodos', f.comodo_id); titulo = c ? c.nome : 'Foto do cômodo'; }
+  else if (f.movel_id) { const m = await idbPegar('moveis', f.movel_id); titulo = m ? '🛋️ ' + m.descricao : 'Foto da mobília'; }
   const situacao = f.status === 'sincronizado' ? '✅ enviada' : '⏳ aguardando envio';
   document.getElementById('visor-titulo').textContent = `${titulo} · ${situacao}`;
   document.getElementById('visor-img').innerHTML = f.previewUrl
@@ -2297,7 +2562,7 @@ function _caminhoStorageDaUrl(url) {
 // · já está no sistema → entra na fila "remover_foto"
 async function _excluirFoto(f) {
   const fila = await idbTodos('fila');
-  const envio = fila.find(x => (x.tipo === 'foto_comodo' || x.tipo === 'foto_geral') && x.payload && x.payload.fotoLocalId === f.id);
+  const envio = fila.find(x => (x.tipo === 'foto_comodo' || x.tipo === 'foto_geral' || x.tipo === 'foto_movel') && x.payload && x.payload.fotoLocalId === f.id);
   if (envio) {
     if (_seqEmEnvio === envio.seq) { f.excluida = true; await idbSalvar('fotos', f); }
     else { await idbRemover('fila', envio.seq); await idbRemover('fotos', f.id); }
@@ -2314,8 +2579,10 @@ async function _excluirFoto(f) {
   return true;
 }
 
-async function _redesenharFotosDaVistoria(comodoId) {
-  if (comodoId) {
+async function _redesenharFotosDaVistoria(comodoId, movelId) {
+  if (movelId) {
+    await _reabrirMovel(movelId);
+  } else if (comodoId) {
     await renderizarComodos();
     const el = document.getElementById('comodo-' + comodoId);
     if (el) el.classList.add('aberto');
@@ -2331,7 +2598,7 @@ async function apagarFotoVisualizada() {
   const ok = await _excluirFoto(f);
   if (!ok) return;
   fecharModais();
-  await _redesenharFotosDaVistoria(f.comodo_id);
+  await _redesenharFotosDaVistoria(f.comodo_id, f.movel_id);
   mostrarToast(navigator.onLine ? 'Foto apagada.' : 'Foto apagada — o sistema será atualizado quando tiver internet.', 'sucesso');
 }
 
@@ -2344,13 +2611,14 @@ async function substituirFotoVisualizada(input) {
   // Primeiro guarda a nova; só apaga a antiga se a nova deu certo
   const falsoInput = { files: [arquivo], value: '' };
   const antes = (await idbTodos('fotos')).length;
-  if (antiga.comodo_id) await tirarFotoComodo(antiga.comodo_id, falsoInput);
+  if (antiga.movel_id) await tirarFotoMovel(antiga.movel_id, falsoInput);
+  else if (antiga.comodo_id) await tirarFotoComodo(antiga.comodo_id, falsoInput);
   else await tirarFotoGeral(falsoInput);
   const depois = (await idbTodos('fotos')).length;
   if (depois <= antes) return; // a nova não entrou — mantém a antiga (o aviso de erro já apareceu)
   await _excluirFoto(antiga);
   fecharModais();
-  await _redesenharFotosDaVistoria(antiga.comodo_id);
+  await _redesenharFotosDaVistoria(antiga.comodo_id, antiga.movel_id);
   mostrarToast('Foto substituída.', 'sucesso');
 }
 
@@ -2583,6 +2851,18 @@ async function _gerarPdfVistoriaRecente() {
       y += linhas.length * 5;
     }
     y += 6;
+  }
+
+  const moveisPdf = (await idbTodos('moveis')).filter(m => m.vistoria_id === vistoria.id);
+  if (moveisPdf.length) {
+    if (y > 255) { doc.addPage(); y = 20; }
+    doc.setFontSize(12); doc.setFont(undefined, 'bold');
+    doc.text('Mobília do imóvel', margem, y); y += 7;
+    doc.setFontSize(10); doc.setFont(undefined, 'normal');
+    for (const m of moveisPdf) {
+      if (y > 275) { doc.addPage(); y = 20; }
+      doc.text(`• ${m.descricao}  —  Qtd: ${m.quantidade || 1}${m.estado ? '  —  Estado: ' + m.estado : ''}`, margem, y); y += 6;
+    }
   }
 
   doc.setFontSize(8); doc.setTextColor(150);
