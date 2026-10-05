@@ -418,6 +418,36 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .travada .remover-comodo{display:none;}
   .banner-ok{background:rgba(46,204,138,0.14);border:1px solid var(--green);color:var(--ok-txt);border-radius:14px;padding:14px;text-align:center;font-weight:700;font-size:14px;margin-bottom:10px;}
   .dica{font-size:12.5px;color:var(--text3);text-align:center;margin-top:10px;}
+  /* ===== Assinatura da vistoria (mesmo padrão dos registros diários da frota) ===== */
+  .pad-wrap{position:relative;background:#fff;border-radius:12px;border:1px solid var(--border2);overflow:hidden;}
+  .pad-wrap canvas{display:block;width:100%;height:170px;touch-action:none;cursor:crosshair;}
+  .pad-linha{position:absolute;left:18px;right:18px;bottom:40px;border-bottom:1.5px solid #c9d3de;pointer-events:none;}
+  .pad-dica{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:12px;color:#8a99aa;pointer-events:none;}
+  .pad-wrap.com-traco .pad-dica{display:none;}
+  .pad-limpar{position:absolute;top:8px;right:8px;background:#eef2f7;border:none;color:#46607A;border-radius:8px;min-height:34px;padding:0 12px;font-size:12.5px;font-weight:700;cursor:pointer;}
+  .assin-desc{font-size:13px;color:var(--text2);line-height:1.45;margin-bottom:12px;}
+  .assin-img{background:#fff;border-radius:10px;border:1px solid var(--border2);padding:6px;display:flex;align-items:center;justify-content:center;min-height:64px;}
+  .assin-img img{max-width:100%;max-height:110px;display:block;}
+  .declaracao{font-size:13px;color:var(--text2);margin:12px 2px 0;line-height:1.45;}
+  .link-acao{background:none;border:none;color:var(--blue2);font-size:13.5px;font-weight:700;cursor:pointer;padding:10px 2px 0;text-align:left;}
+  .selfie-linha{display:flex;align-items:center;gap:12px;margin-top:6px;}
+  .selfie-foto{width:84px;height:84px;border-radius:14px;background:var(--navy3);border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden;flex-shrink:0;}
+  .selfie-foto img{width:100%;height:100%;object-fit:cover;}
+  .selfie-foto video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+  .selfie-foto.ao-vivo{width:150px;height:150px;border-style:solid;border-color:var(--orange);}
+  .selfie-foto.pequena{width:60px;height:60px;font-size:20px;border-style:solid;}
+  .consentimento{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--text2);line-height:1.45;margin-top:12px;cursor:pointer;}
+  .consentimento input{width:20px;height:20px;flex-shrink:0;margin-top:1px;accent-color:var(--orange);}
+  .assinante{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;text-align:left;}
+  .assinante-nome{font-weight:800;font-size:14px;margin-bottom:6px;}
+  .assinante-nome small{font-weight:600;color:var(--text3);font-size:12px;}
+  .trilha{font-size:12px;color:var(--text3);margin-top:8px;line-height:1.5;word-break:break-word;}
+  .trilha a{color:var(--blue2);}
+  .codigo{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--text2);letter-spacing:.5px;}
+  .banner-trava{background:var(--navy3);border:1px solid var(--border2);border-radius:14px;padding:12px 14px;font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.45;text-align:left;}
+  .banner-trava b{display:block;color:var(--text);margin-bottom:2px;}
+  .banner-alerta{background:rgba(224,168,48,.14);border:1px solid var(--amber);color:var(--warn-txt);border-radius:14px;padding:12px 14px;font-size:13px;margin-bottom:10px;line-height:1.45;text-align:left;font-weight:600;}
+  .btn-assinar{background:var(--green);color:#06281a;box-shadow:0 6px 16px rgba(46,204,138,.22);}
   input[readonly].campo-soma{background:var(--navy3);color:var(--text2);}
   .painel-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
   .passo-titulo{font-size:18px;font-weight:800;margin-bottom:4px;letter-spacing:-.2px;}
@@ -720,6 +750,15 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
       <button onclick="criarVistoria('periodica')"><span class="opcao-ic">🔁</span><span>Periódica<small>Acompanhamento durante a locação</small></span></button>
     </div>
     <button class="btn btn-secundario" onclick="fecharModais()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ================= Modal: assinatura da vistoria ================= -->
+<div class="modal-overlay" id="modal-assinatura">
+  <div class="modal">
+    <div class="modal-titulo" id="assin-titulo">Assinar vistoria</div>
+    <div id="assin-corpo"></div>
+    <button class="btn btn-secundario" style="margin-top:8px" onclick="fecharModais()">Cancelar</button>
   </div>
 </div>
 
@@ -1172,8 +1211,30 @@ async function processarItemFila(item) {
     const { error } = await sb.from('imovel_vistorias').insert(p);
     if (error) throw error;
   } else if (item.tipo === 'atualizar_vistoria') {
+    // Assinatura: imagens (assinatura/selfie) sobem pro Storage privado antes
+    if (p.campos.assinatura && await _subirImagensAssinatura(p.campos.assinatura, p.id)) {
+      await idbSalvar('fila', item); // não reenviar as imagens se o update falhar
+      const local = await idbPegar('vistorias', p.id);
+      if (local && local.assinatura && local.assinatura.codigo === p.campos.assinatura.codigo && local.assinatura.em === p.campos.assinatura.em) {
+        local.assinatura = { ...p.campos.assinatura }; await idbSalvar('vistorias', local);
+      }
+    }
     const { error } = await sb.from('imovel_vistorias').update(p.campos).eq('id', p.id);
-    if (error) throw error;
+    if (error) {
+      if (/assinatura/.test(error.message || '')) throw new Error('O sistema ainda não tem o campo de assinatura da vistoria — peça pra rodar o SQL de assinatura.');
+      throw error;
+    }
+  } else if (item.tipo === 'anular_assinatura_vistoria') {
+    // Guarda a assinatura anulada no histórico da vistoria (lê o que já tem e acrescenta)
+    if (await _subirImagensAssinatura(p.assinatura, p.id)) await idbSalvar('fila', item);
+    const { data: atual, error: e1 } = await sb.from('imovel_vistorias').select('assinaturas_anuladas').eq('id', p.id).maybeSingle();
+    if (e1) throw e1;
+    const lista = Array.isArray(atual && atual.assinaturas_anuladas) ? atual.assinaturas_anuladas : [];
+    if (!lista.some(x => x && x.em === p.assinatura.em && x.codigo === p.assinatura.codigo)) {
+      lista.push({ ...p.assinatura, anulada_em: p.anulada_em, anulada_por: p.anulada_por, motivo: p.motivo });
+      const { error } = await sb.from('imovel_vistorias').update({ assinaturas_anuladas: lista }).eq('id', p.id);
+      if (error) throw error;
+    }
   } else if (item.tipo === 'criar_comodo') {
     const { error } = await sb.from('vistoria_comodos').insert(p);
     if (error) throw error;
@@ -1404,7 +1465,7 @@ function abrirModal(id) {
   document.getElementById(id).classList.add('aberto');
   _armarBotaoVoltarDoCelular();
 }
-function fecharModais() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('aberto')); }
+function fecharModais() { if (typeof pararCamera === 'function') pararCamera(); document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('aberto')); }
 
 // Botão "voltar" do celular (Android / gesto): em vez de sair do app,
 // fecha o modal aberto ou volta pra tela anterior — igual à seta do topo
@@ -1468,6 +1529,7 @@ async function iniciarAppLogado() {
   await _carregarPerfilImoveis(); // gestor ou operador (online atualiza; offline usa o guardado)
   if (navigator.onLine) {
     await _carregarNomeUsuario();
+    MinhaAssinatura.carregarDoSistema(); // em segundo plano
     try { await carregarImoveisDoServidor(); }
     catch (e) { mostrarToast('Não deu pra atualizar a lista — usando os dados salvos.', 'erro'); }
   }
@@ -1575,13 +1637,23 @@ async function carregarImoveisDoServidor() {
     // Operador: só as vistorias dele (cada vistoriador mexe no que é dele).
     // Gestor: as de todos, pra ver a situação real dos imóveis da obra.
     let qVist = sb.from('imovel_vistorias')
-      .select('id,imovel_id,tipo,status,data_vistoria,responsavel,criado_por')
+      .select('id,imovel_id,tipo,status,data_vistoria,responsavel,criado_por,finalizado_em,assinatura')
       .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(ehGestorImoveis() ? 500 : 200);
     if (!ehGestorImoveis()) qVist = qVist.eq('criado_por', sessaoAtual.user.id);
-    const { data: vistorias } = await qVist;
+    let { data: vistorias, error: erroVist } = await qVist;
+    if (erroVist && /assinatura/.test(erroVist.message || '')) {
+      // SQL da assinatura ainda não rodado — carrega sem o campo, pra não travar o app
+      let q2 = sb.from('imovel_vistorias').select('id,imovel_id,tipo,status,data_vistoria,responsavel,criado_por')
+        .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(ehGestorImoveis() ? 500 : 200);
+      if (!ehGestorImoveis()) q2 = q2.eq('criado_por', sessaoAtual.user.id);
+      ({ data: vistorias } = await q2);
+    }
+    // Vistoria com alteração ainda na fila (ex.: assinada offline): vale a do aparelho
+    const filaVist = await idbTodos('fila');
+    const comPendencia = new Set(filaVist.filter(f => ['atualizar_vistoria', 'anular_assinatura_vistoria'].includes(f.tipo)).map(f => f.payload.id));
     // Gestão (contrato, colaboradores, contas…) guardada pra consultar offline — em segundo plano
     _carregarGestaoDoServidor(ids).catch(() => {});
-    await idbSalvarVarios('vistorias', vistorias || []);
+    await idbSalvarVarios('vistorias', (vistorias || []).filter(v => !comPendencia.has(v.id)));
     await _removerVistoriasQueNaoDevemMaisAparecer(vistorias || []);
     if (vistorias && vistorias.length) {
       const idsVist = vistorias.map(v => v.id);
@@ -1753,11 +1825,13 @@ function _rotuloStatusSolicitacao(st) {
 // Situação do imóvel dentro do passo a passo
 function _calcEstado(im, vistorias, solicitacoes, fila) {
   const v = vistorias.filter(x => x.imovel_id === im.id);
-  const concluida = v.some(x => x.status === 'finalizado');
   const emEdicao = v.find(x => x.status !== 'finalizado');
+  // Concluída = finalizada E assinada (sem assinatura não libera o Passo 4)
+  const concluida = !emEdicao && v.some(x => x.status === 'finalizado' && x.assinatura);
+  const faltaAssinar = !emEdicao && !concluida ? v.find(x => x.status === 'finalizado') : null;
   const solicitacao = solicitacoes.find(x => x.imovel_id === im.id);
   const naoSync = fila.some(f => f.tipo === 'criar_imovel' && f.payload.id === im.id);
-  let e = { concluida, emEdicao, solicitacao, naoSync };
+  let e = { concluida, emEdicao, faltaAssinar, solicitacao, naoSync };
   if (solicitacao) {
     const ehDistrato = solicitacao.tipo_solicitacao === 'distrato';
     const r = ehDistrato
@@ -1770,7 +1844,9 @@ function _calcEstado(im, vistorias, solicitacoes, fila) {
       : (solicitacao.status === 'aprovado' || solicitacao.status === 'concluido') ? 'contratado'
       : 'solicitado';
     if (r.reprovada) Object.assign(e, { rotulo: r.txt, classe: r.classe, reprovada: true, proximo: n + ' — envie uma nova (Passo 4)', passoAtual: 4, feitos: [1, 2, 3], filtroChave });
-    else Object.assign(e, { rotulo: r.txt, classe: r.classe, proximo: n, passoAtual: 4, feitos: [1, 2, 3, 4], filtroChave });
+    else Object.assign(e, { rotulo: r.txt, classe: r.classe, proximo: n + (ehDistrato ? '' : emEdicao ? ' · vistoria reaberta: conclua e assine de novo' : faltaAssinar ? ' · vistoria ainda sem assinatura' : ''), passoAtual: 4, feitos: [1, 2, 3, 4], filtroChave });
+  } else if (faltaAssinar) {
+    Object.assign(e, { rotulo: 'Falta assinar a vistoria', classe: 'selo-pendente', proximo: 'Próximo: Passo 3 — assinar a vistoria', passoAtual: 3, feitos: [1, 2], filtroChave: 'vistoria_andamento' });
   } else if (concluida) {
     Object.assign(e, { rotulo: 'Vistoria concluída', classe: 'selo-finalizado', proximo: 'Próximo: Passo 4 — solicitar o contrato', passoAtual: 4, feitos: [1, 2, 3], filtroChave: 'vistoria_concluida' });
   } else if (emEdicao) {
@@ -2942,10 +3018,15 @@ async function _renderizarPainelImovel() {
   const [vist, sols, fila] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes'), idbTodos('fila')]);
   const e = _calcEstado(imovelAtual, vist, sols, fila);
   renderPassos('passos-imovel', e.passoAtual, e.feitos);
-  const trava = '<div class="dica">🔒 O Passo 4 (contrato) libera quando você concluir a vistoria.</div>';
+  const trava = '<div class="dica">🔒 O Passo 4 (contrato) libera quando você concluir e assinar a vistoria.</div>';
   let cta;
+  const pendVist = e.emEdicao ? `<button class="btn btn-secundario" style="margin-top:8px" onclick="abrirVistoria('${e.emEdicao.id}')">📋 Continuar vistoria reaberta</button>`
+    : e.faltaAssinar ? `<button class="btn btn-assinar" style="margin-top:8px" onclick="assinarVistoria('${e.faltaAssinar.id}', true)">✍️ Assinar a vistoria</button>` : '';
   if (e.solicitacao && !e.reprovada) cta = `<button class="btn" onclick="abrirSolicitacaoExistente()">${_solicitacaoEditavel(e.solicitacao.status) ? '✏️ Ver e editar solicitação' : '👁️ Ver solicitação'}</button>
-    <button class="btn btn-secundario" style="margin-top:8px" onclick="abrirSolicitarContrato()">📄 Enviar nova solicitação</button>`;
+    ${pendVist}<button class="btn btn-secundario" style="margin-top:8px" onclick="abrirSolicitarContrato()">📄 Enviar nova solicitação</button>`;
+  else if (e.faltaAssinar) cta = `<button class="btn btn-assinar" onclick="assinarVistoria('${e.faltaAssinar.id}', true)">✍️ Passo 3 — Assinar a vistoria</button>
+    <button class="btn btn-secundario" style="margin-top:8px" onclick="abrirVistoria('${e.faltaAssinar.id}')">📋 Ver vistoria</button><div class="dica">🔒 O Passo 4 (contrato) libera quando a vistoria estiver assinada.</div>`;
+  else if (e.reprovada && !e.concluida) cta = (e.emEdicao ? `<button class="btn" onclick="abrirVistoria('${e.emEdicao.id}')">📋 Passo 3 — Continuar vistoria</button>` : pendVist) + '<button class="btn btn-secundario" style="margin-top:8px" onclick="abrirSolicitarContrato()">📄 Passo 4 — Solicitar contrato de locação</button>';
   else if (e.concluida || e.reprovada) cta = '<button class="btn" onclick="abrirSolicitarContrato()">📄 Passo 4 — Solicitar contrato de locação</button>';
   else if (e.emEdicao) cta = `<button class="btn" onclick="abrirVistoria('${e.emEdicao.id}')">📋 Passo 3 — Continuar vistoria</button>` + trava;
   else cta = '<button class="btn" onclick="abrirEscolhaTipoVistoria()">📋 Passo 3 — Fazer vistoria</button>' + trava;
@@ -2965,9 +3046,11 @@ async function renderizarListaVistorias() {
   const fila = await idbTodos('fila');
   el.innerHTML = doImovel.map(v => {
     const pendente = fila.some(f => (f.tipo === 'criar_vistoria' && f.payload.id === v.id));
-    const selo = v.status === 'finalizado' ? '<span class="selo selo-finalizado">Concluída</span>' : '<span class="selo selo-rascunho">Em edição</span>';
+    const selo = v.status !== 'finalizado' ? '<span class="selo selo-rascunho">Em edição</span>'
+      : v.assinatura ? '<span class="selo selo-finalizado">✍️ Concluída e assinada</span>' : '<span class="selo selo-pendente">Concluída · falta assinar</span>';
     const sync = pendente ? ' <span class="selo selo-neutro">⏳ não sincronizado</span>' : '';
-    const concluir = v.status !== 'finalizado' ? `<button class="btn-mini" onclick="event.stopPropagation();concluirVistoria('${v.id}')">✅ Concluir</button>` : '';
+    const concluir = v.status !== 'finalizado' ? `<button class="btn-mini" onclick="event.stopPropagation();concluirVistoria('${v.id}')">✍️ Concluir</button>`
+      : !v.assinatura ? `<button class="btn-mini" onclick="event.stopPropagation();assinarVistoria('${v.id}')">✍️ Assinar</button>` : '';
     return `<div class="card" onclick="abrirVistoria('${v.id}')">
       <div class="card-linha">
         <div style="flex:1;min-width:0">
@@ -2980,32 +3063,397 @@ async function renderizarListaVistorias() {
   }).join('');
 }
 
-// Concluir / reabrir vistoria — fica marcada no imóvel, sem precisar reenviar
+// ══════════════════════════════════════════════════════════════
+// Assinatura da vistoria — mesmo padrão dos registros diários da frota:
+// assinatura cadastrada uma vez + selfie a cada assinatura (ou, sem
+// câmera, desenhando na hora). Grava data/hora, localização, aparelho e
+// um código do conteúdo (SHA-256) — se a vistoria for reaberta, a
+// assinatura é anulada (fica no histórico) e precisa assinar de novo.
+// Funciona offline: as imagens sobem pro Storage (privado) na sincronização.
+// Por enquanto só o vistoriador assina; o locador coassina quando a
+// vistoria virar anexo do contrato.
+// ══════════════════════════════════════════════════════════════
+// A partir destes status da solicitação a vistoria fica travada (só destrava se o status voltar)
+const STATUS_SOLICITACAO_TRAVA_VISTORIA = ['aprovado', 'em_elaboracao', 'concluido'];
+
+class PadAssinatura {
+  constructor(canvas) {
+    this.c = canvas; this.ctx = canvas.getContext('2d'); this.pontos = 0; this.largura = 0;
+    this._ajustar();
+    try { new ResizeObserver(() => this._ajustar()).observe(canvas); } catch (e) { /* navegador antigo */ }
+    let desenhando = false, ult = null;
+    const pos = ev => { const r = this.c.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
+    canvas.addEventListener('pointerdown', ev => {
+      ev.preventDefault(); desenhando = true; ult = pos(ev);
+      try { canvas.setPointerCapture(ev.pointerId); } catch (e) { }
+      this.ctx.beginPath(); this.ctx.arc(ult.x, ult.y, 1.2, 0, Math.PI * 2); this.ctx.fill(); this.pontos++;
+    });
+    canvas.addEventListener('pointermove', ev => {
+      if (!desenhando) return;
+      for (const e of (ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev])) {
+        const p = pos(e);
+        this.ctx.beginPath(); this.ctx.moveTo(ult.x, ult.y); this.ctx.quadraticCurveTo(ult.x, ult.y, (ult.x + p.x) / 2, (ult.y + p.y) / 2); this.ctx.lineTo(p.x, p.y); this.ctx.stroke();
+        ult = p; this.pontos++;
+      }
+    });
+    const fim = () => { if (!desenhando) return; desenhando = false; this.c.parentNode.classList.toggle('com-traco', this.pontos > 0); };
+    canvas.addEventListener('pointerup', fim); canvas.addEventListener('pointercancel', fim);
+  }
+  _ajustar() {
+    const r = this.c.getBoundingClientRect();
+    if (!r.width || Math.abs(r.width - this.largura) < 1) return;
+    const anterior = this.pontos ? this.c.toDataURL() : null;
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    this.largura = r.width; this.c.width = Math.round(r.width * dpr); this.c.height = Math.round(r.height * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.ctx.fillStyle = '#fff'; this.ctx.fillRect(0, 0, r.width, r.height);
+    this.ctx.strokeStyle = '#0E1B2B'; this.ctx.fillStyle = '#0E1B2B'; this.ctx.lineWidth = 2.6; this.ctx.lineCap = 'round'; this.ctx.lineJoin = 'round';
+    if (anterior) { const im = new Image(); im.onload = () => { this.ctx.drawImage(im, 0, 0, r.width, r.height); this.ctx.fillStyle = '#0E1B2B'; }; im.src = anterior; }
+  }
+  limpar() { this.pontos = 0; this.largura = 0; this._ajustar(); this.c.parentNode.classList.remove('com-traco'); }
+  valida() { return this.pontos >= 12; }
+  imagem() {
+    const f = Math.min(1, 600 / this.c.width);
+    const t = document.createElement('canvas'); t.width = Math.round(this.c.width * f); t.height = Math.round(this.c.height * f);
+    const x = t.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, t.width, t.height); x.drawImage(this.c, 0, 0, t.width, t.height);
+    return t.toDataURL('image/png');
+  }
+}
+async function sha256(txt) {
+  if (!(window.crypto && crypto.subtle)) throw new Error('sem_crypto');
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function codigoCurto(hash) { return hash.slice(0, 12).toUpperCase().match(/.{4}/g).join('-'); }
+function pegarLocalizacao() {
+  return new Promise(ok => {
+    if (!navigator.geolocation) return ok({ erro: 'indisponível no aparelho' });
+    navigator.geolocation.getCurrentPosition(
+      p => ok({ lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6), precisao_m: Math.round(p.coords.accuracy) }),
+      e => ok({ erro: e.code === 1 ? 'não autorizada' : 'não obtida' }),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 120000 });
+  });
+}
+function idAparelho() {
+  try {
+    let id = localStorage.getItem('id_aparelho');
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem('id_aparelho', id); }
+    return id;
+  } catch (e) { return null; }
+}
+function descricaoAparelho() {
+  const ua = navigator.userAgent || '';
+  const so = /Android\s[\d.]+/.exec(ua)?.[0] || (/iPhone|iPad/.test(ua) ? 'iOS ' + ((/OS (\d+[_\d]*)/.exec(ua)?.[1] || '').replace(/_/g, '.')) : /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'Aparelho');
+  const nav = /Edg\//.test(ua) ? 'Edge' : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Navegador';
+  return `${so.trim()} · ${nav}`;
+}
+
+// ---- Assinatura salva: cadastrada uma vez, aplicada em cada vistoria ----
+// Usa a mesma tabela da frota (frota_assinatura_salva): quem já cadastrou lá
+// não precisa cadastrar de novo. Se não der acesso, fica só neste aparelho.
+const MinhaAssinatura = {
+  chave() { return 'assinatura_' + sessaoAtual.user.id; },
+  async obter() { const r = await idbPegar('sessao', this.chave()); return r ? r.valor : null; },
+  async _gravar(a) { await idbSalvar('sessao', { chave: this.chave(), valor: a }); },
+  async carregarDoSistema() {
+    if (!navigator.onLine || !sessaoAtual) return;
+    try {
+      const local = await this.obter();
+      if (local && local.pendente) return this.enviar();
+      const { data, error } = await sb.from('frota_assinatura_salva').select('imagem,consentimento_em,atualizado_em').eq('usuario_id', sessaoAtual.user.id).maybeSingle();
+      if (!error && data && data.imagem) await this._gravar(data);
+    } catch (e) { /* segue com a do aparelho */ }
+  },
+  async salvar(imagem) {
+    const agora = new Date().toISOString();
+    const a = { imagem, consentimento_em: agora, atualizado_em: agora, pendente: true };
+    await this._gravar(a);
+    this.enviar();
+    return a;
+  },
+  async enviar() {
+    try {
+      const a = await this.obter(); if (!a || !a.pendente || !navigator.onLine) return;
+      const { error } = await sb.from('frota_assinatura_salva').upsert({ usuario_id: sessaoAtual.user.id, imagem: a.imagem, consentimento_em: a.consentimento_em, atualizado_em: a.atualizado_em });
+      if (!error) { a.pendente = false; await this._gravar(a); }
+    } catch (e) { /* tenta de novo depois */ }
+  },
+};
+
+function _abrirModalAssinatura(titulo, html) {
+  pararCamera();
+  document.getElementById('assin-titulo').textContent = titulo;
+  document.getElementById('assin-corpo').innerHTML = html;
+  abrirModal('modal-assinatura');
+}
+function abrirCadastroAssinatura(depois) {
+  _abrirModalAssinatura('Cadastre sua assinatura', `<div class="assin-desc">Você faz sua assinatura uma vez só. Depois, pra assinar cada vistoria, basta tirar uma selfie.</div>
+    <div class="pad-wrap"><canvas id="pad-cad" aria-label="Área de assinatura"></canvas><div class="pad-linha"></div><div class="pad-dica">Assine aqui com o dedo</div>
+      <button class="pad-limpar" onclick="window._pad.limpar()">Limpar</button></div>
+    <label class="consentimento"><input type="checkbox" id="cad-consent"/><span>Concordo que, ao assinar uma vistoria, o app use esta assinatura e registre uma foto minha (selfie), a data, a hora e a localização, para comprovar que fui eu quem assinou. A foto fica guardada de forma privada e só a equipe do sistema pode ver.</span></label>
+    <div class="erro-msg" id="cad-erro" style="margin-top:10px"></div>
+    <button class="btn" id="cad-btn">Salvar assinatura</button>`);
+  requestAnimationFrame(() => {
+    window._pad = new PadAssinatura(document.getElementById('pad-cad'));
+    document.getElementById('cad-btn').onclick = async () => {
+      if (!window._pad.valida()) { document.getElementById('cad-erro').textContent = 'Faça sua assinatura no quadro.'; return; }
+      if (!document.getElementById('cad-consent').checked) { document.getElementById('cad-erro').textContent = 'Marque que você concorda pra continuar.'; return; }
+      await MinhaAssinatura.salvar(window._pad.imagem());
+      mostrarToast('Assinatura salva', 'sucesso');
+      if (depois) depois(); else fecharModais();
+    };
+  });
+}
+async function verMinhaAssinatura() {
+  const a = await MinhaAssinatura.obter();
+  _abrirModalAssinatura('Minha assinatura', a
+    ? `<div class="assin-img" style="margin-bottom:10px"><img src="${a.imagem}" alt="Sua assinatura"/></div>
+       <div class="assin-desc">Salva em ${esc(_fmtDataHora(a.atualizado_em))}${a.pendente ? ' (ainda não enviada ao sistema)' : ''}. Refazer não altera as vistorias já assinadas.</div>
+       <button class="btn btn-secundario" onclick="abrirCadastroAssinatura()">Refazer assinatura</button>`
+    : `<div class="assin-desc">Você ainda não cadastrou sua assinatura.</div><button class="btn" onclick="abrirCadastroAssinatura()">Cadastrar agora</button>`);
+}
+
+// Selfie em baixa resolução (~320px, JPEG): leve e suficiente pra reconhecer o rosto
+function _reduzirSelfie(arquivo) {
+  return new Promise((ok, falha) => {
+    const url = URL.createObjectURL(arquivo), im = new Image();
+    im.onload = () => {
+      const max = 320, f = Math.min(1, max / Math.max(im.width, im.height));
+      const c = document.createElement('canvas'); c.width = Math.round(im.width * f); c.height = Math.round(im.height * f);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      ok(c.toDataURL('image/jpeg', 0.6));
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); falha(new Error('Não foi possível ler a foto.')); };
+    im.src = url;
+  });
+}
+
+// Assinar: assinatura salva + selfie. Sem câmera, dá pra assinar desenhando.
+async function abrirAssinatura(titulo, declaracao, rotuloBtn, aoAssinar) {
+  const salva = await MinhaAssinatura.obter();
+  if (!salva) return abrirCadastroAssinatura(() => abrirAssinatura(titulo, declaracao, rotuloBtn, aoAssinar));
+  window._selfie = null; window._modoDesenho = false; window._pad = null;
+  const nome = await _nomeUsuario();
+  _abrirModalAssinatura(titulo, `<div class="assin-desc" style="margin-bottom:10px">${esc(nome || '')}</div>
+    <div id="assin-selfie-box">
+      <div class="selfie-linha">
+        <div class="selfie-foto" id="selfie-prev"><span>📷</span></div>
+        <div style="flex:1;min-width:0"><div class="assin-img"><img src="${salva.imagem}" alt="Sua assinatura salva"/></div>
+          <button class="link-acao" style="padding-top:6px" onclick="verMinhaAssinatura()">Sua assinatura salva · refazer</button></div>
+      </div>
+      <button class="btn btn-secundario" style="margin-top:12px" id="selfie-btn" onclick="acaoSelfie()">📷 Tirar selfie</button>
+      <input type="file" id="selfie-arquivo" accept="image/*" capture="user" hidden onchange="receberSelfie(this)"/>
+    </div>
+    <div id="assin-desenho-box" style="display:none">
+      <div class="pad-wrap"><canvas id="pad-modal" aria-label="Área de assinatura"></canvas><div class="pad-linha"></div><div class="pad-dica">Assine aqui com o dedo</div>
+        <button class="pad-limpar" onclick="window._pad.limpar()">Limpar</button></div>
+    </div>
+    <div class="declaracao">${esc(declaracao)}</div>
+    <button class="link-acao" id="assin-alternar" onclick="alternarModoDesenho()">Sem câmera? Assinar desenhando</button>
+    <div class="erro-msg" id="pad-erro" style="margin-top:10px"></div>
+    <button class="btn btn-assinar" id="pad-btn">${esc(rotuloBtn)}</button>`);
+  document.getElementById('pad-btn').onclick = async () => {
+    const erro = document.getElementById('pad-erro');
+    let dados;
+    if (window._modoDesenho) {
+      if (!window._pad || !window._pad.valida()) { erro.textContent = 'Faça sua assinatura no quadro.'; return; }
+      dados = { imagem: window._pad.imagem(), selfie: null, metodo: 'desenho' };
+    } else {
+      if (!window._selfie && _cam) capturarSelfie();
+      if (!window._selfie) { erro.textContent = 'Tire a selfie pra assinar.'; return; }
+      dados = { imagem: salva.imagem, selfie: window._selfie, metodo: 'assinatura_salva_e_selfie' };
+    }
+    const btn = document.getElementById('pad-btn'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Registrando…';
+    try { await aoAssinar(dados); pararCamera(); fecharModais(); }
+    catch (e) { btn.disabled = false; btn.textContent = rotuloBtn; erro.textContent = e.message === 'sem_crypto' ? 'Abra o app pelo endereço https pra assinar.' : (e.message || 'Não foi possível assinar.'); }
+  };
+}
+// Câmera ao vivo dentro do app. Só se o navegador não tiver câmera ao vivo,
+// o celular abre a câmera dele (nunca a galeria, pra ninguém usar uma foto qualquer).
+let _cam = null;
+function pararCamera() { if (_cam) { _cam.getTracks().forEach(t => t.stop()); _cam = null; } }
+function acaoSelfie() { if (_cam) capturarSelfie(); else abrirCamera(); }
+async function abrirCamera() {
+  const erro = document.getElementById('pad-erro'), prev = document.getElementById('selfie-prev'), btn = document.getElementById('selfie-btn');
+  erro.textContent = '';
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    try {
+      _cam = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } }, audio: false });
+      prev.classList.add('ao-vivo');
+      prev.innerHTML = '<video id="selfie-video" autoplay playsinline muted></video>';
+      const v = document.getElementById('selfie-video'); v.srcObject = _cam; await v.play().catch(() => { });
+      btn.textContent = '📸 Capturar';
+      return;
+    } catch (e) {
+      pararCamera();
+      if (e && e.name === 'NotAllowedError') { erro.textContent = 'A câmera foi bloqueada. Libere o acesso à câmera nas configurações do navegador e tente de novo.'; return; }
+    }
+  }
+  if (matchMedia('(pointer: coarse)').matches) document.getElementById('selfie-arquivo').click();
+  else erro.textContent = 'Não encontramos uma câmera neste aparelho. Use "Assinar desenhando".';
+}
+function capturarSelfie() {
+  const v = document.getElementById('selfie-video'); if (!v || !v.videoWidth) return;
+  const max = 320, f = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight));
+  const c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * f); c.height = Math.round(v.videoHeight * f);
+  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+  window._selfie = c.toDataURL('image/jpeg', 0.6);
+  pararCamera();
+  const prev = document.getElementById('selfie-prev'); prev.classList.remove('ao-vivo');
+  prev.innerHTML = `<img src="${window._selfie}" alt="Sua selfie"/>`;
+  document.getElementById('selfie-btn').textContent = '📷 Tirar outra';
+  document.getElementById('pad-erro').textContent = '';
+}
+async function receberSelfie(input) {
+  const arq = input.files && input.files[0]; if (!arq) return;
+  try {
+    window._selfie = await _reduzirSelfie(arq);
+    document.getElementById('selfie-prev').innerHTML = `<img src="${window._selfie}" alt="Sua selfie"/>`;
+    document.getElementById('selfie-btn').textContent = '📷 Tirar outra';
+    document.getElementById('pad-erro').textContent = '';
+  } catch (e) { document.getElementById('pad-erro').textContent = e.message; }
+  input.value = '';
+}
+function alternarModoDesenho() {
+  window._modoDesenho = !window._modoDesenho;
+  if (window._modoDesenho) pararCamera();
+  document.getElementById('assin-selfie-box').style.display = window._modoDesenho ? 'none' : '';
+  document.getElementById('assin-desenho-box').style.display = window._modoDesenho ? '' : 'none';
+  document.getElementById('assin-alternar').textContent = window._modoDesenho ? 'Usar assinatura salva e selfie' : 'Sem câmera? Assinar desenhando';
+  if (window._modoDesenho && !window._pad?.c?.isConnected) requestAnimationFrame(() => { window._pad = new PadAssinatura(document.getElementById('pad-modal')); });
+}
+
+// Conteúdo que a assinatura "trava": dados da vistoria, cômodos, mobília e
+// quantidade de fotos. Se algo mudar depois, o código deixa de bater.
+async function _conteudoCanonicoVistoria(v) {
+  const [comodos, moveis, fotos] = await Promise.all([idbTodos('comodos'), idbTodos('moveis'), idbTodos('fotos')]);
+  const cs = comodos.filter(c => c.vistoria_id === v.id).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  const ms = moveis.filter(m => m.vistoria_id === v.id).sort((a, b) => String(a.descricao).localeCompare(String(b.descricao), 'pt-BR'));
+  const fs = fotos.filter(f => !f.excluida);
+  const qtd = fn => fs.filter(fn).length;
+  return JSON.stringify({
+    id: v.id, imovel: v.imovel_id, tipo: v.tipo, data: v.data_vistoria, responsavel: v.responsavel || '', observacoes: v.observacoes_gerais || '',
+    fotos_gerais: qtd(f => f.vistoria_id === v.id && !f.comodo_id && !f.movel_id),
+    comodos: cs.map(c => [c.nome, c.estado || '', c.observacoes || '', qtd(f => f.comodo_id === c.id)]),
+    mobilia: ms.map(m => [m.descricao, parseInt(m.quantidade, 10) || 1, m.estado || '', qtd(f => f.movel_id === m.id)]),
+  });
+}
+async function _montarAssinatura(v, dados) {
+  const [gps, hash] = await Promise.all([pegarLocalizacao(), _conteudoCanonicoVistoria(v).then(sha256)]);
+  return {
+    papel: 'vistoriador', usuario_id: sessaoAtual.user.id, nome: await _nomeUsuario(), email: sessaoAtual.user.email || '',
+    imagem: dados.imagem, metodo: dados.metodo, selfie: dados.selfie || null,
+    em: new Date().toISOString(), fuso: Intl.DateTimeFormat().resolvedOptions().timeZone, gps, hash, codigo: codigoCurto(hash),
+    aparelho: { id: idAparelho(), descricao: descricaoAparelho() },
+  };
+}
+// Na sincronização: imagens da assinatura (dataURL) → Storage privado
+async function _subirImagensAssinatura(a, vistoriaId) {
+  if (!a) return false;
+  let mudou = false;
+  for (const campo of ['imagem', 'selfie']) {
+    const val = a[campo];
+    if (typeof val !== 'string' || !val.startsWith('data:')) continue;
+    const mime = val.slice(5, val.indexOf(';')) || 'image/png';
+    const env = await sgEnviarArquivo(val, {
+      modulo: 'vistoria_assinatura', registroId: vistoriaId, publico: false, mimeType: mime,
+      nomeArquivo: `${campo === 'selfie' ? 'selfie' : 'assinatura'}_${a.codigo || ''}.${mime.includes('png') ? 'png' : 'jpg'}`,
+    });
+    a[campo] = env.drive_url; mudou = true;
+  }
+  return mudou;
+}
+async function _srcImagemAssinatura(val) {
+  if (!val) return '';
+  if (String(val).startsWith('data:')) return val;
+  try { return await sgUrlArquivo({ drive_url: val }); } catch (e) { return ''; }
+}
+async function _blocoAssinaturaVistoria(a) {
+  if (!a) return '';
+  const [img, selfie] = await Promise.all([_srcImagemAssinatura(a.imagem), _srcImagemAssinatura(a.selfie)]);
+  const gps = a.gps && a.gps.lat != null
+    ? `<a href="https://maps.google.com/?q=${a.gps.lat},${a.gps.lng}" target="_blank" rel="noopener">${a.gps.lat}, ${a.gps.lng}</a> (±${a.gps.precisao_m} m)`
+    : 'não registrada' + (a.gps && a.gps.erro ? ' (' + esc(a.gps.erro) + ')' : '');
+  return `<div class="assinante"><div class="assinante-nome">✍️ ${esc(a.nome || '')} <small>vistoriador${a.metodo === 'assinatura_salva_e_selfie' ? ' · assinatura salva + selfie' : ' · assinou desenhando'}</small></div>
+    <div class="selfie-linha">${a.selfie ? `<div class="selfie-foto pequena">${selfie ? `<img src="${selfie}" alt="Selfie"/>` : '📷'}</div>` : ''}
+      <div class="assin-img" style="flex:1;min-width:0">${img ? `<img src="${img}" alt="Assinatura de ${esc(a.nome || '')}"/>` : '<span class="card-sub">assinatura (abre com internet)</span>'}</div></div>
+    <div class="trilha">${esc(_fmtDataHora(a.em))} · local: ${gps} · ${esc(a.aparelho?.descricao || '')}<br/>Código do conteúdo <span class="codigo">${esc(a.codigo || '')}</span>
+      <br/>O locador coassina quando a vistoria entrar como anexo do contrato.</div></div>`;
+}
+
+// Situação da vistoria × solicitação do imóvel
+async function _solicitacaoDoImovel(imovelId) { return (await idbTodos('solicitacoes')).find(x => x.imovel_id === imovelId) || null; }
+function _solicitacaoTravaVistoria(sol) {
+  return !!(sol && sol.tipo_solicitacao !== 'distrato' && STATUS_SOLICITACAO_TRAVA_VISTORIA.includes(String(sol.status || '').toLowerCase()));
+}
+// Pra enviar (ou salvar) a solicitação: precisa de vistoria concluída E assinada, e nenhuma em edição
+async function _vistoriaProntaParaSolicitar(imovelId) {
+  const vs = (await idbTodos('vistorias')).filter(v => v.imovel_id === imovelId);
+  if (vs.some(v => v.status !== 'finalizado')) return { ok: false, msg: 'Tem vistoria em edição neste imóvel — conclua e assine antes (Passo 3).' };
+  const assinada = vs.find(v => v.assinatura);
+  if (assinada) return { ok: true, vistoria: assinada };
+  if (vs.length) return { ok: false, msg: 'Falta assinar a vistoria (Passo 3) pra enviar a solicitação.', faltaAssinar: vs[0] };
+  return { ok: false, msg: 'Conclua e assine a vistoria antes (Passo 3).' };
+}
+
+// Assinar uma vistoria já concluída (ex.: concluída antes de existir assinatura)
+async function assinarVistoria(id, voltarParaImovel) {
+  const v = await idbPegar('vistorias', id);
+  if (!v || v.status !== 'finalizado') return;
+  await abrirAssinatura('Assinar vistoria', 'Declaro que vistoriei o imóvel pessoalmente e que as informações e fotos desta vistoria estão corretas.', '✍️ Assinar vistoria', async dados => {
+    const atual = await idbPegar('vistorias', id);
+    atual.assinatura = await _montarAssinatura(atual, dados);
+    await idbSalvar('vistorias', atual);
+    await enfileirar('atualizar_vistoria', { id, campos: { assinatura: atual.assinatura } });
+    if (vistoriaAtual && vistoriaAtual.id === id) vistoriaAtual = atual;
+    mostrarToast('Vistoria assinada! Agora é o Passo 4: solicitar o contrato.', 'sucesso');
+    if (voltarParaImovel) await abrirImovel(atual.imovel_id);
+    else if (document.getElementById('tela-vistoria').classList.contains('ativa')) await renderizarComodos();
+    else await renderizarListaVistorias();
+  });
+}
+
+// Concluir / reabrir vistoria — concluir = assinar (fica marcada no imóvel, sem precisar reenviar)
 async function concluirVistoria(id, voltarParaImovel) {
   const v = await idbPegar('vistorias', id);
   if (!v) return;
   const comodos = (await idbTodos('comodos')).filter(c => c.vistoria_id === id);
   if (!comodos.length) { mostrarToast('Adicione pelo menos um cômodo antes de concluir.', 'erro'); return; }
-  if (!confirm('Concluir esta vistoria? Ela fica marcada como concluída no imóvel (sem precisar reenviar). Dá pra reabrir se precisar.')) return;
-  // A data da vistoria passa a ser o dia em que ela foi de fato concluída
-  v.status = 'finalizado';
-  v.data_vistoria = hojeLocalISO();
-  v.finalizado_em = new Date().toISOString();
-  if (!v.responsavel) v.responsavel = await _nomeUsuario();
-  await idbSalvar('vistorias', v);
-  await enfileirar('atualizar_vistoria', { id, campos: { status: 'finalizado', data_vistoria: v.data_vistoria, finalizado_em: v.finalizado_em, responsavel: v.responsavel } });
-  if (vistoriaAtual && vistoriaAtual.id === id) vistoriaAtual = v;
-  mostrarToast('Vistoria concluída! Agora é o Passo 4: solicitar o contrato.');
-  if (voltarParaImovel) await abrirImovel(v.imovel_id);
-  else await renderizarListaVistorias();
+  // Sai do campo que estiver sendo digitado, pra observação entrar no conteúdo assinado
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  await new Promise(r => setTimeout(r, 150));
+  await abrirAssinatura('Concluir e assinar', 'Declaro que vistoriei o imóvel pessoalmente e que as informações e fotos desta vistoria estão corretas. Depois de assinada, para mudar algo é preciso reabrir (a assinatura é anulada).', '✍️ Assinar e concluir', async dados => {
+    const atual = await idbPegar('vistorias', id);
+    // A data da vistoria passa a ser o dia em que ela foi de fato concluída
+    atual.status = 'finalizado';
+    atual.data_vistoria = hojeLocalISO();
+    atual.finalizado_em = new Date().toISOString();
+    if (!atual.responsavel) atual.responsavel = await _nomeUsuario();
+    atual.assinatura = await _montarAssinatura(atual, dados);
+    await idbSalvar('vistorias', atual);
+    await enfileirar('atualizar_vistoria', { id, campos: { status: 'finalizado', data_vistoria: atual.data_vistoria, finalizado_em: atual.finalizado_em, responsavel: atual.responsavel, assinatura: atual.assinatura } });
+    if (vistoriaAtual && vistoriaAtual.id === id) vistoriaAtual = atual;
+    mostrarToast('Vistoria concluída e assinada! Agora é o Passo 4: solicitar o contrato.', 'sucesso');
+    if (voltarParaImovel) await abrirImovel(atual.imovel_id);
+    else await renderizarListaVistorias();
+  });
 }
 async function reabrirVistoria(id) {
   const v = await idbPegar('vistorias', id);
   if (!v) return;
+  const sol = await _solicitacaoDoImovel(v.imovel_id);
+  if (_solicitacaoTravaVistoria(sol)) { mostrarToast('Vistoria travada: a solicitação já foi aprovada. Só destrava se o status voltar.', 'erro'); return; }
+  const avisoSol = sol && String(sol.status || 'pendente').toLowerCase() === 'pendente' && sol.tipo_solicitacao !== 'distrato'
+    ? `\n\nEste imóvel já tem a ${_numSolicitacao(sol)} enviada: ela fica sem vistoria assinada até você concluir e assinar de novo.` : '';
+  if (v.assinatura && !confirm('Reabrir para editar? A assinatura desta vistoria será anulada (fica no histórico) e você vai precisar assinar de novo ao concluir.' + avisoSol)) return;
+  if (!v.assinatura && avisoSol && !confirm('Reabrir para editar?' + avisoSol)) return;
+  const anulada = v.assinatura;
   v.status = 'rascunho';
   v.finalizado_em = null;
+  v.assinatura = null;
   await idbSalvar('vistorias', v);
-  await enfileirar('atualizar_vistoria', { id, campos: { status: 'rascunho', finalizado_em: null } });
+  if (anulada) await enfileirar('anular_assinatura_vistoria', { id, assinatura: anulada, anulada_em: new Date().toISOString(), anulada_por: await _nomeUsuario(), motivo: 'vistoria reaberta para edição' });
+  await enfileirar('atualizar_vistoria', { id, campos: anulada ? { status: 'rascunho', finalizado_em: null, assinatura: null } : { status: 'rascunho', finalizado_em: null } });
   vistoriaAtual = v;
   await renderizarComodos();
 }
@@ -3267,11 +3715,11 @@ async function renderizarComodos() {
   document.getElementById('fab-comodo').style.display = travada ? 'none' : '';
   await renderizarFotosGerais();
   await renderizarMobilia();
-  if (!doAtual.length) { el.innerHTML = `<div class="vazio"><div class="vazio-icone">🚪</div>Nenhum cômodo ainda.<br/>Toque em "Cômodo" pra adicionar.</div>`; return; }
+  if (!doAtual.length && !travada) { el.innerHTML = `<div class="vazio"><div class="vazio-icone">🚪</div>Nenhum cômodo ainda.<br/>Toque em "Cômodo" pra adicionar.</div>`; return; }
   const fotos = await idbTodos('fotos');
   // Mantém abertos os cômodos que já estavam abertos antes de redesenhar
   const abertos = new Set([...el.querySelectorAll('.comodo.aberto')].map(d => d.id));
-  el.innerHTML = '';
+  el.innerHTML = doAtual.length ? '' : '<div class="vazio" style="padding:20px">Nenhum cômodo registrado nesta vistoria.</div>';
   for (const c of doAtual) {
     const div = document.createElement('div');
     div.className = 'comodo' + (abertos.has('comodo-' + c.id) ? ' aberto' : ''); div.id = 'comodo-' + c.id;
@@ -3308,10 +3756,26 @@ async function renderizarComodos() {
   }
   const rodape = document.createElement('div');
   rodape.style.cssText = 'margin-top:14px';
-  rodape.innerHTML = travada
-    ? `<div class="banner-ok">✅ Vistoria concluída</div><button class="btn btn-secundario" onclick="reabrirVistoria('${vistoriaAtual.id}')">Reabrir para editar</button>`
-    : `<button class="btn" style="background:var(--green);color:#06281a;box-shadow:0 6px 16px rgba(46,204,138,.22)" onclick="concluirVistoria('${vistoriaAtual.id}', true)">✅ Concluir vistoria</button><div class="dica">Ao concluir, o Passo 4 (contrato) é liberado.</div>`;
-  el.appendChild(rodape);
+  const vId = vistoriaAtual.id;
+  if (travada) {
+    const sol = await _solicitacaoDoImovel(vistoriaAtual.imovel_id);
+    const trava = _solicitacaoTravaVistoria(sol);
+    const a = vistoriaAtual.assinatura;
+    rodape.innerHTML = (a ? `<div class="banner-ok">✅ Vistoria concluída e assinada</div><div id="bloco-assinatura-vistoria"></div>`
+        : `<div class="banner-alerta">✍️ Vistoria concluída, mas falta assinar. Sem a assinatura não dá pra enviar a solicitação do contrato.</div>
+           <button class="btn btn-assinar" onclick="assinarVistoria('${vId}')">✍️ Assinar vistoria</button><div style="height:8px"></div>`)
+      + (trava ? `<div class="banner-trava"><b>🔒 Vistoria travada</b>Situação atual: ${esc(_rotuloStatusSolicitacao(sol.status).txt)}. A partir da aprovação a vistoria não pode mais ser alterada — só destrava se o status voltar.</div>`
+        : `<button class="btn btn-secundario" onclick="reabrirVistoria('${vId}')">Reabrir para editar</button>${a ? '<div class="dica">Reabrir anula a assinatura — ao concluir, assina de novo.</div>' : ''}`);
+    el.appendChild(rodape);
+    if (a) {
+      const html = await _blocoAssinaturaVistoria(a);
+      const alvo = document.getElementById('bloco-assinatura-vistoria');
+      if (alvo && vistoriaAtual && vistoriaAtual.id === vId) alvo.innerHTML = html;
+    }
+  } else {
+    rodape.innerHTML = `<button class="btn btn-assinar" onclick="concluirVistoria('${vId}', true)">✍️ Concluir e assinar vistoria</button><div class="dica">Ao concluir e assinar, o Passo 4 (contrato) é liberado.</div>`;
+    el.appendChild(rodape);
+  }
 }
 
 // ── Fotos gerais do imóvel (fachada, vista externa...) — nível da vistoria ──
@@ -3740,7 +4204,8 @@ async function abrirSolicitarContrato() {
   if (!imovelAtual.fornecedor_id) { mostrarToast('Este imóvel está sem fornecedor. Toque em Editar e escolha um (Passo 1).', 'erro'); return; }
   const [vist, sols] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes')]);
   const jaEnviada0 = sols.find(x => x.imovel_id === imovelAtual.id);
-  if (!jaEnviada0 && !vist.some(v => v.imovel_id === imovelAtual.id && v.status === 'finalizado')) { mostrarToast('Conclua a vistoria antes (Passo 3).', 'erro'); return; }
+  const pronta = await _vistoriaProntaParaSolicitar(imovelAtual.id);
+  if (!pronta.ok) { mostrarToast(pronta.msg, 'erro'); return; }
   const jaEnviada = sols.find(x => x.imovel_id === imovelAtual.id);
   if (jaEnviada && !_rotuloStatusSolicitacao(jaEnviada.status).reprovada && !confirm(`Este imóvel já tem a ${_numSolicitacao(jaEnviada)}. Enviar outra mesmo assim?`)) return;
   _sairModoEdicaoSc();
@@ -3911,7 +4376,7 @@ async function _gerarPdfVistoriaRecente() {
   const todasVistorias = await idbTodos('vistorias');
   const doImovel = todasVistorias.filter(v => v.imovel_id === imovelAtual.id).sort((a, b) => (b.data_vistoria || '').localeCompare(a.data_vistoria || ''));
   if (!doImovel.length) return null;
-  const vistoria = doImovel[0];
+  const vistoria = doImovel.find(v => v.status === 'finalizado' && v.assinatura) || doImovel[0];
   const todosComodos = await idbTodos('comodos');
   const comodos = todosComodos.filter(c => c.vistoria_id === vistoria.id).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
 
@@ -3957,6 +4422,22 @@ async function _gerarPdfVistoriaRecente() {
     }
   }
 
+  // Assinatura do vistoriador (o locador coassina quando virar anexo do contrato)
+  const as = vistoria.assinatura;
+  if (as) {
+    if (y > 225) { doc.addPage(); y = 20; }
+    y += 4; doc.setDrawColor(200); doc.line(margem, y, 210 - margem, y); y += 8;
+    doc.setFontSize(12); doc.setFont(undefined, 'bold'); doc.text('Assinatura do vistoriador', margem, y); y += 4;
+    try {
+      const src = String(as.imagem || '').startsWith('data:') ? as.imagem : await sgDataUrlArquivo({ drive_url: as.imagem });
+      doc.addImage(src, String(src).includes('image/png') ? 'PNG' : 'JPEG', margem, y, 70, 20); y += 23;
+    } catch (e) { y += 6; }
+    doc.setFontSize(9); doc.setFont(undefined, 'normal');
+    const gpsTxt = as.gps && as.gps.lat != null ? `${as.gps.lat}, ${as.gps.lng} (±${as.gps.precisao_m} m)` : 'não registrada';
+    doc.text(doc.splitTextToSize(`${as.nome || ''} — assinado em ${new Date(as.em).toLocaleString('pt-BR')} · local: ${gpsTxt} · ${as.aparelho?.descricao || ''} · código do conteúdo ${as.codigo || ''}`, 210 - margem * 2), margem, y);
+    y += 10;
+  }
+
   doc.setFontSize(8); doc.setTextColor(150);
   doc.text(`Gerado pelo app de campo SIGECON em ${new Date().toLocaleString('pt-BR')}`, margem, 290);
 
@@ -3967,10 +4448,10 @@ async function _gerarPdfVistoriaRecente() {
 
 // ══════════════════════════════════════════════════════════════
 // Ver / editar uma solicitação já enviada — enquanto ela ainda não
-// entrou em elaboração (status "pendente" ou "aprovado"). Só online.
+// não foi aprovada (status "pendente"). Daí em diante só pra ver. Só online.
 // O vínculo com o imóvel não muda (mesma regra do módulo web).
 // ══════════════════════════════════════════════════════════════
-const STATUS_SOLICITACAO_EDITAVEL = ['pendente', 'aprovado'];
+const STATUS_SOLICITACAO_EDITAVEL = ['pendente']; // a partir de "aprovado" fica só pra ver (destrava se o status voltar)
 function _solicitacaoEditavel(status) { return STATUS_SOLICITACAO_EDITAVEL.includes(String(status || 'pendente').toLowerCase()); }
 let _solEdicao = null; // { id, itemId, status, editavel, original, docs, remover:Set }
 
@@ -4067,6 +4548,9 @@ async function salvarEdicaoSolicitacao() {
   const ed = _solEdicao;
   const erroEl = document.getElementById('sc-erro');
   erroEl.textContent = '';
+  if (!_solicitacaoEditavel(ed && ed.status)) { erroEl.textContent = 'Esta solicitação já foi aprovada — não dá mais pra alterar.'; return; }
+  const pronta = await _vistoriaProntaParaSolicitar(imovelAtual.id);
+  if (!pronta.ok) { erroEl.textContent = pronta.msg; return; }
   if (!navigator.onLine) { erroEl.textContent = 'Sem internet — conecte pra salvar as alterações.'; return; }
   const objeto = document.getElementById('sc-objeto').value.trim();
   if (!objeto) { erroEl.textContent = 'Descreva o objeto da locação.'; return; }
@@ -4148,6 +4632,8 @@ async function enviarSolicitacaoContrato() {
   if (_solEdicao) return salvarEdicaoSolicitacao();
   const erroEl = document.getElementById('sc-erro');
   erroEl.textContent = '';
+  const pronta = await _vistoriaProntaParaSolicitar(imovelAtual.id);
+  if (!pronta.ok) { erroEl.textContent = pronta.msg; return; }
   if (!navigator.onLine) { erroEl.textContent = 'Perdeu a conexão — não dá pra continuar com segurança. Tente de novo quando estiver online.'; return; }
 
   const objeto = document.getElementById('sc-objeto').value.trim();
