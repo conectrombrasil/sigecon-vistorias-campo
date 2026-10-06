@@ -490,6 +490,12 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .msg-anexo-prev img{width:48px;height:48px;object-fit:cover;border-radius:8px;}
   .msg-anexo-prev .nome{flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .msg-anexo-prev button{background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;width:32px;height:32px;}
+
+  .btn-instalar{margin:0 0 18px;background:rgba(241,90,36,.14);border:1px solid rgba(241,90,36,.45);color:var(--orange);border-radius:12px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .aviso-instalar{display:flex;align-items:center;gap:8px;margin:8px 16px 0;padding:10px 12px;border-radius:12px;background:rgba(241,90,36,.10);border:1px solid rgba(241,90,36,.35);font-size:12.5px;color:var(--text2);}
+  .aviso-instalar span{flex:1;}
+  .aviso-instalar button{background:var(--orange);color:#fff;border:none;border-radius:9px;padding:7px 12px;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit;}
+  .aviso-instalar button.fechar{background:none;color:var(--text3);padding:4px 6px;}
 </style>
 </head>
 <body>
@@ -528,6 +534,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
 </svg></div>
     <div class="login-titulo">Imóveis em Campo</div>
     <div class="login-sub">SIGECON — funciona sem internet, sincroniza depois</div>
+    <button class="btn-instalar" style="display:none" onclick="instalarApp()">📲 Instalar o app no celular</button>
     <div class="campo"><input type="email" id="login-email" placeholder="E-mail" autocomplete="username" inputmode="email" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('login-senha').focus();}"/></div>
     <div class="campo"><input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();fazerLogin();}"/></div>
     <div class="erro-msg" id="login-erro"></div>
@@ -546,6 +553,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     <button class="topo-icone" onclick="sair()" aria-label="Sair" title="Sair"><svg class="ic"><use href="#i-sair"/></svg></button>
   </div>
   <div class="status-barra" id="status-barra"></div>
+  <div class="aviso-instalar" style="display:none"><span>📲 Instale o app na tela inicial para abrir mais rápido e usar sem internet.</span><button onclick="instalarApp()">Instalar</button><button class="fechar" aria-label="Agora não" onclick="this.parentElement.remove()">✕</button></div>
   <div class="home-ferramentas">
     <label class="busca"><svg class="ic" style="width:19px;height:19px"><use href="#i-busca"/></svg>
       <input type="search" id="busca-imovel" placeholder="Buscar endereço, fornecedor ou obra" enterkeyhint="search" oninput="renderizarListaImoveis()"/></label>
@@ -1251,6 +1259,31 @@ async function idbRemover(loja, chave) {
     tx.objectStore(loja).delete(chave);
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
   });
+}
+
+
+// ── Botão "Instalar o app" (o Chrome só mostra o aviso automático de vez em quando;
+//    com este botão dá pra instalar sempre que o celular permitir) ──
+let _eventoInstalar = null;
+window.addEventListener('beforeinstallprompt', ev => {
+  ev.preventDefault();
+  _eventoInstalar = ev;
+  document.querySelectorAll('.btn-instalar,.aviso-instalar').forEach(el => el.style.display = '');
+});
+window.addEventListener('appinstalled', () => {
+  _eventoInstalar = null;
+  document.querySelectorAll('.btn-instalar,.aviso-instalar').forEach(el => el.style.display = 'none');
+  if (typeof mostrarToast === 'function') mostrarToast('✅ App instalado na tela inicial', 'sucesso');
+});
+async function instalarApp() {
+  if (!_eventoInstalar) {
+    mostrarToast('No Chrome: toque em ⋮ (canto de cima) → "Instalar app" ou "Adicionar à tela inicial".');
+    return;
+  }
+  _eventoInstalar.prompt();
+  try { await _eventoInstalar.userChoice; } catch (e) { }
+  _eventoInstalar = null;
+  document.querySelectorAll('.btn-instalar,.aviso-instalar').forEach(el => el.style.display = 'none');
 }
 
 // ══════════════════════════════════════════════════════════════
