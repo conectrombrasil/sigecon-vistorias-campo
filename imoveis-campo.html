@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"/>
-<title>Vistorias em Campo — SIGECON</title>
+<title>Imóveis em Campo — SIGECON</title>
+<meta name="application-name" content="Imóveis em Campo"/>
+<meta name="apple-mobile-web-app-title" content="Imóveis"/>
 <meta name="theme-color" content="#0B1929"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="icon" href="icone.svg"/>
@@ -452,6 +454,42 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .painel-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
   .passo-titulo{font-size:18px;font-weight:800;margin-bottom:4px;letter-spacing:-.2px;}
   @media (min-width:640px){ .conteudo,.home-ferramentas{max-width:640px;width:100%;margin-left:auto;margin-right:auto;} }
+
+  /* ===== Mensagens da solicitação ===== */
+  .topo-msgs{position:relative;font-size:20px;}
+  .topo-badge{position:absolute;top:4px;right:2px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--orange);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .selo-msg{background:rgba(241,90,36,.16);color:var(--orange);border:1px solid rgba(241,90,36,.4);}
+  .msg-badge-inline{background:var(--orange);color:#fff;border-radius:10px;padding:1px 7px;font-size:11.5px;font-weight:800;margin-left:6px;}
+  #tela-mensagens{padding-bottom:calc(84px + var(--safe-bot));}
+  .msg-aviso{margin:10px 14px 0;padding:10px 12px;border-radius:12px;background:rgba(241,90,36,.10);border:1px solid rgba(241,90,36,.35);font-size:12.5px;color:var(--text2);}
+  .msg-lista{padding:12px 12px 16px;display:flex;flex-direction:column;gap:6px;}
+  .msg-vazio{text-align:center;color:var(--text3);font-size:13.5px;padding:60px 20px;line-height:1.6;}
+  .msg-dia{text-align:center;margin:10px 0 4px;}
+  .msg-dia span{font-size:11px;color:var(--text3);background:var(--navy2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;}
+  .msg-sistema{align-self:center;max-width:88%;text-align:center;font-size:12px;color:var(--text2);background:var(--navy2);border:1px dashed var(--border2);border-radius:12px;padding:8px 12px;line-height:1.5;}
+  .msg-item{display:flex;}
+  .msg-item.minha{justify-content:flex-end;}
+  .msg-bolha{max-width:82%;background:var(--navy2);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:8px 11px 6px;word-break:break-word;}
+  .msg-item.minha .msg-bolha{background:var(--blue);border-color:var(--blue);color:#fff;border-radius:16px 16px 4px 16px;}
+  .msg-nome{font-size:11.5px;font-weight:700;color:var(--blue2);margin-bottom:2px;}
+  .msg-txt{font-size:14.5px;line-height:1.45;}
+  .msg-hora{font-size:10.5px;opacity:.7;text-align:right;margin-top:3px;display:flex;gap:4px;justify-content:flex-end;align-items:center;}
+  .msg-tick.lida{color:#8FE3FF;opacity:1;font-weight:700;}
+  .msg-img img{max-width:100%;max-height:260px;border-radius:10px;display:block;margin-bottom:4px;}
+  .msg-img span{font-size:12px;opacity:.8;}
+  .msg-arq{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;font-weight:600;color:inherit;text-decoration:underline;padding:4px 0;}
+  .msg-audio{max-width:230px;height:36px;}
+  .msg-barra{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--navy);border-top:1px solid var(--border);padding:8px 10px calc(8px + var(--safe-bot));display:none;}
+  #tela-mensagens.ativa .msg-barra{display:block;}
+  .msg-linha{display:flex;gap:8px;align-items:flex-end;}
+  .msg-linha textarea{flex:1;resize:none;height:44px;min-height:44px;line-height:1.35;background:var(--navy2);border:1px solid var(--border2);border-radius:20px;color:var(--text);font-size:15px;padding:10px 14px;font-family:inherit;outline:none;max-height:120px;}
+  .msg-btn-ic{width:44px;height:44px;border-radius:50%;border:1px solid var(--border2);background:var(--navy2);font-size:19px;cursor:pointer;flex-shrink:0;}
+  .msg-btn-enviar{width:44px;height:44px;border-radius:50%;border:none;background:var(--orange);color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;}
+  .msg-btn-enviar:disabled{opacity:.5;}
+  .msg-anexo-prev{gap:10px;align-items:center;background:var(--navy2);border:1px solid var(--border);border-radius:12px;padding:6px 8px;margin-bottom:8px;}
+  .msg-anexo-prev img{width:48px;height:48px;object-fit:cover;border-radius:8px;}
+  .msg-anexo-prev .nome{flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .msg-anexo-prev button{background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;width:32px;height:32px;}
 </style>
 </head>
 <body>
@@ -474,8 +512,21 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
 <!-- ================= LOGIN ================= -->
 <div class="tela ativa" id="tela-login">
   <div class="conteudo">
-    <div class="login-logo">🏠</div>
-    <div class="login-titulo">Vistorias em Campo</div>
+    <div class="login-logo" style="background:none;border:none;padding:0;overflow:hidden"><svg width="84" height="84" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g-logo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1F5A99"/>
+      <stop offset="1" stop-color="#0B1929"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g-logo)"/>
+  <rect x="330" y="136" width="36" height="70" rx="6" fill="#F15A24"/>
+  <path d="M256 128 L124 240 V392 a16 16 0 0 0 16 16 H372 a16 16 0 0 0 16 -16 V240 Z" fill="#FFFFFF"/>
+  <rect x="220" y="300" width="72" height="108" rx="10" fill="#2E7BC4"/>
+  <circle cx="276" cy="356" r="6" fill="#FFFFFF"/>
+  <path d="M84 262 L256 116 L428 262" fill="none" stroke="#F15A24" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+</svg></div>
+    <div class="login-titulo">Imóveis em Campo</div>
     <div class="login-sub">SIGECON — funciona sem internet, sincroniza depois</div>
     <div class="campo"><input type="email" id="login-email" placeholder="E-mail" autocomplete="username" inputmode="email" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('login-senha').focus();}"/></div>
     <div class="campo"><input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();fazerLogin();}"/></div>
@@ -489,7 +540,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   <div class="topo">
     <div class="topo-textos" style="padding-left:8px">
       <div class="topo-titulo">Meus imóveis</div>
-      <div class="topo-sub" id="home-sub">Vistorias em Campo</div>
+      <div class="topo-sub" id="home-sub">Imóveis em Campo</div>
     </div>
     <button class="topo-icone" onclick="alternarTema()" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro"><svg class="ic ic-lua"><use href="#i-sol"/></svg><svg class="ic ic-sol"><use href="#i-lua"/></svg></button>
     <button class="topo-icone" onclick="sair()" aria-label="Sair" title="Sair"><svg class="ic"><use href="#i-sair"/></svg></button>
@@ -512,6 +563,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
       <div class="topo-titulo" id="imovel-titulo"></div>
       <div class="topo-sub" id="imovel-sub"></div>
     </div>
+    <button class="topo-icone topo-msgs" id="btn-msgs-imovel" aria-label="Mensagens da solicitação" title="Mensagens da solicitação" onclick="abrirMensagensSolicitacao()" style="display:none">💬<span class="topo-badge" id="badge-msgs-imovel" style="display:none"></span></button>
     <button class="topo-icone" aria-label="Mais opções" onclick="abrirModal('modal-menu-imovel')"><svg class="ic"><use href="#i-menu"/></svg></button>
   </div>
   <div class="status-barra" id="status-barra-2"></div>
@@ -527,6 +579,29 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   </div>
   <div class="conteudo" id="aba-gestao" style="display:none"></div>
   <button class="fab" id="fab-vistoria" onclick="abrirEscolhaTipoVistoria()"><svg class="ic"><use href="#i-mais"/></svg>Nova vistoria</button>
+</div>
+
+<!-- ================= MENSAGENS DA SOLICITAÇÃO ================= -->
+<div class="tela" id="tela-mensagens">
+  <div class="topo">
+    <button class="topo-voltar" aria-label="Voltar" onclick="fecharMensagensSolicitacao()"><svg class="ic"><use href="#i-voltar"/></svg></button>
+    <div class="topo-textos">
+      <div class="topo-titulo">💬 Mensagens</div>
+      <div class="topo-sub" id="msg-sub"></div>
+    </div>
+    <button class="topo-icone" aria-label="Atualizar" title="Atualizar" onclick="carregarMensagensSolicitacao(true)">⟳</button>
+  </div>
+  <div class="msg-aviso" id="msg-aviso" style="display:none"></div>
+  <div class="msg-lista" id="msg-lista"></div>
+  <div class="msg-barra">
+    <div class="msg-anexo-prev" id="msg-anexo-prev" style="display:none"></div>
+    <div class="msg-linha">
+      <button class="msg-btn-ic" aria-label="Anexar foto ou arquivo" title="Anexar foto ou arquivo" onclick="document.getElementById('msg-arquivo').click()">📎</button>
+      <textarea id="msg-texto" rows="1" placeholder="Escreva uma mensagem…" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+      <button class="msg-btn-enviar" id="msg-enviar" aria-label="Enviar" onclick="enviarMensagemSolicitacao()">➤</button>
+    </div>
+    <input type="file" id="msg-arquivo" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="escolherAnexoMensagem(this)"/>
+  </div>
 </div>
 
 <!-- ================= PASSO 1: ESCOLHER FORNECEDOR ================= -->
@@ -1152,6 +1227,23 @@ async function idbSalvarVarios(loja, valores) {
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
   });
 }
+// Substitui a lista local inteira pela que veio do banco (o que foi apagado
+// ou desativado no banco some do aparelho). "manter" = ids que ficam mesmo
+// sem vir do banco (ex.: cadastro feito offline ainda na fila).
+async function idbEspelhar(loja, valores, manter) {
+  const manterIds = new Set(manter || []);
+  const locais = manterIds.size ? (await idbTodos(loja)).filter(x => manterIds.has(x.id)) : [];
+  const db = await abrirDB();
+  const novosIds = new Set(valores.map(v => v.id));
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(loja, 'readwrite');
+    const store = tx.objectStore(loja);
+    store.clear();
+    valores.forEach(v => store.put(v));
+    locais.filter(l => !novosIds.has(l.id)).forEach(l => store.put(l));
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+  });
+}
 async function idbRemover(loja, chave) {
   const db = await abrirDB();
   return new Promise((resolve, reject) => {
@@ -1181,6 +1273,9 @@ async function processarItemFila(item) {
   } else if (item.tipo === 'atualizar_imovel') {
     const { error } = await sb.from('imoveis').update(p.campos).eq('id', p.id);
     if (error) throw error;
+  } else if (item.tipo === 'mensagem_solicitacao') {
+    const { error } = await sb.from('solicitacoes_mensagens').insert({ id: p.id, solicitacao_id: p.solicitacao_id, autor_id: p.autor_id, tipo: 'texto', conteudo: p.conteudo });
+    if (error && error.code !== '23505') throw error;
   } else if (item.tipo === 'criar_fornecedor') {
     const { error } = await sb.from('fornecedores').insert(p);
     if (error) {
@@ -1594,27 +1689,42 @@ async function _removerImoveisQueNaoDevemMaisAparecer(imoveisDoServidor) {
   }
 }
 
+// Fornecedores no aparelho = os ativos do banco. Os que foram apagados ou
+// desativados saem da lista de escolha. Exceções: cadastro feito offline
+// ainda na fila, e fornecedor de imóvel que já existe (fica só pra mostrar
+// o nome no imóvel, marcado como inativo — não aparece pra escolher).
+async function _espelharFornecedores(ativos, imoveis, campos) {
+  const fila = await idbTodos('fila');
+  const pendentes = fila.filter(f => f.tipo === 'criar_fornecedor').map(f => f.payload.id);
+  const ativosIds = new Set(ativos.map(f => f.id));
+  const usadosInativos = [...new Set(imoveis.map(i => i.fornecedor_id).filter(id => id && !ativosIds.has(id)))];
+  let extras = [];
+  if (usadosInativos.length) {
+    const { data } = await sb.from('fornecedores').select(campos).in('id', usadosInativos);
+    extras = (data || []).map(f => ({ ...f, inativo: true }));
+  }
+  await idbEspelhar('fornecedores', [...ativos, ...extras], pendentes);
+}
+
 async function carregarImoveisDoServidor() {
   const { data: vinc } = await sb.from('usuario_obras').select('obra_id').eq('usuario_id', sessaoAtual.user.id);
   obrasIds = (vinc || []).map(v => v.obra_id);
   await idbSalvar('sessao', { chave: 'obras_ids', valor: obrasIds });
-  if (!obrasIds.length) { await idbSalvarVarios('imoveis', []); await idbSalvarVarios('obras', []); return; }
+  if (!obrasIds.length) { await idbEspelhar('obras', []); await _removerImoveisQueNaoDevemMaisAparecer([]); return; }
 
   // Obras e fornecedores ficam guardados localmente só pra alimentar o
   // formulário de "Novo Imóvel" offline — não precisa de mais nada deles
-  const { data: obrasData } = await sb.from('obras').select('id,nome').in('id', obrasIds).order('nome');
-  await idbSalvarVarios('obras', obrasData || []);
-  const { data: fornecedoresData } = await sb.from('fornecedores')
-    .select('id,razao_social,tipo_pessoa,cpf_cnpj,email,telefone,banco_nome,banco_agencia,banco_conta,banco_tipo,banco_titular,banco_titular_doc,banco_obs,criado_por')
-    .eq('ativo', true).order('razao_social');
-  await idbSalvarVarios('fornecedores', fornecedoresData || []);
+  const { data: obrasData, error: erroObras } = await sb.from('obras').select('id,nome').in('id', obrasIds).order('nome');
+  if (!erroObras) await idbEspelhar('obras', obrasData || []);
+  const CAMPOS_FORN = 'id,razao_social,tipo_pessoa,cpf_cnpj,email,telefone,banco_nome,banco_agencia,banco_conta,banco_tipo,banco_titular,banco_titular_doc,banco_obs,criado_por';
+  const { data: fornecedoresData, error: erroForn } = await sb.from('fornecedores').select(CAMPOS_FORN).eq('ativo', true).order('razao_social');
 
   // Categorias de documento e o checklist de cada uma — pra dar pra
   // vincular categoria e já anexar o documento no cadastro rápido offline
-  const { data: categoriasData } = await sb.from('fornecedor_categorias').select('id,nome').eq('ativo', true).order('nome');
-  await idbSalvarVarios('categorias', categoriasData || []);
-  const { data: tiposDocData } = await sb.from('documento_tipos').select('id,categoria_id,nome,obrigatorio,tem_validade,aplica_pf,aplica_pj').eq('ativo', true).order('nome');
-  await idbSalvarVarios('tipos_documento', tiposDocData || []);
+  const { data: categoriasData, error: erroCat } = await sb.from('fornecedor_categorias').select('id,nome').eq('ativo', true).order('nome');
+  if (!erroCat) await idbEspelhar('categorias', categoriasData || []);
+  const { data: tiposDocData, error: erroTipos } = await sb.from('documento_tipos').select('id,categoria_id,nome,obrigatorio,tem_validade,aplica_pf,aplica_pj').eq('ativo', true).order('nome');
+  if (!erroTipos) await idbEspelhar('tipos_documento', tiposDocData || []);
 
   // Gestor (do módulo de imóveis): todos os imóveis das obras dele.
   // Operador: os que ele cadastrou + os que ele mesmo solicitou contrato.
@@ -1629,6 +1739,7 @@ async function carregarImoveisDoServidor() {
   if (error) throw error;
   await idbSalvarVarios('imoveis', imoveis || []);
   await _removerImoveisQueNaoDevemMaisAparecer(imoveis || []);
+  if (!erroForn) await _espelharFornecedores(fornecedoresData || [], imoveis || [], CAMPOS_FORN);
   await _carregarSolicitacoesDoServidor(imoveis || []);
 
   // Também traz as vistorias em rascunho (pra continuar) e as mais
@@ -1891,10 +2002,24 @@ async function _carregarSolicitacoesDoServidor(imoveis) {
       const { data: contratosData } = await sb.from('contratos').select('numero,solicitacao_origem_id').in('solicitacao_origem_id', melhorIds);
       numeroContratoPorSolId = new Map((contratosData || []).map(c => [c.solicitacao_origem_id, c.numero]));
     }
+    // Mensagens não lidas por solicitação (das outras pessoas, sem as automáticas do sistema)
+    const naoLidasPorSol = new Map();
+    try {
+      if (melhorIds.length) {
+        const { data: msgs } = await sb.from('solicitacoes_mensagens')
+          .select('solicitacao_id,autor_id,tipo,leituras:solicitacoes_mensagens_leituras(usuario_id)')
+          .in('solicitacao_id', melhorIds).neq('autor_id', sessaoAtual.user.id).neq('tipo', 'sistema');
+        (msgs || []).forEach(m => {
+          if ((m.leituras || []).some(l => l.usuario_id === sessaoAtual.user.id)) return;
+          naoLidasPorSol.set(m.solicitacao_id, (naoLidasPorSol.get(m.solicitacao_id) || 0) + 1);
+        });
+      }
+    } catch (e) { /* contagem é um extra */ }
     await idbSalvarVarios('solicitacoes', [...melhor].map(([imovel_id, x]) => ({
       imovel_id, solicitacao_id: x.id, status: x.status, tipo_solicitacao: x.tipo_solicitacao,
       numero_sequencial: x.numero_sequencial, numero_ano: x.numero_ano, numero_mes: x.numero_mes, criado_em: x.criado_em,
       numero_contrato: numeroContratoPorSolId.get(x.id) || null,
+      msgs_nao_lidas: naoLidasPorSol.get(x.id) || 0,
     })));
   } catch (e) { /* status da solicitação é um extra — se falhar, o app segue normal */ }
 }
@@ -1933,12 +2058,12 @@ async function renderizarListaImoveis() {
   const ferramentas = document.querySelector('#tela-home .home-ferramentas');
   if (!imoveis.length) {
     ferramentas.style.display = 'none';
-    elSub.textContent = 'Vistorias em Campo';
+    elSub.textContent = 'Imóveis em Campo';
     el.innerHTML = `<div class="vazio"><div class="vazio-icone">🏠</div><b style="color:var(--text2)">Nenhum imóvel ainda</b><br/>Toque em "Novo imóvel" pra começar pelo Passo 1 (fornecedor).${navigator.onLine ? '' : '<br/><br/>Conecte à internet pelo menos uma vez pra carregar a lista.'}</div>`;
     return;
   }
   ferramentas.style.display = '';
-  elSub.textContent = `${imoveis.length} imóve${imoveis.length > 1 ? 'is' : 'l'} · ${ehGestorImoveis() ? (_somenteMeus ? 'Gestor · só os meus' : 'Gestor · todos da obra') : 'Vistorias em Campo'}`;
+  elSub.textContent = `${imoveis.length} imóve${imoveis.length > 1 ? 'is' : 'l'} · ${ehGestorImoveis() ? (_somenteMeus ? 'Gestor · só os meus' : 'Gestor · todos da obra') : 'Imóveis em Campo'}`;
   const [vist, sols, fila, fornecedores, obras] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes'), idbTodos('fila'), idbTodos('fornecedores'), idbTodos('obras')]);
   const fornPorId = new Map(fornecedores.map(f => [f.id, f]));
   const obraPorId = new Map(obras.map(o => [o.id, o]));
@@ -1977,7 +2102,7 @@ async function renderizarListaImoveis() {
     return `<div class="card card-imovel st-${e.filtroChave}" onclick="abrirImovel('${i.id}')">
       <div class="card-linha">
         <div style="flex:1;min-width:0">
-          <div class="card-topo-linha"><span class="selo ${e.classe}">${esc(e.rotulo)}</span>${e.naoSync ? '<span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}</div>
+          <div class="card-topo-linha"><span class="selo ${e.classe}">${esc(e.rotulo)}</span>${e.naoSync ? '<span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}${e.solicitacao?.msgs_nao_lidas ? `<span class="selo selo-msg">💬 ${e.solicitacao.msgs_nao_lidas} nova${e.solicitacao.msgs_nao_lidas > 1 ? 's' : ''}</span>` : ''}</div>
           <div class="card-titulo">${esc(i.logradouro) || '(sem endereço)'}${i.numero ? ', ' + esc(i.numero) : ''}</div>
           <div class="card-sub">${esc([i.bairro, i.cidade].filter(Boolean).join(' — ')) || '&nbsp;'}</div>
           ${infoExtra ? `<div class="card-info-extra">${infoExtra}</div>` : ''}
@@ -2054,7 +2179,7 @@ async function abrirEscolhaFornecedor() {
 async function renderizarListaFornecedores() {
   const termo = _normalizar(document.getElementById('forn-busca').value);
   const digitos = termo.replace(/\D/g, '');
-  const todos = (await idbTodos('fornecedores')).sort((a, b) => (a.razao_social || '').localeCompare(b.razao_social || '', 'pt-BR'));
+  const todos = (await idbTodos('fornecedores')).filter(f => !f.inativo).sort((a, b) => (a.razao_social || '').localeCompare(b.razao_social || '', 'pt-BR'));
   const lista = !termo ? todos : todos.filter(f => _normalizar(f.razao_social).includes(termo) || (digitos && (f.cpf_cnpj || '').includes(digitos)));
   const el = document.getElementById('forn-lista');
   if (!lista.length) {
@@ -2127,7 +2252,9 @@ let _imovelEditandoId = null; // null = cadastrando novo; preenchido = editando 
 
 async function _preencherSelectsImovelForm() {
   const obras = await idbTodos('obras');
-  const fornecedores = await idbTodos('fornecedores');
+  // inativo/apagado no banco não aparece pra escolher (a não ser o do próprio imóvel em edição)
+  const fornAtualId = _imovelEditandoId && typeof imovelAtual !== 'undefined' && imovelAtual ? imovelAtual.fornecedor_id : null;
+  const fornecedores = (await idbTodos('fornecedores')).filter(f => !f.inativo || f.id === fornAtualId);
   const selObra = document.getElementById('ni-obra');
   const selFornecedor = document.getElementById('ni-fornecedor');
   if (!obras.length) {
@@ -3012,6 +3139,7 @@ async function abrirImovel(id) {
   document.getElementById('imovel-titulo').textContent = (imovelAtual.logradouro || '(sem endereço)') + (imovelAtual.numero ? ', ' + imovelAtual.numero : '');
   document.getElementById('imovel-sub').textContent = [imovelAtual.bairro, imovelAtual.cidade].filter(Boolean).join(' — ');
   mostrarTela('tela-imovel');
+  _atualizarBotaoMensagens();
   await renderizarListaVistorias();
   // Depois da solicitação, a gestão vira a aba principal (dá pra trocar)
   let aba = _abaPorImovel[id];
@@ -3022,6 +3150,197 @@ async function abrirImovel(id) {
   mostrarAbaImovel(aba);
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// MENSAGENS DA SOLICITAÇÃO — as mesmas da tela "Solicitações de Contratos"
+// (tabelas solicitacoes_mensagens / solicitacoes_mensagens_leituras).
+// Com internet: lê, marca como lidas e recebe na hora. Sem internet:
+// mostra as últimas guardadas e a mensagem de texto vai pra fila.
+// ══════════════════════════════════════════════════════════════
+let _msgSolAtual = null;      // registro local da solicitação (imovel_id, solicitacao_id…)
+let _msgCanal = null;
+let _msgAnexo = null;         // { arquivo, nome, mimeType }
+let _msgNomeEu = null;
+async function _atualizarBotaoMensagens() {
+  const btn = document.getElementById('btn-msgs-imovel'), badge = document.getElementById('badge-msgs-imovel');
+  if (!btn || !imovelAtual) return;
+  const sol = (await idbTodos('solicitacoes')).find(x => x.imovel_id === imovelAtual.id);
+  btn.style.display = sol && sol.solicitacao_id ? '' : 'none';
+  const n = sol?.msgs_nao_lidas || 0;
+  if (badge) { badge.textContent = n > 9 ? '9+' : n; badge.style.display = n ? '' : 'none'; }
+}
+function _numeroSolTexto(s) {
+  if (!s) return '';
+  if (s.numero_ano && s.numero_sequencial) return `SOL ${s.numero_ano}.${String(s.numero_mes || '').padStart(2, '0')}.${String(s.numero_sequencial).padStart(3, '0')}`;
+  return 'Solicitação de contrato';
+}
+async function abrirMensagensSolicitacao() {
+  if (!imovelAtual) return;
+  const sol = (await idbTodos('solicitacoes')).find(x => x.imovel_id === imovelAtual.id);
+  if (!sol || !sol.solicitacao_id) { mostrarToast('Este imóvel ainda não tem solicitação enviada.', 'erro'); return; }
+  _msgSolAtual = sol;
+  document.getElementById('msg-sub').textContent = `${_numeroSolTexto(sol)} · ${(imovelAtual.logradouro || '')}${imovelAtual.numero ? ', ' + imovelAtual.numero : ''}`;
+  _limparAnexoMensagem();
+  mostrarTela('tela-mensagens');
+  await carregarMensagensSolicitacao();
+  _assinarMensagens();
+}
+function fecharMensagensSolicitacao() {
+  if (_msgCanal) { try { sb.removeChannel(_msgCanal); } catch (e) { } _msgCanal = null; }
+  _msgSolAtual = null;
+  if (imovelAtual) abrirImovel(imovelAtual.id); else irParaHome();
+}
+function _chaveCacheMsgs(solId) { return 'msgs_' + solId; }
+async function carregarMensagensSolicitacao(manual) {
+  if (!_msgSolAtual) return;
+  const solId = _msgSolAtual.solicitacao_id;
+  const aviso = document.getElementById('msg-aviso');
+  const lista = document.getElementById('msg-lista');
+  const cache = await idbPegar('sessao', _chaveCacheMsgs(solId));
+  let msgs = cache?.valor || [];
+  if (!msgs.length) lista.innerHTML = '<div class="msg-vazio">Carregando…</div>';
+  if (navigator.onLine) {
+    const { data, error } = await sb.from('solicitacoes_mensagens')
+      .select('*,autor:usuarios!solicitacoes_mensagens_autor_id_fkey(nome),leituras:solicitacoes_mensagens_leituras(usuario_id)')
+      .eq('solicitacao_id', solId).order('criado_em');
+    if (error) {
+      aviso.textContent = /permission|row-level|RLS/i.test(error.message || '') ? '🔒 Sem permissão para ver as mensagens desta solicitação.' : '⚠️ Não foi possível carregar as mensagens agora.';
+      aviso.style.display = '';
+    } else {
+      aviso.style.display = 'none';
+      msgs = data || [];
+      await idbSalvar('sessao', { chave: _chaveCacheMsgs(solId), valor: msgs.slice(-200) });
+      _marcarMensagensLidasApp(msgs);
+      if (manual) mostrarToast('Mensagens atualizadas');
+    }
+  } else {
+    aviso.textContent = '📴 Sem internet — mostrando as últimas mensagens guardadas. O que você escrever vai quando conectar.';
+    aviso.style.display = '';
+  }
+  // mensagens de texto escritas offline (ainda na fila)
+  const fila = (await idbTodos('fila')).filter(f => f.tipo === 'mensagem_solicitacao' && f.payload.solicitacao_id === solId);
+  const idsJa = new Set(msgs.map(m => m.id));
+  const pend = fila.filter(f => !idsJa.has(f.payload.id)).map(f => ({ ...f.payload, tipo: 'texto', criado_em: new Date(f.criadoEm).toISOString(), _pendente: true }));
+  _renderizarMensagensApp([...msgs, ...pend]);
+}
+async function _marcarMensagensLidasApp(msgs) {
+  const uid = sessaoAtual.user.id;
+  const naoLidas = msgs.filter(m => m.autor_id !== uid && m.tipo !== 'sistema' && !(m.leituras || []).some(l => l.usuario_id === uid));
+  if (naoLidas.length) {
+    try {
+      await sb.from('solicitacoes_mensagens_leituras').upsert(naoLidas.map(m => ({ mensagem_id: m.id, usuario_id: uid })), { onConflict: 'mensagem_id,usuario_id', ignoreDuplicates: true });
+    } catch (e) { /* tenta de novo na próxima abertura */ }
+  }
+  if (_msgSolAtual && _msgSolAtual.msgs_nao_lidas) {
+    _msgSolAtual.msgs_nao_lidas = 0;
+    await idbSalvar('solicitacoes', _msgSolAtual);
+  }
+}
+function _renderizarMensagensApp(msgs) {
+  const lista = document.getElementById('msg-lista');
+  if (!msgs.length) { lista.innerHTML = '<div class="msg-vazio">💬 Nenhuma mensagem ainda.<br/>Escreva abaixo para falar com quem aprova e elabora o contrato.</div>'; return; }
+  const uid = sessaoAtual.user.id;
+  let diaAnt = '';
+  lista.innerHTML = msgs.map(m => {
+    let d = new Date(m.criado_em);
+    if (isNaN(d)) d = new Date();
+    const dia = d.toLocaleDateString('pt-BR');
+    const sep = dia !== diaAnt ? `<div class="msg-dia"><span>${dia}</span></div>` : '';
+    diaAnt = dia;
+    if (m.tipo === 'sistema') return sep + `<div class="msg-sistema">${esc(m.conteudo || '').replace(/\n/g, '<br/>')}</div>`;
+    const minha = m.autor_id === uid;
+    const nome = minha ? 'Você' : (m.autor?.nome || 'Equipe');
+    const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    let corpo = '';
+    if (m.tipo === 'imagem') corpo = `<div class="msg-img" data-chave="${sgGuardar(m)}"><span>🖼️ Carregando imagem…</span></div>`;
+    else if (m.tipo === 'arquivo') corpo = `<a class="msg-arq" href="#" onclick="event.preventDefault();sgAbrirPorChave('${sgGuardar(m)}')">📎 ${esc(m.nome_arquivo || 'arquivo')}</a>`;
+    else if (m.tipo === 'audio') corpo = `<audio class="msg-audio" controls data-chave="${sgGuardar(m)}"></audio>`;
+    if (m.conteudo && m.tipo !== 'sistema') corpo += `<div class="msg-txt">${esc(m.conteudo).replace(/\n/g, '<br/>')}</div>`;
+    let tick = '';
+    if (minha) {
+      const lida = (m.leituras || []).some(l => l.usuario_id !== uid);
+      tick = m._pendente ? '<span class="msg-tick">⏳</span>' : `<span class="msg-tick${lida ? ' lida' : ''}">${lida ? '✓✓' : '✓'}</span>`;
+    }
+    return sep + `<div class="msg-item${minha ? ' minha' : ''}"><div class="msg-bolha">
+      ${minha ? '' : `<div class="msg-nome">${esc(nome)}</div>`}${corpo}
+      <div class="msg-hora">${hora}${tick}</div></div></div>`;
+  }).join('');
+  // mídia (link temporário do Storage/Drive pelo helper)
+  lista.querySelectorAll('.msg-img[data-chave]').forEach(async el => {
+    const reg = _sgRegistros[el.dataset.chave];
+    try {
+      const url = await sgUrlArquivo(reg);
+      el.innerHTML = `<img src="${url}" alt="" onclick="sgAbrirPorChave('${el.dataset.chave}')"/>`;
+    } catch (e) { el.innerHTML = navigator.onLine ? '⚠️ Não foi possível abrir a imagem.' : '📴 Imagem disponível com internet.'; }
+  });
+  lista.querySelectorAll('.msg-audio[data-chave]').forEach(async el => { try { el.src = await sgUrlArquivo(_sgRegistros[el.dataset.chave]); } catch (e) { } });
+  requestAnimationFrame(() => window.scrollTo(0, document.body.scrollHeight));
+}
+function _assinarMensagens() {
+  if (_msgCanal) { try { sb.removeChannel(_msgCanal); } catch (e) { } _msgCanal = null; }
+  if (!_msgSolAtual || !navigator.onLine || typeof sb.channel !== 'function') return;
+  const solId = _msgSolAtual.solicitacao_id;
+  try {
+    _msgCanal = sb.channel('app-msgs-' + solId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'solicitacoes_mensagens', filter: 'solicitacao_id=eq.' + solId },
+        () => { if (_msgSolAtual && _msgSolAtual.solicitacao_id === solId && document.getElementById('tela-mensagens').classList.contains('ativa')) carregarMensagensSolicitacao(); })
+      .subscribe();
+  } catch (e) { _msgCanal = null; }
+}
+function escolherAnexoMensagem(input) {
+  const arq = input.files && input.files[0];
+  input.value = '';
+  if (!arq) return;
+  if (arq.size > 10 * 1024 * 1024) { mostrarToast('Máximo 10 MB por arquivo.', 'erro'); return; }
+  _msgAnexo = { arquivo: arq, nome: sgNomeSeguro(arq.name || 'arquivo'), mimeType: arq.type || 'application/octet-stream' };
+  const prev = document.getElementById('msg-anexo-prev');
+  prev.style.display = 'flex';
+  const nomeHtml = `<span class="nome">${esc(arq.name)}</span><button aria-label="Remover anexo" onclick="_limparAnexoMensagem()">✕</button>`;
+  if (arq.type.startsWith('image/')) {
+    const r = new FileReader();
+    r.onload = e => { prev.innerHTML = `<img src="${e.target.result}" alt=""/>` + nomeHtml; };
+    r.readAsDataURL(arq);
+  } else prev.innerHTML = '<span style="font-size:22px">📄</span>' + nomeHtml;
+}
+function _limparAnexoMensagem() {
+  _msgAnexo = null;
+  const prev = document.getElementById('msg-anexo-prev');
+  if (prev) { prev.style.display = 'none'; prev.innerHTML = ''; }
+}
+function _uuidMsg() {
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
+}
+async function enviarMensagemSolicitacao() {
+  if (!_msgSolAtual) return;
+  const ta = document.getElementById('msg-texto');
+  const texto = ta.value.trim();
+  if (!texto && !_msgAnexo) return;
+  const btn = document.getElementById('msg-enviar');
+  const solId = _msgSolAtual.solicitacao_id, uid = sessaoAtual.user.id;
+  if (_msgAnexo && !navigator.onLine) { mostrarToast('Para enviar foto ou arquivo é preciso internet.', 'erro'); return; }
+  btn.disabled = true;
+  try {
+    if (_msgAnexo) {
+      const env = await sgEnviarArquivo(_msgAnexo.arquivo, { modulo: 'solicitacoes_mensagens', registroId: solId, nomeArquivo: _msgAnexo.nome, mimeType: _msgAnexo.mimeType });
+      const { error } = await sb.from('solicitacoes_mensagens').insert({
+        solicitacao_id: solId, autor_id: uid, tipo: _msgAnexo.mimeType.startsWith('image/') ? 'imagem' : 'arquivo',
+        conteudo: texto || null, drive_id: env.drive_id || null, drive_url: env.drive_url || null, nome_arquivo: _msgAnexo.nome,
+      });
+      if (error) throw error;
+      _limparAnexoMensagem();
+    } else {
+      // texto: passa pela fila (vai na hora se tiver internet, ou quando conectar)
+      await enfileirar('mensagem_solicitacao', { id: _uuidMsg(), solicitacao_id: solId, autor_id: uid, conteudo: texto });
+    }
+    ta.value = ''; ta.style.height = 'auto';
+    await carregarMensagensSolicitacao();
+    if (navigator.onLine) setTimeout(() => carregarMensagensSolicitacao(), 1500); // pega a confirmação do envio
+  } catch (e) {
+    mostrarToast('Não foi possível enviar: ' + (e.message || e), 'erro');
+  } finally { btn.disabled = false; }
+}
+
 async function _renderizarPainelImovel() {
   const [vist, sols, fila] = await Promise.all([idbTodos('vistorias'), idbTodos('solicitacoes'), idbTodos('fila')]);
   const e = _calcEstado(imovelAtual, vist, sols, fila);
@@ -3030,6 +3349,8 @@ async function _renderizarPainelImovel() {
   let cta;
   const pendVist = e.emEdicao ? `<button class="btn btn-secundario" style="margin-top:8px" onclick="abrirVistoria('${e.emEdicao.id}')">📋 Continuar vistoria reaberta</button>`
     : e.faltaAssinar ? `<button class="btn btn-assinar" style="margin-top:8px" onclick="assinarVistoria('${e.faltaAssinar.id}', true)">✍️ Assinar a vistoria</button>` : '';
+  const btnMsgs = e.solicitacao && e.solicitacao.solicitacao_id
+    ? `<button class="btn btn-secundario btn-msgs" style="margin-top:8px" onclick="abrirMensagensSolicitacao()">💬 Mensagens da solicitação${e.solicitacao.msgs_nao_lidas ? ` <span class="msg-badge-inline">${e.solicitacao.msgs_nao_lidas}</span>` : ''}</button>` : '';
   if (e.solicitacao && !e.reprovada) cta = `<button class="btn" onclick="abrirSolicitacaoExistente()">${_solicitacaoEditavel(e.solicitacao.status) ? '✏️ Ver e editar solicitação' : '👁️ Ver solicitação'}</button>
     ${pendVist}<button class="btn btn-secundario" style="margin-top:8px" onclick="abrirSolicitarContrato()">📄 Enviar nova solicitação</button>`;
   else if (e.faltaAssinar) cta = `<button class="btn btn-assinar" onclick="assinarVistoria('${e.faltaAssinar.id}', true)">✍️ Passo 3 — Assinar a vistoria</button>
@@ -3041,7 +3362,7 @@ async function _renderizarPainelImovel() {
   document.getElementById('imovel-painel').innerHTML = `<div class="card card-estatico">
     <div class="painel-status"><span class="selo ${e.classe}">${esc(e.rotulo)}</span>${e.naoSync ? '<span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}</div>
     <div class="card-sub" style="margin:6px 0 14px">${esc(e.proximo)}</div>
-    ${cta}
+    ${cta}${btnMsgs}
   </div>`;
 }
 
@@ -3601,7 +3922,6 @@ async function imprimirRelatorioVistoria(id) {
     <div class="assinatura">
       <div class="assin-area"></div>
       <div class="linha"><b>${esc((locador && locador.razao_social) || '')}</b>${locador && locador.cpf_cnpj ? '<br/>CPF/CNPJ ' + esc(_fmtDocImpressao(locador.cpf_cnpj)) : ''}<br/>Locador</div>
-      <div class="trilha">Assina quando a vistoria entrar como anexo do contrato.</div>
     </div>
   </div>
   <script>window.onload = () => setTimeout(() => window.print(), 700);<\/script>
