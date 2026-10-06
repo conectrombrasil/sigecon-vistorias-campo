@@ -1,17 +1,15 @@
-// Service worker do app de Vistorias em Campo.
-// Estratégia simples, pensada pra confiabilidade em vez de sofisticação:
-// tudo que é buscado com sucesso fica guardado; se a rede falhar, usa o
-// que já está guardado. Isso cobre tanto o próprio app (HTML/CSS/JS)
-// quanto os scripts externos (como o do Supabase), que só precisam ser
-// baixados uma vez, na primeira visita com internet.
+// Service worker do app Imóveis em Campo (antigo Vistorias em Campo).
+// Tudo que é buscado com sucesso fica guardado; se a rede falhar, usa o que já está guardado.
 
-const CACHE_NOME = 'vistorias-campo-v1';
+const CACHE_NOME = 'imoveis-campo-v2'; // trocar o número força os celulares a renovarem o cache
 const ARQUIVOS_ESSENCIAIS = [
   './imoveis-campo.html',
   './manifest.json',
   './icone.svg',
   './icone-180.png',
+  './icone-192.png',
   './icone-512.png',
+  './icone-maskable-512.png',
 ];
 
 self.addEventListener('install', (evento) => {
@@ -31,12 +29,11 @@ self.addEventListener('activate', (evento) => {
 
 self.addEventListener('fetch', (evento) => {
   const req = evento.request;
-  if (req.method !== 'GET') return; // POST (ex: chamadas de sincronização) passa direto, nunca é interceptado
+  if (req.method !== 'GET') return; // POST (sincronização) passa direto
 
   evento.respondWith(
     fetch(req)
       .then((resposta) => {
-        // Deu certo: guarda uma cópia atualizada pra próxima vez que faltar rede
         const copia = resposta.clone();
         caches.open(CACHE_NOME).then((cache) => cache.put(req, copia)).catch(() => {});
         return resposta;
