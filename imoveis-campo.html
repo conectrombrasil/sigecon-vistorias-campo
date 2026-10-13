@@ -288,6 +288,10 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .gf-lista{max-height:220px;overflow:auto;border:1px solid var(--border2);border-radius:12px;margin-bottom:12px;}
   .gf-opcao{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:12px 14px;font-size:14.5px;cursor:pointer;}
   .gf-opcao.sel{background:rgba(241,90,36,.16);color:var(--lar-txt);font-weight:700;}
+  .gf-novo-link{display:block;width:100%;background:none;border:1px dashed var(--border2);border-radius:12px;color:var(--lar-txt);font-weight:700;font-size:14px;padding:12px;margin:-4px 0 12px;cursor:pointer;}
+  .gf-novo-box{border:1px solid var(--border2);border-radius:12px;padding:4px 12px 12px;margin-bottom:12px;}
+  .gf-novo-box .gf-voltar{background:none;border:none;color:var(--text2);font-size:13px;text-decoration:underline;padding:8px 0 0;cursor:pointer;}
+  .gf-nota{font-size:12px;color:var(--text3);margin-top:8px;line-height:1.4;}
   .gf-check{display:flex;align-items:center;gap:10px;font-size:14.5px;margin:4px 0 12px;}
   .gf-check input{width:20px;height:20px;accent-color:var(--orange);}
   .doc-acoes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
@@ -2989,14 +2993,31 @@ async function abrirAlocarColaborador() {
         <input type="search" id="gf-colab-busca" placeholder="Buscar pelo nome" oninput="_filtrarColabsForm()"/></div>
       <input type="hidden" id="gf-colab-id"/>
       <div id="gf-colab-lista" class="gf-lista"><div class="card-sub">Carregando…</div></div>
+      <button type="button" class="gf-novo-link" id="gf-colab-novo-btn" onclick="_alternarNovoColab(true)">+ Não achou? Cadastrar novo colaborador</button>
+      <div class="gf-novo-box" id="gf-colab-novo" style="display:none">
+        <span class="rotulo">Nome completo *</span>
+        <div class="campo"><input type="text" id="gf-nc-nome" autocomplete="off"/></div>
+        <span class="rotulo">CPF (opcional)</span>
+        <div class="campo"><input type="text" id="gf-nc-cpf" inputmode="numeric" autocomplete="off" placeholder="Só números"/></div>
+        <span class="rotulo">Matrícula (opcional)</span>
+        <div class="campo"><input type="text" id="gf-nc-matricula" autocomplete="off"/></div>
+        <div id="gf-nc-cargo-wrap" style="display:none"><span class="rotulo">Cargo (opcional)</span>
+        <div class="campo"><select id="gf-nc-cargo"><option value="">—</option></select></div></div>
+        <span class="rotulo">Telefone (opcional)</span>
+        <div class="campo"><input type="tel" id="gf-nc-telefone" autocomplete="off"/></div>
+        <div class="gf-nota">O restante do cadastro pode ser completado depois no módulo de Colaboradores.</div>
+        <button type="button" class="gf-voltar" onclick="_alternarNovoColab(false)">← Voltar para a lista</button>
+      </div>
       <span class="rotulo">Data de entrada</span>
       <div class="campo"><input type="date" id="gf-colab-inicio" value="${hojeLocalISO()}"/></div>
       <span class="rotulo">Observação (opcional)</span>
       <div class="campo"><input type="text" id="gf-colab-obs"/></div>`,
     onSalvar: salvarAlocacao,
   });
+  _novoColabModo = false;
+  _carregarCargosColab();
   if (!_colabsAtivosCache) {
-    const { data, error } = await sb.from('colaboradores').select('id,nome').eq('ativo', true).order('nome');
+    const { data, error } = await sb.from('colaboradores').select('id,nome,cpf').eq('ativo', true).order('nome');
     if (error) { document.getElementById('gf-colab-lista').innerHTML = '<div class="card-sub">Não foi possível carregar os colaboradores.</div>'; return; }
     _colabsAtivosCache = data || [];
   }
@@ -3011,10 +3032,84 @@ function _filtrarColabsForm() {
     : '<div class="card-sub">Nenhum colaborador encontrado.</div>';
 }
 function _escolherColab(id) { document.getElementById('gf-colab-id').value = id; _filtrarColabsForm(); }
+
+// Cadastro rápido de colaborador direto na alocação (o cadastro completo
+// continua no módulo de Colaboradores).
+let _novoColabModo = false, _cargosColab = null;
+function _alternarNovoColab(ligar) {
+  _novoColabModo = !!ligar;
+  const busca = document.getElementById('gf-colab-busca');
+  if (busca) busca.closest('.busca').style.display = ligar ? 'none' : '';
+  document.getElementById('gf-colab-lista').style.display = ligar ? 'none' : '';
+  document.getElementById('gf-colab-novo-btn').style.display = ligar ? 'none' : '';
+  document.getElementById('gf-colab-novo').style.display = ligar ? '' : 'none';
+  document.getElementById('gf-erro').textContent = '';
+  if (ligar) {
+    const nome = document.getElementById('gf-nc-nome');
+    if (!nome.value && busca && busca.value.trim()) nome.value = busca.value.trim();
+    setTimeout(() => nome.focus(), 50);
+  }
+}
+async function _carregarCargosColab() {
+  try {
+    if (!_cargosColab) {
+      const { data, error } = await sb.from('cargos').select('id,nome').order('nome');
+      _cargosColab = error ? [] : (data || []);
+    }
+    const sel = document.getElementById('gf-nc-cargo');
+    if (!sel || !_cargosColab.length) return;
+    sel.innerHTML = '<option value="">—</option>' + _cargosColab.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+    document.getElementById('gf-nc-cargo-wrap').style.display = '';
+  } catch (e) { /* sem cargos: o campo fica escondido */ }
+}
+async function _cadastrarColabRapido() {
+  const nome = _gfValor('gf-nc-nome').replace(/\s+/g, ' ');
+  const cpf = _gfValor('gf-nc-cpf').replace(/\D/g, '');
+  if (nome.length < 3 || !nome.includes(' ')) { _gfErro('Informe o nome completo do colaborador.'); return null; }
+  if (cpf && cpf.length !== 11) { _gfErro('O CPF precisa ter 11 números (ou deixe em branco).'); return null; }
+  const lista = _colabsAtivosCache || [];
+  const igual = lista.find(c => _normalizar(c.nome) === _normalizar(nome) || (cpf && String(c.cpf || '').replace(/\D/g, '') === cpf));
+  if (igual) {
+    if (!confirm(`Já existe "${igual.nome}" no cadastro de colaboradores. Usar esse cadastro?`)) return null;
+    return igual.id;
+  }
+  // Também confere no banco (pode ter inativo ou alguém ter cadastrado agora)
+  let q = sb.from('colaboradores').select('id,nome,ativo').ilike('nome', nome).limit(1);
+  const { data: noBanco } = await q;
+  if (noBanco && noBanco.length) {
+    const c = noBanco[0];
+    if (!confirm(`Já existe "${c.nome}" no cadastro de colaboradores${c.ativo === false ? ' (inativo)' : ''}. Usar esse cadastro?`)) return null;
+    return c.id;
+  }
+  const { data, error } = await sb.from('colaboradores').insert({
+    nome, cpf: cpf || null,
+    matricula: _gfValor('gf-nc-matricula') || null,
+    cargo_id: _gfValor('gf-nc-cargo') || null,
+    telefone: _gfValor('gf-nc-telefone') || null,
+    ativo: true, criado_por: sessaoAtual.user.id,
+  }).select('id,nome,cpf').single();
+  if (error) {
+    _gfErro(/row-level security|permission|policy/i.test(error.message || '') ? 'Sem permissão para cadastrar colaborador. Peça a liberação pelo Suporte SIGECON.' : 'Não foi possível cadastrar o colaborador: ' + error.message);
+    return null;
+  }
+  const novo = Array.isArray(data) ? data[0] : data;
+  // Já entra na lista: se a alocação falhar, não cadastra de novo
+  _colabsAtivosCache = [...lista, novo].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  _alternarNovoColab(false);
+  document.getElementById('gf-colab-busca').value = novo.nome;
+  _escolherColab(novo.id);
+  return novo.id;
+}
+
 async function salvarAlocacao() {
-  const colaboradorId = _gfValor('gf-colab-id'), dataInicio = _gfValor('gf-colab-inicio');
-  if (!colaboradorId) return _gfErro('Escolha o colaborador.');
+  let colaboradorId = _gfValor('gf-colab-id');
+  const dataInicio = _gfValor('gf-colab-inicio');
   if (!dataInicio) return _gfErro('Informe a data de entrada.');
+  if (_novoColabModo) {
+    colaboradorId = await _cadastrarColabRapido();
+    if (!colaboradorId) return false;
+  }
+  if (!colaboradorId) return _gfErro('Escolha o colaborador.');
   const g = await _gestaoAtual();
   const cap = parseInt((g.imovel || imovelAtual).capacidade_pessoas, 10) || 0;
   const ativos = (g.colaboradores || []).filter(x => !x.data_fim);
