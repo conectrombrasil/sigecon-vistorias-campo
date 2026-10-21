@@ -500,6 +500,52 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .aviso-instalar span{flex:1;}
   .aviso-instalar button{background:var(--orange);color:#fff;border:none;border-radius:9px;padding:7px 12px;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit;}
   .aviso-instalar button.fechar{background:none;color:var(--text3);padding:4px 6px;}
+  /* ===== Câmera do app (zoom, lentes, horizontal) e editor de foto ===== */
+  #cam,#efoto{position:fixed;inset:0;z-index:130;background:#000;display:none;flex-direction:column;color:#fff;font-family:inherit;touch-action:none;}
+  #cam.aberta,#efoto.aberto{display:flex;}
+  #cam .cam-vid{position:relative;flex:1;min-height:0;overflow:hidden;background:#000;}
+  #cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform-origin:center center;}
+  #cam .cam-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s;}
+  #cam .cam-topo{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;align-items:center;gap:8px;padding:calc(8px + var(--safe-top)) 12px 26px;background:linear-gradient(rgba(0,0,0,.65),transparent);}
+  #cam .cam-tit{flex:1;font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #cam .cam-bt,#cam .cam-x{min-width:44px;height:44px;border-radius:22px;border:none;background:rgba(255,255,255,.16);color:#fff;font-size:17px;font-weight:700;padding:0 12px;cursor:pointer;}
+  #cam .cam-bt.on{background:#fff;color:#000;}
+  #cam .cam-zoom{position:absolute;left:0;right:0;bottom:12px;z-index:6;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+  #cam .cam-zoom>*{pointer-events:auto;}
+  #cam .cam-chips{display:flex;gap:6px;background:rgba(0,0,0,.5);border-radius:999px;padding:4px 6px;}
+  #cam .cam-chips button{min-width:46px;height:34px;border-radius:17px;border:none;background:transparent;color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;padding:0 9px;}
+  #cam .cam-chips button.on{background:#fff;color:#000;}
+  #cam .cam-zr{width:min(280px,72vw);accent-color:var(--orange);}
+  #cam .cam-base{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px calc(16px + var(--safe-bot));background:#000;}
+  #cam .cam-lado{width:78px;height:62px;border-radius:12px;border:1px solid rgba(255,255,255,.3);background:#111 center/cover no-repeat;color:#fff;position:relative;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;overflow:hidden;}
+  #cam .cam-lado b{position:absolute;top:3px;right:4px;background:var(--orange);border-radius:10px;min-width:20px;padding:0 5px;font-size:12px;line-height:20px;text-align:center;}
+  #cam .cam-lado.vazio{opacity:.35;pointer-events:none;}
+  #cam .cam-obt{width:76px;height:76px;border-radius:50%;border:4px solid #fff;background:transparent;padding:4px;cursor:pointer;flex-shrink:0;}
+  #cam .cam-obt span{display:block;width:100%;height:100%;border-radius:50%;background:#fff;}
+  #cam .cam-obt:active span{background:#ccc;}
+  #cam .cam-ok{min-width:78px;height:50px;border-radius:25px;border:none;background:var(--orange);color:#fff;font-weight:800;font-size:14px;padding:0 14px;cursor:pointer;}
+  #cam .cam-ok:disabled{opacity:.35;}
+  #cam .cam-nativa{background:#000;border:none;color:#9DB4CA;font-size:12.5px;padding:0 0 calc(10px + var(--safe-bot));cursor:pointer;text-decoration:underline;}
+  @media (orientation:landscape){
+    #cam{flex-direction:row;}
+    #cam .cam-topo{right:calc(132px + env(safe-area-inset-right,0px));}
+    #cam .cam-base{flex-direction:column;width:calc(132px + env(safe-area-inset-right,0px));padding:12px calc(10px + env(safe-area-inset-right,0px)) 12px 10px;justify-content:space-around;}
+    #cam .cam-nativa{display:none;}
+  }
+  /* editor de foto */
+  #efoto .ef-topo{display:flex;align-items:center;gap:10px;padding:calc(10px + var(--safe-top)) 14px 10px;}
+  #efoto .ef-topo b{flex:1;font-size:15px;}
+  #efoto button{height:42px;min-width:44px;border-radius:21px;border:none;background:rgba(255,255,255,.16);color:#fff;font-size:15px;font-weight:700;padding:0 14px;cursor:pointer;}
+  #efoto button.ok{background:var(--orange);}
+  #efoto .ef-area{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px;touch-action:none;}
+  #efoto #ef-cv{background:#111;border-radius:4px;touch-action:none;}
+  #efoto .ef-ctl{padding:10px 14px calc(14px + var(--safe-bot));display:flex;flex-direction:column;gap:10px;background:rgba(255,255,255,.06);}
+  #efoto .ef-lin{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;}
+  #efoto .ef-lin button.on{background:#fff;color:#000;}
+  #efoto .ef-lin input[type=range]{flex:1;min-width:130px;max-width:360px;accent-color:var(--orange);}
+  #efoto .ef-dica{font-size:12px;color:#cbd2dc;text-align:center;line-height:1.4;}
+  @media (orientation:landscape){ #efoto{flex-direction:row;flex-wrap:wrap;} #efoto .ef-topo{width:100%;padding-bottom:4px;} #efoto .ef-area{flex:1 1 55%;height:calc(100% - 60px);} #efoto .ef-ctl{flex:0 0 300px;overflow:auto;max-height:calc(100% - 60px);} }
+  .visor-acoes.quatro{grid-template-columns:repeat(4,1fr);}
 </style>
 </head>
 <body>
@@ -858,9 +904,10 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
       <button class="topo-icone" aria-label="Fechar" onclick="fecharModais()" style="color:#fff"><svg class="ic"><use href="#i-fechar"/></svg></button>
     </div>
     <div class="visor-img" id="visor-img"></div>
-    <div class="visor-acoes" id="visor-acoes">
-      <button onclick="document.getElementById('foto-subst-camera').click()">📷<span>Nova foto</span></button>
+    <div class="visor-acoes quatro" id="visor-acoes">
+      <button onclick="abrirCamApp({tipo:'subst'})">📷<span>Nova foto</span></button>
       <button onclick="document.getElementById('foto-subst-galeria').click()">🖼️<span>Da galeria</span></button>
+      <button onclick="reenquadrarFoto()">✂️<span>Reenquadrar</span></button>
       <button class="visor-apagar" onclick="apagarFotoVisualizada()">🗑️<span>Apagar</span></button>
     </div>
     <div class="visor-dica" id="visor-dica">Substituir troca esta foto pela nova</div>
@@ -1611,6 +1658,9 @@ function _armarBotaoVoltarDoCelular() {
   try { history.pushState({ vistoriasCampo: true }, ''); _guardaHistorico = true; } catch (e) { /* sem suporte — segue normal */ }
 }
 window.addEventListener('popstate', () => {
+  if (window._pularPop) { window._pularPop = false; return; }
+  if (window.CamApp && CamApp._aberta && CamApp._hist) { CamApp._hist = false; CamApp._encerrar(true); return; }
+  if (window.EFoto && EFoto.s && EFoto._hist) { EFoto._hist = false; EFoto.fechar(); return; }
   _guardaHistorico = false;
   if (document.querySelector('.modal-overlay.aberto')) { fecharModais(); _armarBotaoVoltarDoCelular(); return; }
   const btn = document.querySelector('.tela.ativa .topo-voltar');
@@ -4423,7 +4473,7 @@ async function renderizarMobilia() {
         </div>
         <span class="rotulo">Fotos</span>
         <div class="fotos-grid">
-          <div class="foto-add" onclick="document.getElementById('movel-cam-${m.id}').click()">📷<small>Câmera</small></div>
+          <div class="foto-add" onclick="abrirCamApp({tipo:'movel',id:'${m.id}'})">📷<small>Câmera</small></div>
           <div class="foto-add foto-add-galeria" onclick="document.getElementById('movel-gal-${m.id}').click()">🖼️<small>Galeria</small></div>
           ${fs.map(f => f.previewUrl
             ? `<div class="foto-mini" onclick="abrirFoto('${f.id}')"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`
@@ -4598,7 +4648,7 @@ async function renderizarComodos() {
         <textarea onblur="mudarObsComodo('${c.id}',this.value)" placeholder="Observações do cômodo...">${esc(c.observacoes || '')}</textarea>
         <span class="rotulo">Fotos</span>
         <div class="fotos-grid" id="fotos-${c.id}">
-          <div class="foto-add" onclick="document.getElementById('foto-input-${c.id}').click()">📷<small>Câmera</small></div>
+          <div class="foto-add" onclick="abrirCamApp({tipo:'comodo',id:'${c.id}'})">📷<small>Câmera</small></div>
           <div class="foto-add foto-add-galeria" onclick="document.getElementById('foto-galeria-${c.id}').click()">🖼️<small>Galeria</small></div>
           ${fotosDoComodo.map(f => f.previewUrl
             ? `<div class="foto-mini" onclick="abrirFoto('${f.id}')"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`
@@ -4646,7 +4696,7 @@ async function renderizarFotosGerais() {
     <div class="comodo-nome" style="margin-bottom:2px">📷 Fotos gerais do imóvel</div>
     <div class="card-sub" style="margin:0 0 12px">Fachada, vista externa, etc.</div>
     <div class="fotos-grid">
-      ${travada ? '' : `<div class="foto-add" onclick="document.getElementById('foto-geral-input').click()">📷<small>Câmera</small></div>
+      ${travada ? '' : `<div class="foto-add" onclick="abrirCamApp({tipo:'geral'})">📷<small>Câmera</small></div>
       <div class="foto-add foto-add-galeria" onclick="document.getElementById('foto-geral-galeria').click()">🖼️<small>Galeria</small></div>`}
       ${fotos.map(f => f.previewUrl
         ? `<div class="foto-mini" onclick="abrirFoto('${f.id}')"><img src="${f.previewUrl}"/><span class="foto-status">${f.status === 'sincronizado' ? '✅' : '⏳'}</span></div>`
@@ -4809,7 +4859,7 @@ async function abrirFoto(id) {
   document.getElementById('visor-acoes').style.display = travada ? 'none' : '';
   document.getElementById('visor-dica').textContent = travada
     ? 'Vistoria concluída — reabra a vistoria pra apagar ou trocar fotos.'
-    : 'Substituir troca esta foto pela nova.';
+    : 'Substituir e Reenquadrar trocam esta foto pela nova versão.';
   abrirModal('modal-foto');
 }
 
@@ -5645,6 +5695,270 @@ window.addEventListener('DOMContentLoaded', async () => {
     mostrarTela('tela-login');
   }
 });
+</script>
+<!-- ================= Câmera do app ================= -->
+<div id="cam" role="dialog" aria-label="Câmera">
+  <div class="cam-vid" id="cam-vid">
+    <video id="cam-video" autoplay playsinline muted></video><div class="cam-flash" id="cam-flash"></div>
+    <div class="cam-topo"><button class="cam-x" onclick="CamApp.fechar()" aria-label="Fechar">✕</button><div class="cam-tit" id="cam-tit">Câmera</div>
+      <button class="cam-bt" id="cam-torch" onclick="CamApp.lanterna()" hidden aria-label="Lanterna">🔦</button>
+      <button class="cam-bt" id="cam-lente" onclick="CamApp.lente()" hidden aria-label="Trocar lente"></button>
+      <button class="cam-bt" onclick="CamApp.virar()" aria-label="Trocar câmera">🔄</button></div>
+    <div class="cam-zoom" id="cam-zoom" hidden><div class="cam-chips" id="cam-chips"></div><input type="range" class="cam-zr" id="cam-zr" aria-label="Zoom"/></div>
+  </div>
+  <div class="cam-base">
+    <button class="cam-lado vazio" id="cam-lado" onclick="CamApp.desfazer()" aria-label="Desfazer última foto"><b id="cam-n">0</b>↩ desfazer</button>
+    <button class="cam-obt" onclick="CamApp.capturar()" aria-label="Tirar foto"><span></span></button>
+    <button class="cam-ok" id="cam-ok" onclick="CamApp.concluir()" disabled>Concluir</button>
+  </div>
+  <button class="cam-nativa" onclick="CamApp.nativa()">📱 Usar a câmera do celular</button>
+</div>
+<!-- ================= Editor de foto: girar, ampliar, reenquadrar ================= -->
+<div id="efoto" role="dialog" aria-label="Reenquadrar foto">
+  <div class="ef-topo"><button onclick="EFoto.fechar()" aria-label="Cancelar">✕</button><b>Reenquadrar foto</b><button class="ok" id="ef-salvar" onclick="EFoto.salvar()">Salvar</button></div>
+  <div class="ef-area" id="ef-area"><canvas id="ef-cv"></canvas></div>
+  <div class="ef-ctl">
+    <div class="ef-lin"><button onclick="EFoto.girar(-90)" aria-label="Girar à esquerda">↺</button><button onclick="EFoto.girar(90)" aria-label="Girar à direita">↻</button><input type="range" id="ef-z" min="1" max="4" step="0.02" aria-label="Zoom"/><span id="ef-zv" style="min-width:42px">1,0×</span></div>
+    <div class="ef-lin" id="ef-ar"><button data-a="o">Inteira</button><button data-a="4:3">4:3</button><button data-a="3:2">3:2</button><button data-a="16:9">16:9</button><button data-a="1:1">1:1</button></div>
+    <div class="ef-dica">Arraste para mover · pinça ou barra para ampliar. Ao salvar, esta foto é substituída pela versão reenquadrada.</div>
+    <div class="ef-lin"><button onclick="EFoto.restaurar()">Desfazer ajustes</button></div>
+  </div>
+</div>
+<script>
+/* =====================================================================
+   Câmera do app (zoom, lentes, horizontal, várias fotos seguidas)
+   e editor de foto (girar, ampliar, reenquadrar).
+   Reaproveita o fluxo que já existe: as fotos entram pelas mesmas funções
+   (tirarFotoComodo / tirarFotoMovel / tirarFotoGeral / substituirFotoVisualizada).
+   ===================================================================== */
+(function () {
+  const $ = id => document.getElementById(id);
+  const toast = (m, t) => { try { mostrarToast(m, t); } catch (e) { } };
+
+  // ── onde cada foto vai parar ───────────────────────────────────────
+  async function tituloDestino(d) {
+    try {
+      if (d.tipo === 'comodo') { const c = await idbPegar('comodos', d.id); return c ? '📷 ' + c.nome : '📷 Foto do cômodo'; }
+      if (d.tipo === 'movel') { const m = await idbPegar('moveis', d.id); return m ? '📷 ' + m.descricao : '📷 Foto da mobília'; }
+      if (d.tipo === 'geral') return '📷 Fotos gerais do imóvel';
+      if (d.tipo === 'subst') return '📷 Nova foto (substitui a atual)';
+    } catch (e) { }
+    return '📷 Câmera';
+  }
+  function entregar(d, arquivos) {
+    const falso = { files: arquivos, value: '' };   // igual a um <input type="file"> que acabou de receber as fotos
+    if (d.tipo === 'comodo') return tirarFotoComodo(d.id, falso);
+    if (d.tipo === 'movel') return tirarFotoMovel(d.id, falso);
+    if (d.tipo === 'geral') return tirarFotoGeral(falso);
+    if (d.tipo === 'subst') return substituirFotoVisualizada(falso);
+  }
+  function inputNativo(d) {
+    const id = d.tipo === 'comodo' ? 'foto-input-' + d.id : d.tipo === 'movel' ? 'movel-cam-' + d.id : d.tipo === 'geral' ? 'foto-geral-input' : 'foto-subst-camera';
+    return $(id);
+  }
+
+  window.CamApp = {
+    dest: null, max: 0, fotos: [], _s: null, _trk: null, _frente: false, _devId: null, _lentes: [], _zoom: 1, _zMin: 1, _zMax: 4, _hw: false, _zBusy: false, _zPend: null, _luz: false, _aberta: false,
+
+    async abrir(dest, opts) {
+      opts = opts || {};
+      if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return this._nativaDe(dest);
+      this.dest = dest; this.max = opts.max || (dest.tipo === 'subst' ? 1 : 0); this.fotos = []; this._frente = false; this._devId = null; this._luz = false;
+      $('cam').classList.add('aberta'); document.body.style.overflow = 'hidden'; this._aberta = true;
+      $('cam-tit').textContent = await tituloDestino(dest);
+      try { history.pushState({ cam: 1 }, ''); this._hist = true; } catch (e) { }
+      this._rotacao(true); this._contador();
+      const ok = await this._ligar();
+      if (!ok) { this._encerrar(); toast('Não foi possível abrir a câmera do app. Abrindo a câmera do celular.', 'erro'); this._nativaDe(dest); }
+    },
+
+    // ── câmera ────────────────────────────────────────────────────
+    async _ligar() {
+      this._parar();
+      const modo = this._frente ? 'user' : 'environment', tam = { width: { ideal: 1920 }, height: { ideal: 1440 } }, ten = [];
+      if (this._devId && !this._frente) ten.push({ video: { deviceId: { exact: this._devId }, ...tam }, audio: false });
+      ten.push({ video: { facingMode: { exact: modo }, ...tam }, audio: false }, { video: { facingMode: modo, ...tam }, audio: false }, { video: true, audio: false });
+      for (const t of ten) {
+        try {
+          this._s = await navigator.mediaDevices.getUserMedia(t);
+          const v = $('cam-video'); v.srcObject = this._s; v.style.transform = this._frente ? 'scaleX(-1)' : '';
+          await v.play().catch(() => { });
+          this._trk = this._s.getVideoTracks()[0] || null;
+          this._prepararZoom(); this._prepararLuz(); this._listarLentes().catch(() => { });
+          return true;
+        } catch (e) { if (e && e.name === 'NotAllowedError') return false; }
+      }
+      return false;
+    },
+    _parar() { if (this._s) { this._s.getTracks().forEach(t => t.stop()); this._s = null; } this._trk = null; },
+    async virar() { this._devId = null; this._frente = !this._frente; if (!(await this._ligar())) { this._frente = !this._frente; await this._ligar(); } },
+
+    // ── zoom: do aparelho quando existir (Android/Chrome); senão digital ──
+    _prepararZoom() {
+      let caps = {}; try { caps = (this._trk && this._trk.getCapabilities && this._trk.getCapabilities()) || {}; } catch (e) { }
+      const z = caps.zoom; this._hw = !!(z && z.max > z.min);
+      this._zMin = this._hw ? z.min : 1; this._zMax = this._hw ? Math.min(z.max, 10) : 4; this._zoom = Math.max(this._zMin, Math.min(this._zMax, 1));
+      const rg = $('cam-zr'); rg.min = this._zMin; rg.max = this._zMax; rg.step = this._hw && z.step ? Math.min(z.step, 0.1) : 0.05; rg.value = this._zoom; rg.oninput = () => this.zoomPara(Number(rg.value));
+      const pre = [0.5, 1, 2, 3, 5].filter(p => p >= this._zMin - 1e-6 && p <= this._zMax + 1e-6);
+      $('cam-chips').innerHTML = pre.map(p => `<button data-z="${p}" onclick="CamApp.zoomPara(${p})">${String(p).replace('.', ',')}×</button>`).join('');
+      $('cam-zoom').hidden = false; this._visual(); this._marcar();
+      const vid = $('cam-vid'); if (!vid._pinca) { vid._pinca = true; this._gestos(vid); }
+    },
+    async zoomPara(z) {
+      z = Math.max(this._zMin, Math.min(this._zMax, z)); this._zoom = z; this._marcar();
+      if (!this._hw) { this._visual(); return; }
+      this._zPend = z; if (this._zBusy) return; this._zBusy = true;
+      try { while (this._zPend !== null) { const alvo = this._zPend; this._zPend = null; try { await this._trk.applyConstraints({ advanced: [{ zoom: alvo }] }); } catch (e) { this._hw = false; this._visual(); } } }
+      finally { this._zBusy = false; }
+    },
+    _visual() { const v = $('cam-video'); v.style.transform = (this._frente ? 'scaleX(-1) ' : '') + (this._hw ? '' : `scale(${this._zoom})`); },
+    _marcar() { const rg = $('cam-zr'); if (Number(rg.value) !== this._zoom) rg.value = this._zoom; document.querySelectorAll('#cam-chips button').forEach(b => b.classList.toggle('on', Math.abs(Number(b.dataset.z) - this._zoom) < 0.06)); },
+    _gestos(el) {
+      const pts = new Map(); let d0 = 0, z0 = 1; const dist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+      el.addEventListener('pointerdown', e => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pts.size === 2) { d0 = dist(); z0 = CamApp._zoom; } });
+      el.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pts.size === 2 && d0 > 0) CamApp.zoomPara(z0 * dist() / d0); });
+      const fim = e => { pts.delete(e.pointerId); d0 = 0; }; el.addEventListener('pointerup', fim); el.addEventListener('pointercancel', fim);
+    },
+
+    // ── lentes (ultra-wide / principal / tele) e lanterna ────────────
+    async _listarLentes() {
+      if (this._frente || !navigator.mediaDevices.enumerateDevices) { this._lentes = []; return this._botaoLente(); }
+      const ds = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput' && d.label);
+      const tras = ds.filter(d => /back|rear|traseira|environment/i.test(d.label) && !/front|frontal|user/i.test(d.label) && !/dual|triple/i.test(d.label));
+      const rank = d => /ultra/i.test(d.label) ? 0 : /tele/i.test(d.label) ? 2 : 1;
+      tras.sort((a, b) => rank(a) - rank(b));
+      this._lentes = tras.length > 1 ? tras.map((d, i) => ({ id: d.deviceId, rot: rank(d) === 0 ? '0,5×' : rank(d) === 2 ? 'Tele' : (tras.filter(x => rank(x) === 1).length > 1 ? 'Lente ' + (i + 1) : '1×') })) : [];
+      this._botaoLente();
+    },
+    _atual() { const id = this._trk && this._trk.getSettings ? this._trk.getSettings().deviceId : null; const i = this._lentes.findIndex(l => l.id === (this._devId || id)); return Math.max(0, i); },
+    _botaoLente() { const b = $('cam-lente'); if (!this._lentes.length) { b.hidden = true; return; } b.textContent = '🔭 ' + this._lentes[this._atual()].rot; b.hidden = false; },
+    async lente() {
+      if (this._lentes.length < 2) return; const antes = this._devId;
+      this._devId = this._lentes[(this._atual() + 1) % this._lentes.length].id;
+      if (!(await this._ligar())) { this._devId = antes; await this._ligar(); toast('Não foi possível trocar de lente neste aparelho.', 'erro'); }
+    },
+    _prepararLuz() { let caps = {}; try { caps = (this._trk && this._trk.getCapabilities && this._trk.getCapabilities()) || {}; } catch (e) { } const b = $('cam-torch'); b.hidden = !caps.torch; this._luz = false; b.classList.remove('on'); },
+    async lanterna() { try { this._luz = !this._luz; await this._trk.applyConstraints({ advanced: [{ torch: this._luz }] }); $('cam-torch').classList.toggle('on', this._luz); } catch (e) { this._luz = false; $('cam-torch').classList.remove('on'); toast('Lanterna indisponível.', 'erro'); } },
+
+    // ── foto ──────────────────────────────────────────────────────
+    capturar() {
+      const v = $('cam-video'); if (!v.videoWidth) return;
+      const zd = this._hw ? 1 : Math.max(1, this._zoom), sw = v.videoWidth / zd, sh = v.videoHeight / zd, sx = (v.videoWidth - sw) / 2, sy = (v.videoHeight - sh) / 2;
+      const f = Math.min(1, 1920 / Math.max(sw, sh)), c = document.createElement('canvas'); c.width = Math.round(sw * f); c.height = Math.round(sh * f);
+      const ctx = c.getContext('2d'); if (this._frente) { ctx.translate(c.width, 0); ctx.scale(-1, 1); } ctx.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+      const fl = $('cam-flash'); fl.style.opacity = .7; setTimeout(() => fl.style.opacity = 0, 90); try { navigator.vibrate && navigator.vibrate(25); } catch (e) { }
+      c.toBlob(b => {
+        if (!b) { toast('Não foi possível registrar a foto.', 'erro'); return; }
+        this.fotos.push({ file: new File([b], 'foto_' + Date.now() + '.jpg', { type: 'image/jpeg' }), url: URL.createObjectURL(b) });
+        this._contador(); if (this.max && this.fotos.length >= this.max) this.concluir();
+      }, 'image/jpeg', 0.9);
+    },
+    desfazer() { const f = this.fotos.pop(); if (f) URL.revokeObjectURL(f.url); this._contador(); },
+    _contador() {
+      const n = this.fotos.length, l = $('cam-lado'); $('cam-n').textContent = n; l.classList.toggle('vazio', !n);
+      l.style.backgroundImage = n ? `url("${this.fotos[n - 1].url}")` : ''; const ok = $('cam-ok'); ok.disabled = !n; ok.textContent = n ? `Concluir (${n})` : 'Concluir';
+    },
+    concluir() {
+      const d = this.dest, arq = this.fotos.map(x => x.file); this._encerrar(false);
+      if (arq.length) entregar(d, arq);
+    },
+    fechar() {
+      if (this.fotos.length && !confirm(`Descartar ${this.fotos.length} foto(s) tirada(s)?`)) return;
+      this._encerrar(true);
+    },
+    nativa() { const d = this.dest, arq = this.fotos.map(x => x.file); this._encerrar(false); if (arq.length) entregar(d, arq); this._nativaDe(d); },
+    _nativaDe(d) { const i = inputNativo(d); if (i) i.click(); },
+    _encerrar(descartar) {
+      this._parar(); this._rotacao(false); $('cam').classList.remove('aberta'); document.body.style.overflow = ''; this._aberta = false;
+      if (this._hist) { this._hist = false; window._pularPop = true; try { history.back(); } catch (e) { window._pularPop = false; } }
+      if (descartar !== false) this.fotos.forEach(f => URL.revokeObjectURL(f.url)); if (descartar) this.fotos = [];
+    },
+    // libera a rotação só enquanto a câmera está aberta (o app é em retrato; a foto pode ser na horizontal)
+    async _rotacao(liga) {
+      try {
+        if (liga) {
+          const el = $('cam'); if (!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' }).catch(() => { });
+          if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('any').catch(() => { });
+        } else {
+          if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+          if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen().catch(() => { });
+        }
+      } catch (e) { }
+    },
+  };
+  // ao sair do app com a câmera aberta, solta a câmera; ao voltar, religa
+  document.addEventListener('visibilitychange', () => {
+    const C = window.CamApp; if (!C._aberta) return;
+    if (document.hidden) C._parar(); else C._ligar();
+  });
+  window.abrirCamApp = (dest, opts) => window.CamApp.abrir(dest, opts);
+
+  /* ===================================================================
+     Editor de foto
+     e = { r: 0|90|180|270, a: 'o'|'4:3'|'3:2'|'16:9'|'1:1', z: 1..4, x: 0..1, y: 0..1 }
+     =================================================================== */
+  const RAZAO = { '4:3': 4 / 3, '3:2': 3 / 2, '16:9': 16 / 9, '1:1': 1 };
+  const regiao = (rw, rh, e) => {
+    const ar = RAZAO[e.a] || (rw / rh), z = Math.max(1, e.z || 1); let bw = rw, bh = rw / ar; if (bh > rh) { bh = rh; bw = rh * ar; }
+    const vw = bw / z, vh = bh / z; return { vw, vh, sx: (rw - vw) * (e.x ?? .5), sy: (rh - vh) * (e.y ?? .5), slackW: rw - vw, slackH: rh - vh };
+  };
+  const girada = (im, rot) => {
+    const q = ((rot || 0) % 360 + 360) % 360, odd = q % 180 !== 0, w = odd ? im.naturalHeight : im.naturalWidth, h = odd ? im.naturalWidth : im.naturalHeight;
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.translate(w / 2, h / 2); x.rotate(q * Math.PI / 180); x.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight / 2); return c;
+  };
+  window.EFoto = {
+    s: null,
+    async abrir() {
+      let f; try { f = await idbPegar('fotos', _fotoVisualizadaId); } catch (e) { }
+      if (!f || !f.previewUrl) { toast('A imagem só está disponível com internet. Conecte e tente de novo.', 'erro'); return; }
+      let im; try { im = await new Promise((ok, no) => { const i = new Image(); if (!String(f.previewUrl).startsWith('data:')) i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = f.previewUrl; }); }
+      catch (e) { toast('Não foi possível abrir a foto para editar.', 'erro'); return; }
+      this.s = { im, e: { r: 0, a: 'o', z: 1, x: .5, y: .5 }, base: null, k: 1 }; this._base();
+      const el = $('efoto'); el.classList.add('aberto'); try { history.pushState({ ef: 1 }, ''); this._hist = true; } catch (e) { }
+      $('ef-z').oninput = ev => { this.s.e.z = Number(ev.target.value); this._desenhar(); };
+      document.querySelectorAll('#ef-ar button').forEach(b => b.onclick = () => { this.s.e.a = b.dataset.a; this.s.e.z = 1; this.s.e.x = .5; this.s.e.y = .5; this._desenhar(); });
+      this._gestos($('ef-cv')); requestAnimationFrame(() => this._desenhar()); window.addEventListener('resize', this._rz = () => this._desenhar());
+    },
+    _base() { this.s.base = girada(this.s.im, this.s.e.r); },
+    _desenhar() {
+      const s = this.s; if (!s) return; const area = $('ef-area'), cv = $('ef-cv'), R = regiao(s.base.width, s.base.height, s.e), ar = R.vw / R.vh;
+      const mw = Math.max(50, area.clientWidth - 16), mh = Math.max(50, area.clientHeight - 16); let w = mw, h = w / ar; if (h > mh) { h = mh; w = h * ar; }
+      const dpr = Math.min(2, window.devicePixelRatio || 1); cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      cv.getContext('2d').drawImage(s.base, R.sx, R.sy, R.vw, R.vh, 0, 0, cv.width, cv.height); s.k = R.vw / w;
+      const z = $('ef-z'); if (Number(z.value) !== s.e.z) z.value = s.e.z; $('ef-zv').textContent = s.e.z.toFixed(1).replace('.', ',') + '×';
+      document.querySelectorAll('#ef-ar button').forEach(b => b.classList.toggle('on', b.dataset.a === s.e.a));
+    },
+    girar(g) { const e = this.s.e; e.r = (((e.r || 0) + g) % 360 + 360) % 360; e.x = .5; e.y = .5; this._base(); this._desenhar(); },
+    restaurar() { this.s.e = { r: 0, a: 'o', z: 1, x: .5, y: .5 }; this._base(); this._desenhar(); },
+    _gestos(el) {
+      const pts = new Map(); let d0 = 0, z0 = 1, ult = null; const dist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+      el.onpointerdown = ev => { try { el.setPointerCapture(ev.pointerId); } catch (e) { } pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY }); if (pts.size === 2) { d0 = dist(); z0 = EFoto.s.e.z; } ult = { x: ev.clientX, y: ev.clientY }; };
+      el.onpointermove = ev => {
+        if (!pts.has(ev.pointerId) || !EFoto.s) return; const e = EFoto.s.e; pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+        if (pts.size === 2 && d0 > 0) { e.z = Math.max(1, Math.min(4, z0 * dist() / d0)); EFoto._desenhar(); return; }
+        if (pts.size === 1 && ult) {
+          const R = regiao(EFoto.s.base.width, EFoto.s.base.height, e), dx = (ev.clientX - ult.x) * EFoto.s.k, dy = (ev.clientY - ult.y) * EFoto.s.k;
+          if (R.slackW > .5) e.x = Math.max(0, Math.min(1, (R.sx - dx) / R.slackW)); if (R.slackH > .5) e.y = Math.max(0, Math.min(1, (R.sy - dy) / R.slackH));
+          ult = { x: ev.clientX, y: ev.clientY }; EFoto._desenhar();
+        }
+      };
+      const fim = ev => { pts.delete(ev.pointerId); d0 = 0; ult = pts.size === 1 ? { ...[...pts.values()][0] } : null; }; el.onpointerup = fim; el.onpointercancel = fim;
+    },
+    fechar() { $('efoto').classList.remove('aberto'); window.removeEventListener('resize', this._rz); this.s = null; if (this._hist) { this._hist = false; window._pularPop = true; try { history.back(); } catch (e) { window._pularPop = false; } } },
+    async salvar() {
+      const s = this.s; if (!s) return; const btn = $('ef-salvar'); btn.disabled = true;
+      try {
+        const R = regiao(s.base.width, s.base.height, s.e), f = Math.min(1, 1920 / Math.max(R.vw, R.vh)), c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(R.vw * f)); c.height = Math.max(1, Math.round(R.vh * f)); c.getContext('2d').drawImage(s.base, R.sx, R.sy, R.vw, R.vh, 0, 0, c.width, c.height);
+        const blob = await new Promise((ok, no) => { try { c.toBlob(b => b ? ok(b) : no(new Error('vazio')), 'image/jpeg', 0.92); } catch (e) { no(e); } });
+        const arq = new File([blob], 'reenquadrada_' + Date.now() + '.jpg', { type: 'image/jpeg' });
+        this.fechar(); await substituirFotoVisualizada({ files: [arq], value: '' });   // sobe a nova e retira a antiga (mesmo fluxo de "Substituir")
+      } catch (e) { btn.disabled = false; toast('Não foi possível salvar a foto editada (a imagem não permite edição agora).', 'erro'); }
+      finally { btn.disabled = false; }
+    },
+  };
+  window.reenquadrarFoto = () => window.EFoto.abrir();
+})();
 </script>
 </body>
 </html>
