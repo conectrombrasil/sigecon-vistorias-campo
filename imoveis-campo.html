@@ -2758,10 +2758,10 @@ async function _carregarGestaoDoServidor(ids) {
   let condPorSol = {}, aluguelPorSol = {};
   if (solIds.length) {
     const [sols, subs] = await Promise.all([
-      pegar(sb.from('solicitacoes_contratos').select('id,campos_especificos').in('id', solIds)),
+      pegar(sb.from('solicitacoes_contratos').select('*').in('id', solIds)),
       pegar(sb.from('solicitacao_subitens').select('solicitacao_id,descricao,total').in('solicitacao_id', solIds).ilike('descricao', 'aluguel')),
     ]);
-    (sols || []).forEach(x => { condPorSol[x.id] = x.campos_especificos || {}; });
+    (sols || []).forEach(x => { const cau = _caucaoDaSolCampo(x); condPorSol[x.id] = { ...(x.campos_especificos || {}), caucao_meses: cau.meses, caucao_valor: cau.valor, data_pgto_caucao: cau.data }; });
     (subs || []).forEach(x => { aluguelPorSol[x.solicitacao_id] = x.total; });
   }
   // Nomes de quem cadastrou/editou
@@ -4178,9 +4178,10 @@ async function imprimirRelatorioLocacao(imovelId) {
     const nParc = (subAlug && parseFloat(subAlug.quantidade)) || mesesPrazo || null;
     const mensal = subAlug ? (parseFloat(subAlug.preco_unitario) || (parseFloat(subAlug.total) / (parseFloat(subAlug.quantidade) || 1))) : (sol && sol.valor_estimado && nParc ? sol.valor_estimado / nParc : null);
     const refAlug = ce.data_ref_pgto_aluguel || rc['sc-aluguel-data-ref'] || '';
-    const caucaoValor = ce.caucao_valor != null ? ce.caucao_valor : (rc['sc-caucao-valor'] ? parseFloat(rc['sc-caucao-valor']) : null);
-    const caucaoData = ce.data_pgto_caucao || rc['sc-caucao-data'] || '';
-    const caucaoMeses = ce.caucao_meses || rc['sc-caucao-meses'] || '';
+    const cauSol = _caucaoDaSolCampo(sol);
+    const caucaoValor = cauSol.valor != null ? Number(cauSol.valor) : (rc['sc-caucao-valor'] ? parseFloat(rc['sc-caucao-valor']) : null);
+    const caucaoData = cauSol.data || rc['sc-caucao-data'] || '';
+    const caucaoMeses = cauSol.meses || rc['sc-caucao-meses'] || '';
     const parcelas = [];
     if (mensal && nParc && refAlug) { let d = refAlug; for (let i = 0; i < nParc; i++) { parcelas.push({ n: i + 1, data: d, valor: mensal }); d = _somarUmMes(d); } }
     const totalAluguel = mensal && nParc ? mensal * nParc : (sol && sol.valor_estimado) || null;
@@ -5188,6 +5189,17 @@ function _sugerirDataPrimeiroAluguel() {
   const caucao = document.getElementById('sc-caucao-data').value;
   if (caucao) document.getElementById('sc-aluguel-data-ref').value = _somarUmMes(caucao);
 }
+// Caução: só as colunas próprias da solicitação (caucao_meses, caucao_valor, caucao_data_pagamento) — o JSON antigo foi importado para elas
+function _caucaoDaSolCampo(sol) {
+  return { meses: sol?.caucao_meses ?? null, valor: sol?.caucao_valor ?? null, data: sol?.caucao_data_pagamento || null };
+}
+function _caucaoDoFormSc() {
+  const v = id => document.getElementById(id).value;
+  const val = v('sc-caucao-valor') ? parseFloat(String(v('sc-caucao-valor')).replace(',', '.')) : NaN;
+  return { caucao_meses: v('sc-caucao-meses') ? (parseInt(v('sc-caucao-meses'), 10) || null) : null,
+           caucao_valor: isNaN(val) ? null : Math.round(val * 100) / 100,
+           caucao_data_pagamento: v('sc-caucao-data') || null };
+}
 function _camposAluguelSc() {
   const ref = document.getElementById('sc-aluguel-data-ref').value || null;
   return { data_ref_pgto_aluguel: ref, dia_pgto_aluguel: ref ? parseInt(ref.split('-')[2], 10) : null };
@@ -5418,14 +5430,15 @@ async function abrirSolicitacaoExistente() {
   const t = ce.testemunha || {};
   const set = (idc, v) => { document.getElementById(idc).value = v == null ? '' : v; };
   set('sc-objeto', sol.objeto); set('sc-inicio', sol.data_inicio); set('sc-fim', sol.data_fim);
-  set('sc-caucao-meses', ce.caucao_meses); set('sc-caucao-valor', ce.caucao_valor);
-  set('sc-caucao-data', ce.data_pgto_caucao);
+  const cau = _caucaoDaSolCampo(sol);
+  set('sc-caucao-meses', cau.meses); set('sc-caucao-valor', cau.valor);
+  set('sc-caucao-data', cau.data);
   document.getElementById('sec-condicoes').classList.add('aberta');
   _aluguelDataManual = !!ce.data_ref_pgto_aluguel;
   set('sc-aluguel-data-ref', ce.data_ref_pgto_aluguel);
-  if (!ce.data_ref_pgto_aluguel && ce.data_pgto_caucao) {
+  if (!ce.data_ref_pgto_aluguel && cau.data) {
     // Solicitação antiga (só tinha o "dia"): sugere 1 mês depois do caução, no dia informado
-    let ref = _somarUmMes(ce.data_pgto_caucao);
+    let ref = _somarUmMes(cau.data);
     if (ce.dia_pgto_aluguel) { const [a, m] = ref.split('-'); ref = `${a}-${m}-${String(Math.min(+ce.dia_pgto_aluguel, new Date(+a, +m, 0).getDate())).padStart(2, '0')}`; }
     set('sc-aluguel-data-ref', ref);
   }
@@ -5478,17 +5491,14 @@ async function salvarEdicaoSolicitacao() {
 
     const num = idc => document.getElementById(idc).value;
     const campos = {
-      ...(ed.original.campos_especificos || {}),
-      caucao_meses: num('sc-caucao-meses') ? parseInt(num('sc-caucao-meses'), 10) : null,
-      caucao_valor: num('sc-caucao-valor') ? parseFloat(num('sc-caucao-valor')) : null,
-      data_pgto_caucao: num('sc-caucao-data') || null,
+      ...Object.fromEntries(Object.entries(ed.original.campos_especificos || {}).filter(([k]) => !['caucao_meses', 'caucao_valor', 'data_pgto_caucao'].includes(k))),   // caução saiu do JSON
       ..._camposAluguelSc(),
       testemunha: { nome: testNome, telefone: testTel || null, email: testEmail || null },
     };
     // Mesma regra do módulo web: editou, volta pra "pendente" (precisa ser aprovada de novo)
     const { data: upd, error: eUp } = await sb.from('solicitacoes_contratos').update({
       status: 'pendente', editado_por: sessaoAtual.user.id, editado_em: new Date().toISOString(),
-      objeto, campos_especificos: campos,
+      objeto, campos_especificos: campos, ..._caucaoDoFormSc(),
       valor_estimado: num('sc-valor') ? parseFloat(num('sc-valor')) : null,
       data_inicio: num('sc-inicio') || null, data_fim: num('sc-fim') || null,
     }).eq('id', ed.id).select('id');
@@ -5578,9 +5588,6 @@ async function enviarSolicitacaoContrato() {
     if (erroSeq) throw new Error('Erro ao gerar o número da solicitação: ' + erroSeq.message);
 
     const camposEspecificos = {
-      caucao_meses: document.getElementById('sc-caucao-meses').value ? parseInt(document.getElementById('sc-caucao-meses').value, 10) : null,
-      caucao_valor: document.getElementById('sc-caucao-valor').value ? parseFloat(document.getElementById('sc-caucao-valor').value) : null,
-      data_pgto_caucao: document.getElementById('sc-caucao-data').value || null,
       ..._camposAluguelSc(),
       testemunha: { nome: testNome, telefone: testTel || null, email: testEmail || null },
     };
@@ -5593,7 +5600,7 @@ async function enviarSolicitacaoContrato() {
       valor_estimado: document.getElementById('sc-valor').value ? parseFloat(document.getElementById('sc-valor').value) : null,
       data_inicio: document.getElementById('sc-inicio').value || null,
       data_fim: document.getElementById('sc-fim').value || null,
-      campos_especificos: camposEspecificos,
+      campos_especificos: camposEspecificos, ..._caucaoDoFormSc(),
       objeto, status: 'pendente', criado_por: sessaoAtual.user.id,
     }).select().single();
     if (erroSol) throw new Error('Erro ao criar a solicitação: ' + erroSol.message);
