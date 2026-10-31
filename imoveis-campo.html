@@ -112,6 +112,10 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .login-titulo{font-size:23px;font-weight:800;margin-bottom:6px;text-align:center;letter-spacing:-.3px;}
   .login-sub{font-size:13.5px;color:var(--text2);margin-bottom:30px;text-align:center;max-width:280px;}
   #tela-login .campo,#tela-login .btn{max-width:360px;}
+  .campo-senha{position:relative;}
+  .campo-senha input{padding-right:52px !important;}
+  .olho-senha{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:42px;height:42px;border:0;background:transparent;font-size:20px;cursor:pointer;opacity:.75;}
+  .olho-senha.on{opacity:1;}
 
   /* ===== Campos ===== */
   .campo{width:100%;margin-bottom:14px;}
@@ -267,6 +271,9 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .pf-atalhos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;}
   .pf-atalhos button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:12px;border:1px solid var(--border2);background:var(--navy3);color:var(--text);font-size:22px;cursor:pointer;font-family:inherit;}
   .pf-atalhos button span{font-size:11.5px;font-weight:600;color:var(--text2);}
+  .pf-pessoa{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+  .pf-pessoa button{padding:10px;border-radius:12px;border:1.5px solid var(--border2);background:var(--navy3);color:var(--text);font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;}
+  .pf-pessoa button.on{border-color:var(--orange);background:rgba(249,115,22,.12);color:var(--orange);}
   .pf-foto-ct{width:100%;padding:24px 12px;border-radius:14px;border:2px dashed var(--orange);background:rgba(249,115,22,.08);color:var(--text);cursor:pointer;font-family:inherit;text-align:center;}
   .pf-foto-ct .g{font-size:36px;line-height:1;}
   .pf-foto-ct b{display:block;font-size:15px;margin-top:6px;}
@@ -608,7 +615,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     <div class="login-sub">SIGECON — funciona sem internet, sincroniza depois · <span id="login-versao"></span></div>
     <button class="btn-instalar" style="display:none" onclick="instalarApp()">📲 Instalar o app no celular</button>
     <div class="campo"><input type="email" id="login-email" placeholder="E-mail" autocomplete="username" inputmode="email" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('login-senha').focus();}"/></div>
-    <div class="campo"><input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();fazerLogin();}"/></div>
+    <div class="campo campo-senha"><input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();fazerLogin();}"/><button type="button" class="olho-senha" id="olho-senha" aria-label="Mostrar a senha" onclick="alternarVerSenha()">👁️</button></div>
     <div class="erro-msg" id="login-erro"></div>
     <button class="btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
   </div>
@@ -1270,7 +1277,7 @@ function sgBaixarPorChave(chave, nome) { const r = _sgRegistros[chave]; if (r) s
 // ════════════════ SIGECON IA v1 — início (pode ser copiado para outros módulos) ════════════════
 // Lê uma foto ou PDF com a IA (Edge Function "sigecon-ia-ler") e devolve os dados em campos.
 // Uso:  const r = await sgIaLer('conta', arquivoDoInput);   →  r.dados.valor_total, r.dados.vencimento…
-// Tipos: 'endereco' | 'documento' | 'banco' | 'conta'.   Teste da chave: await sgIaLer('teste')
+// Tipos: 'endereco' | 'documento' | 'banco' | 'conta' | 'comprovante' | 'cnpj'.   Teste da chave: await sgIaLer('teste')
 // Não guarda nada. Fotos grandes são reduzidas antes de enviar (fica mais rápido e barato).
 const SG_IA_FUNCAO = 'sigecon-ia-ler';
 const SG_IA_LIMITE = 10 * 1024 * 1024;
@@ -1334,9 +1341,36 @@ function sgIaCnpjOk(v) {
   const dv = n => { const p = n === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2]; let s = 0; for (let i = 0; i < n; i++) s += +d[i] * p[i]; const r = s % 11; return r < 2 ? 0 : 11 - r; };
   return dv(12) === +d[12] && dv(13) === +d[13];
 }
+// ── Filtro de DOCUMENTO ERRADO (usar SEMPRE depois de cada leitura) ──
+// Cada tipo tem os campos que não podem faltar. Se vierem vazios, a foto provavelmente não é o
+// documento pedido (ex.: mandou a conta de água no lugar do RG). Não bloqueia: a tela mostra o aviso
+// e a pessoa decide entre tirar outra foto ou enviar assim mesmo.
+//   const aviso = sgIaConferir('documento', r.dados);   →  null (ok) ou { msg, grave }
+const _sgV = v => v != null && String(v).trim() !== '';
+const SG_IA_ESPERADO = {
+  documento:   { nome: 'um documento de identidade (RG, CNH, CPF)', ok: d => _sgV(d.nome) && (_sgV(d.cpf) || _sgV(d.rg) || _sgV(d.cnh_numero)) },
+  cnpj:        { nome: 'um cartão CNPJ', ok: d => _sgV(d.cnpj) && _sgV(d.razao_social) },
+  conta:       { nome: 'uma conta de consumo (água, luz, internet…)', ok: d => typeof d.valor_total === 'number' || (_sgV(d.concessionaria) && _sgV(d.vencimento)) },
+  endereco:    { nome: 'um endereço', ok: d => _sgV(d.logradouro) || _sgV(d.cep) || _sgV(d.cidade) },
+  banco:       { nome: 'dados bancários', ok: d => (_sgV(d.agencia) && _sgV(d.conta)) || _sgV(d.chave_pix) },
+  comprovante: { nome: 'um comprovante (nota, cupom, recibo ou boleto)', ok: d => typeof d.valor_total === 'number' || _sgV(d.linha_digitavel) },
+};
+function sgIaConferir(tipo, d) {
+  d = d || {};
+  const e = SG_IA_ESPERADO[tipo];
+  if (e && !e.ok(d)) return { grave: true, msg: `Isso não parece ${e.nome}. A foto está certa e legível?` };
+  const docs = [['cpf', 'CPF'], ['cnpj', 'CNPJ'], ['favorecido_doc', 'CPF/CNPJ'], ['cpf_cnpj_titular', 'CPF/CNPJ do titular']];
+  for (const [k, rot] of docs) {
+    const v = String(d[k] || ''), n = v.replace(/\D/g, '');
+    if (!n || /[*xX•]/.test(v)) continue;
+    const ok = n.length === 11 ? sgIaCpfOk(n) : n.length === 14 ? sgIaCnpjOk(n) : false;
+    if (!ok) return { grave: false, msg: `O ${rot} lido (${v}) não confere. Confira o número.` };
+  }
+  return null;
+}
 // ════════════════ SIGECON IA v1 — fim ════════════════
 
-const APP_VERSAO = 'v6 · 30/10';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v7 · 31/10';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -1493,10 +1527,21 @@ async function processarItemFila(item) {
     const { error } = await sb.from('imoveis').update(p.campos).eq('id', p.id);
     if (error) throw error;
   } else if (item.tipo === 'leitura_imovel') {
-    // Foto mandada pelo prefeito (documento do dono, conta, fachada) → "a conferir" no escritório
-    const env = await sgEnviarArquivo(p.base64, { modulo: 'imoveis', registroId: p.imovel_id, nomeArquivo: p.nome, mimeType: p.mime });
-    const { error } = await sb.from('imovel_leituras').insert({ id: p.id, imovel_id: p.imovel_id, tipo: p.tipo, arquivo_url: env.drive_url, arquivo_nome: p.nome, mime_type: p.mime, observacao: p.obs || null });
-    if (error && error.code !== '23505') { await sgRemoverArquivo(env); throw error; }
+    // Documento do dono / endereço / cartão CNPJ / dados bancários mandados pelo prefeito → "a conferir" no escritório
+    const env = p.base64 ? await sgEnviarArquivo(p.base64, { modulo: 'imoveis', registroId: p.imovel_id, nomeArquivo: p.nome || 'foto.jpg', mimeType: p.mime || 'image/jpeg' }) : null;
+    const { error } = await sb.from('imovel_leituras').insert({ id: p.id, imovel_id: p.imovel_id, tipo: p.tipo, arquivo_url: env ? env.drive_url : null, arquivo_nome: p.nome || null,
+      mime_type: p.mime || null, dados: p.dados || null, preenchido_por: p.preenchido_por || (p.dados ? 'manual' : null), observacao: p.obs || null });
+    if (error && error.code !== '23505') { if (env) await sgRemoverArquivo(env); throw error; }
+  } else if (item.tipo === 'criar_conta_imovel') {
+    // Conta lançada sem internet pelo prefeito → vai para a aprovação
+    const env = p.base64 ? await sgEnviarArquivo(p.base64, { modulo: 'imoveis', registroId: p.imovel_id, nomeArquivo: p.nome || 'fatura.jpg', mimeType: p.mime || 'image/jpeg' }) : null;
+    const { error } = await sb.from('imovel_contas').insert({ id: p.id, ...p.campos, imovel_id: p.imovel_id, criado_por: sessaoAtual.user.id, origem: 'app',
+      fatura_url: env ? env.drive_url : null, fatura_nome: env ? (p.nome || 'fatura.jpg') : null });
+    if (error && error.code !== '23505') {
+      if (env) await sgRemoverArquivo(env);
+      if (/Já existe uma conta/.test(error.message || '')) { mostrarToast('Conta repetida — não foi enviada: ' + error.message, 'erro'); return; }   // sai da fila
+      throw error;
+    }
   } else if (item.tipo === 'mensagem_solicitacao') {
     const { error } = await sb.from('solicitacoes_mensagens').insert({ id: p.id, solicitacao_id: p.solicitacao_id, autor_id: p.autor_id, tipo: 'texto', conteudo: p.conteudo });
     if (error && error.code !== '23505') throw error;
@@ -1839,6 +1884,11 @@ async function fazerLogin() {
   await iniciarAppLogado();
 }
 
+function alternarVerSenha() {
+  const i = document.getElementById('login-senha'), b = document.getElementById('olho-senha');
+  const ver = i.type === 'password'; i.type = ver ? 'text' : 'password';
+  b.textContent = ver ? '🙈' : '👁️'; b.classList.toggle('on', ver); b.setAttribute('aria-label', ver ? 'Esconder a senha' : 'Mostrar a senha');
+}
 function sair() {
   if (!confirm('Sair? Se houver algo pendente de sincronizar, ele fica guardado no aparelho até você entrar de novo e a internet voltar.')) return;
   sb.auth.signOut();
@@ -3181,7 +3231,9 @@ function _cardIndisponivel(titulo) {
 
 // ── Formulário genérico (bottom sheet) ──
 let _gfSalvar = null, _gfExcluir = null;
-function abrirFormGestao({ titulo, html, rotuloSalvar, onSalvar, onExcluir, rotuloExcluir }) {
+let _gfSemInternet = false;
+function abrirFormGestao({ titulo, html, rotuloSalvar, onSalvar, onExcluir, rotuloExcluir, semInternet }) {
+  _gfSemInternet = !!semInternet;
   document.getElementById('gf-titulo').textContent = titulo;
   document.getElementById('gf-corpo').innerHTML = html;
   document.getElementById('gf-erro').textContent = '';
@@ -3195,14 +3247,14 @@ function abrirFormGestao({ titulo, html, rotuloSalvar, onSalvar, onExcluir, rotu
 }
 async function _gfExecutar(fn) {
   if (!fn) return;
-  if (!navigator.onLine) { document.getElementById('gf-erro').textContent = 'Sem internet — alterações da gestão precisam de conexão.'; return; }
+  if (!navigator.onLine && !_gfSemInternet) { document.getElementById('gf-erro').textContent = 'Sem internet — alterações da gestão precisam de conexão.'; return; }
   const bs = document.getElementById('gf-salvar');
   bs.disabled = true;
   try {
     const ok = await fn();
     if (ok === false) { bs.disabled = false; return; }
     fecharModais();
-    await _carregarGestaoDoServidor([imovelAtual.id]);
+    if (navigator.onLine) await _carregarGestaoDoServidor([imovelAtual.id]);
     await renderizarGestao();
   } catch (e) {
     document.getElementById('gf-erro').textContent = 'Erro: ' + (e.message || e);
@@ -3690,7 +3742,7 @@ async function _renderizarPainelPrefeito() {
       <button onclick="_irSecao('sec-mor')">👥<span>Moradores</span></button>
       <button onclick="_irSecao('sec-ct')">💡<span>Contas</span></button>
       <button onclick="_irSecao('sec-mob')">🪑<span>Mobília</span></button>
-      <button onclick="_irSecao('sec-fot')">📷<span>Fotos</span></button>
+      <button onclick="_irSecao('sec-fot')">👤<span>Dono</span></button>
     </div>
   </div>`;
 }
@@ -3699,10 +3751,9 @@ async function _renderizarGestaoPrefeito(el) {
   const reg = await idbPegar('gestao', imovelAtual.id), online = navigator.onLine;
   const casa = (await _casasPf()).get(imovelAtual.id), emUso = !!casa?.em_uso;
   const fila = await idbTodos('fila');
-  const pendFotos = fila.filter(f => f.tipo === 'leitura_imovel' && f.payload.imovel_id === imovelAtual.id);
   const g = (reg && reg.dados) || {};
   const atualizando = `<div id="gestao-atualizando" class="dica" style="display:none;margin:0 0 10px">Atualizando…</div>`;
-  const faixa = !online ? `<div class="gest-faixa offline">📴 Sem internet${reg ? ' — dados de ' + _fmtDataHora(reg.em) : ''}. Vistorias e fotos funcionam; moradores, contas e mobília precisam de conexão.</div>` : '';
+  const faixa = !online ? `<div class="gest-faixa offline">📴 Sem internet${reg ? ' — dados de ' + _fmtDataHora(reg.em) : ''}. Vistorias, contas e documentos do dono funcionam (sobem depois); moradores e mobília precisam de conexão.</div>` : '';
   const trava = t => `<div class="card-sub">🔒 ${t} liberam quando a casa estiver <b>Em uso</b> (contrato ativo).</div>`;
   const cap = parseInt((g.imovel || imovelAtual).capacidade_pessoas, 10) || 0;
   const atuais = (g.colaboradores || []).filter(x => !x.data_fim);
@@ -3713,7 +3764,10 @@ async function _renderizarGestaoPrefeito(el) {
   </div>`;
   const contas = g.contas || [];
   const htmlCt = `<div class="gest-card" id="sec-ct"><div class="gest-titulo">💡 Contas
-      ${emUso && online ? '<button class="gest-btn-add" onclick="abrirFormContaPrefeito()">+ Conta</button>' : ''}</div>
+      ${emUso ? '<button class="gest-btn-add" onclick="abrirFormContaPrefeito()">+ Conta</button>' : ''}</div>
+    ${emUso ? fila.filter(f => f.tipo === 'criar_conta_imovel' && f.payload.imovel_id === imovelAtual.id).map(f => `<div class="gest-item"><div class="gest-item-ic">${ICONE_CONTA[f.payload.campos.tipo] || '🧾'}</div>
+      <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[f.payload.campos.tipo] || 'Conta')} · ${_fmtMes(f.payload.campos.mes_referencia)}</b><span>${_fmtMoedaSimples(f.payload.campos.valor)} · vence ${formatarDataBR(f.payload.campos.vencimento)}</span></div>
+      <span class="gest-chip pendente">⏳ não enviada</span></div>`).join('') : ''}
     ${!emUso ? trava('As contas') : contas.length ? contas.slice(0, 12).map(x => {
       const k = x.pago ? 'paga' : (x.situacao || 'aguardando'), st = SIT_CT_PF[k] || SIT_CT_PF.aguardando;
       return `<div class="gest-item" ${k === 'aguardando' && online ? `onclick="abrirFormContaPrefeito('${x.id}')" style="cursor:pointer"` : ''}>
@@ -3721,7 +3775,7 @@ async function _renderizarGestaoPrefeito(el) {
         <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[x.tipo] || x.tipo || 'Conta')} · ${_fmtMes(x.mes_referencia)}</b>
           <span>${x.valor ? _fmtMoedaSimples(x.valor) : 'sem valor'}${x.vencimento ? ' · vence ' + formatarDataBR(x.vencimento) : ''}${k === 'negada' && x.negada_motivo ? ' · ' + esc(x.negada_motivo) : ''}</span></div>
         <span class="gest-chip ${st[0]}">${st[1]}</span></div>`;
-    }).join('') : '<div class="card-sub">Nenhuma conta lançada. Toque em <b>+ Conta</b> e tire a foto da fatura.</div>'}
+    }).join('') : fila.some(f => f.tipo === 'criar_conta_imovel' && f.payload.imovel_id === imovelAtual.id) ? '' : '<div class="card-sub">Nenhuma conta lançada. Toque em <b>+ Conta</b> e tire a foto da fatura.</div>'}
   </div>`;
   const patr = g.patrimonio || [];
   const htmlMob = `<div class="gest-card" id="sec-mob"><div class="gest-titulo">🪑 Mobília da empresa <span class="gest-cont">${patr.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 1), 0)}</span>
@@ -3729,31 +3783,24 @@ async function _renderizarGestaoPrefeito(el) {
     <div class="card-sub" style="margin:-4px 0 6px">Móveis e equipamentos da empresa nesta casa (não do dono).</div>
     ${patr.length ? patr.map(p => `<div class="gest-item" ${online ? `onclick="abrirFormPatrimonio('${p.id}')" style="cursor:pointer"` : ''}><div class="gest-item-txt"><b>${esc(p.descricao)}${(parseInt(p.quantidade, 10) || 1) > 1 ? ' × ' + p.quantidade : ''}</b><span>${p.observacao ? esc(p.observacao) : '&nbsp;'}</span></div></div>`).join('') : '<div class="card-sub">Nenhum item cadastrado.</div>'}
   </div>`;
-  const leit = g.leituras || [];
-  const ROT_SIT_L = { a_conferir: '⏳ O escritório vai conferir', conferida: '✅ Conferida', descartada: 'Descartada' };
-  const htmlFot = `<div class="gest-card" id="sec-fot"><div class="gest-titulo">📷 Fotos para o escritório</div>
-    <div class="card-sub" style="margin:-4px 0 8px">Documento do dono, conta de luz/água, fachada… O escritório lê e completa o cadastro.</div>
-    <div class="nc-fotos"><button type="button" onclick="enviarFotoCasa('documento')">🪪<span>Documento do dono</span></button><button type="button" onclick="enviarFotoCasa('conta')">💡<span>Conta de luz/água</span></button><button type="button" onclick="enviarFotoCasa('endereco')">🏠<span>Fachada</span></button></div>
-    ${pendFotos.map(f => `<div class="gest-item"><div class="gest-item-txt"><b>${ROT_FOTO[f.payload.tipo] || 'Foto'}</b><span>⏳ Esperando internet para enviar</span></div></div>`).join('')}
-    ${leit.map(l => `<div class="gest-item"><div class="gest-item-txt"><b>${ROT_FOTO[l.tipo] || 'Foto'}</b><span>${_fmtDataHora(l.criado_em)} · ${ROT_SIT_L[l.situacao] || l.situacao}</span></div></div>`).join('')}
-  </div>`;
+  const htmlFot = await _htmlDonoEndereco(g, fila);
   el.innerHTML = atualizando + faixa + (!reg && online ? '<div class="dica" style="margin:0 0 10px">Carregando os dados da casa…</div>' : '') + htmlMor + htmlCt + htmlMob + htmlFot +
     (reg ? `<div class="dica" style="margin:6px 0 4px">Atualizado em ${_fmtDataHora(reg.em)} · ${APP_VERSAO}</div>` : '');
 }
 
 // ── Conta (prefeito): foto primeiro → a IA lê → confere → vai para aprovação ──
-let _ctArquivo = null;
+let _ctArquivo = null, _ctDataUrl = null;
 const _ROT_IA_CT = { tipo_conta: 'tipo', mes_referencia: 'mês', valor_total: 'valor', vencimento: 'vencimento', concessionaria: 'concessionária', codigo_cliente: 'nº da instalação', linha_digitavel: 'linha digitável' };
 async function abrirFormContaPrefeito(id) {
-  if (!navigator.onLine) { mostrarToast('Sem internet — lançar conta precisa de conexão.', 'erro'); return; }
   const c = id ? ((await _gestaoAtual()).contas || []).find(x => x.id === id) : null;
+  if (c && !navigator.onLine) { mostrarToast('Sem internet — para editar uma conta já enviada, conecte.', 'erro'); return; }
   if (id && !c) return;
   if (c && (c.situacao || 'aguardando') !== 'aguardando') { mostrarToast('Esta conta já foi decidida pelo escritório — não dá para mudar.', 'erro'); return; }
-  _ctArquivo = null;
+  _ctArquivo = null; _ctDataUrl = null;
   const mesAtual = hojeLocalISO().slice(0, 7);
   abrirFormGestao({
     titulo: c ? 'Editar conta' : 'Nova conta', rotuloSalvar: c ? 'Salvar' : 'Enviar para aprovação',
-    html: `${c ? '' : `<div id="gf-ct-passo1"><button type="button" class="pf-foto-ct" onclick="document.getElementById('gf-ct-arq').click()"><div class="g">📷</div><b>Foto da fatura</b><small>A IA lê e preenche sozinha. Depois é só conferir.</small></button>
+    html: `${c ? '' : `<div id="gf-ct-passo1"><button type="button" class="pf-foto-ct" onclick="document.getElementById('gf-ct-arq').click()"><div class="g">📷</div><b>Foto da fatura</b><small>${navigator.onLine ? 'A IA lê e preenche sozinha. Depois é só conferir.' : '📴 Sem internet: preencha à mão — a conta sobe quando conectar.'}</small></button>
         <button type="button" class="gf-novo-link" onclick="_ctMostrarCampos()">✍️ Preencher sem foto</button></div>`}
       <input type="file" id="gf-ct-arq" accept="image/*,application/pdf" style="display:none" onchange="_ctArquivoEscolhido(this.files[0]);this.value=''"/>
       <div id="gf-ct-campos" style="${c ? '' : 'display:none'}">
@@ -3773,6 +3820,7 @@ async function abrirFormContaPrefeito(id) {
         <input type="hidden" id="gf-conta-cod" value="${esc(c?.codigo_cliente || '')}"/>
         <button type="button" class="gf-novo-link" id="gf-ct-trocar" onclick="document.getElementById('gf-ct-arq').click()">📎 ${c?.fatura_url ? 'Trocar a foto da fatura' : 'Anexar foto da fatura'}</button>
       </div>`,
+    semInternet: !c,
     onSalvar: async () => {
       const valor = parseFloat(_gfValor('gf-conta-valor')), venc = _gfValor('gf-conta-venc'), mes = _gfValor('gf-conta-mes');
       if (!mes) return _gfErro('Informe o mês.');
@@ -3780,13 +3828,26 @@ async function abrirFormContaPrefeito(id) {
       if (!venc) return _gfErro('Informe o vencimento.');
       const payload = { tipo: _gfValor('gf-conta-tipo'), mes_referencia: mes + '-01', valor, vencimento: venc,
         concessionaria: _gfValor('gf-conta-conc') || null, linha_digitavel: _gfValor('gf-conta-linha').replace(/\D/g, '') || null, codigo_cliente: _gfValor('gf-conta-cod') || null };
+      // conta repetida (mesma casa, mesmo tipo, mesma competência)? confere o que o aparelho já sabe
+      if (!c) {
+        const fila = await idbTodos('fila'), g0 = await _gestaoAtual();
+        const mesmas = x => x.tipo === payload.tipo && String(x.mes_referencia || '').slice(0, 7) === mes && !['negada', 'cancelada'].includes(x.situacao);
+        const rep = (g0.contas || []).some(mesmas) || fila.some(f => f.tipo === 'criar_conta_imovel' && f.payload.imovel_id === imovelAtual.id && mesmas(f.payload.campos));
+        if (rep && ['agua', 'luz', 'internet', 'gas'].includes(payload.tipo)) return _gfErro(`Já existe conta de ${TIPO_CONTA_GESTAO[payload.tipo].toLowerCase()} dessa competência nesta casa — o sistema não aceita repetida.`);
+        if (rep && !confirm('Parece que já existe uma conta igual (mesmo tipo e mês). Enviar assim mesmo?')) return false;
+      }
+      if (!c && !navigator.onLine) {   // sem internet: vai para a fila, com a foto
+        await enfileirar('criar_conta_imovel', { id: crypto.randomUUID(), imovel_id: imovelAtual.id, campos: payload, base64: _ctDataUrl, nome: _ctArquivo ? (_ctArquivo.name || 'fatura.jpg') : null, mime: _ctArquivo ? (_ctArquivo.type || 'image/jpeg') : null });
+        mostrarToast('Conta guardada — sobe para aprovação quando tiver internet.', 'sucesso');
+        return;
+      }
       if (_ctArquivo) {
         const env = await sgEnviarArquivo(_ctArquivo, { modulo: 'imoveis', registroId: imovelAtual.id, nomeArquivo: _ctArquivo.name || 'fatura.jpg', mimeType: _ctArquivo.type || 'image/jpeg' });
         payload.fatura_url = env.drive_url; payload.fatura_nome = _ctArquivo.name || 'fatura.jpg';
       }
       const { error } = c ? await sb.from('imovel_contas').update(payload).eq('id', c.id)
         : await sb.from('imovel_contas').insert({ ...payload, imovel_id: imovelAtual.id, criado_por: sessaoAtual.user.id, origem: 'app' });
-      if (error) throw error;
+      if (error) { if (/Já existe uma conta/.test(error.message || '')) return _gfErro(error.message); throw error; }
       mostrarToast(c ? 'Conta salva!' : 'Conta enviada para aprovação!', 'sucesso');
     },
     onExcluir: c ? async () => {
@@ -3806,8 +3867,10 @@ async function _ctArquivoEscolhido(f) {
   if (!f) return;
   if (f.size > 10 * 1024 * 1024) { mostrarToast('Arquivo grande demais (máx. 10 MB).', 'erro'); return; }
   _ctArquivo = f; _ctMostrarCampos();
+  _ctDataUrl = /^image\//.test(f.type) ? await _reduzirImagem(f, 1600) : await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(f); });
   { const t = document.getElementById('gf-ct-trocar'); if (t) t.textContent = '📎 Foto anexada · trocar'; }
   const ia = document.getElementById('gf-ct-ia');
+  if (!navigator.onLine) { ia.innerHTML = '📴 <b>Sem internet</b> — a IA não lê agora. Preencha competência, valor e vencimento; a conta sobe quando conectar.'; return; }
   ia.innerHTML = '🤖 Lendo a fatura… (alguns segundos)';
   try {
     const r = await sgIaLer('conta', f), d = r.dados || {}, g = id => document.getElementById(id);
@@ -3819,9 +3882,123 @@ async function _ctArquivoEscolhido(f) {
     poe('gf-conta-conc', d.concessionaria); poe('gf-conta-cod', d.codigo_cliente);
     if (d.linha_digitavel) poe('gf-conta-linha', String(d.linha_digitavel).replace(/\D/g, ''));
     const duv = (d.campos_incertos || []).map(x => _ROT_IA_CT[String(x).split('.').pop()] || x);
-    ia.innerHTML = `🤖 <b>Lido!</b> Confira os campos${duv.length ? ' — em dúvida: <b>' + esc(duv.join(', ')) + '</b>' : ''}.`;
+    const av = sgIaConferir('conta', d);   // filtro de documento errado: avisa, a pessoa decide
+    ia.innerHTML = av ? `<b style="color:var(--warn-txt)">⚠️ ${esc(av.msg)}</b><br><button type="button" class="gf-novo-link" style="margin:6px 0 0" onclick="document.getElementById('gf-ct-arq').click()">📷 Tirar outra foto</button><span style="font-size:12px">ou confira e envie assim mesmo.</span>`
+      : `🤖 <b>Lido!</b> Confira os campos${duv.length ? ' — em dúvida: <b>' + esc(duv.join(', ')) + '</b>' : ''}.`;
   } catch (e) {
     ia.innerHTML = '⚠️ <b>Não consegui ler esta fatura.</b> Preencha os campos à mão — a foto continua anexada.';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 👤 DONO E ENDEREÇO (prefeito) — foto → IA lê (com internet) → confere → vai "a conferir" no escritório.
+// Sem internet: guarda a foto (e os campos, se digitar) e sobe depois. Sempre dá para preencher à mão.
+// Filtro de documento errado: sgIaConferir() avisa, a pessoa decide (outra foto ou enviar assim mesmo).
+// ══════════════════════════════════════════════════════════════
+const CAMPOS_END_L = [['logradouro', 'Rua'], ['numero', 'Número'], ['complemento', 'Complemento'], ['bairro', 'Bairro'], ['cidade', 'Cidade'], ['uf', 'UF'], ['cep', 'CEP']];
+const ITENS_DONO = {
+  documento:     { ic: '🪪', rot: 'Documento do dono', sub: 'RG ou CNH', tipo: 'documento', ia: 'documento', campos: [['nome', 'Nome completo'], ['cpf', 'CPF'], ['rg', 'RG'], ['orgao_emissor', 'Órgão emissor'], ['data_nascimento', 'Nascimento (AAAA-MM-DD)']] },
+  cnpj:          { ic: '🏢', rot: 'Cartão CNPJ', sub: 'Dono empresa', tipo: 'cnpj', ia: 'cnpj', campos: [['razao_social', 'Razão social'], ['nome_fantasia', 'Nome fantasia'], ['cnpj', 'CNPJ'], ['@endereco', 'Endereço da empresa']] },
+  endereco_dono: { ic: '🏠', rot: 'Endereço do dono', sub: 'Conta de luz ou comprovante de residência', tipo: 'endereco', ia: 'endereco', de: 'dono', campos: [['@', '']] },
+  endereco_casa: { ic: '📍', rot: 'Endereço da casa', sub: 'Conta de luz da casa ou fachada', tipo: 'endereco', ia: 'endereco', de: 'casa', campos: [['@', '']] },
+  banco:         { ic: '🏦', rot: 'Dados bancários do dono', sub: 'Opcional — cartão, print ou comprovante', tipo: 'banco', ia: 'banco', campos: [['banco_nome', 'Banco'], ['agencia', 'Agência'], ['conta', 'Conta'], ['tipo_conta', 'Tipo (corrente/poupança)'], ['titular', 'Titular'], ['cpf_cnpj_titular', 'CPF/CNPJ do titular'], ['chave_pix', 'Chave PIX']] },
+};
+async function _pessoaDono(id) { return ((await idbPegar('sessao', 'pessoa_' + id)) || {}).valor || null; }
+async function escolherPessoaDono(p) { await idbSalvar('sessao', { chave: 'pessoa_' + imovelAtual.id, valor: p }); renderizarGestao(); }
+// qual item uma leitura (enviada ou na fila) representa
+const _itemDaLeitura = (tipo, dados) => tipo === 'endereco' ? ((dados && dados.de) === 'dono' ? 'endereco_dono' : 'endereco_casa') : tipo;
+async function _htmlDonoEndereco(g, fila) {
+  const pessoa = await _pessoaDono(imovelAtual.id);
+  const leit = g.leituras || [];
+  const pend = fila.filter(f => f.tipo === 'leitura_imovel' && f.payload.imovel_id === imovelAtual.id);
+  const itens = pessoa === 'pj' ? ['cnpj', 'endereco_casa', 'banco'] : pessoa === 'pf' ? ['documento', 'endereco_dono', 'endereco_casa', 'banco'] : [];
+  const ROT_SIT = { a_conferir: '⏳ O escritório vai conferir', conferida: '✅ Conferido pelo escritório', descartada: '✗ Descartado — mande de novo' };
+  const linhaItem = k => {
+    const it = ITENS_DONO[k];
+    const p = pend.find(f => _itemDaLeitura(f.payload.tipo, f.payload.dados) === k);
+    const l = leit.find(x => _itemDaLeitura(x.tipo, x.dados) === k);
+    const st = p ? '⏳ Esperando internet para enviar' : l ? (ROT_SIT[l.situacao] || l.situacao) + ' · ' + _fmtDataHora(l.criado_em) : 'Ainda não enviado';
+    return `<div class="gest-item" onclick="abrirLeituraDono('${k}')" style="cursor:pointer"><div class="gest-item-ic">${it.ic}</div>
+      <div class="gest-item-txt"><b>${it.rot}</b><span>${p || l ? st : it.sub}</span></div>
+      <span class="gest-chip ${p || (l && l.situacao === 'a_conferir') ? 'aguardando' : l && l.situacao === 'conferida' ? 'aprovada' : l ? 'negada' : 'pendente'}">${p || l ? (l && l.situacao === 'conferida' ? '✓' : l && l.situacao === 'descartada' ? 'refazer' : 'enviado') : 'enviar'}</span></div>`;
+  };
+  return `<div class="gest-card" id="sec-fot"><div class="gest-titulo">👤 Dono e endereço</div>
+    <div class="card-sub" style="margin:-4px 0 8px">Tire foto dos documentos — a IA lê e o escritório confere. Dá para digitar também.</div>
+    <div class="pf-pessoa"><button type="button" class="${pessoa === 'pf' ? 'on' : ''}" onclick="escolherPessoaDono('pf')">👤 Pessoa física</button><button type="button" class="${pessoa === 'pj' ? 'on' : ''}" onclick="escolherPessoaDono('pj')">🏢 Empresa</button></div>
+    ${pessoa ? itens.map(linhaItem).join('') : '<div class="card-sub" style="margin-top:8px">Primeiro diga se o dono é pessoa física ou empresa.</div>'}
+  </div>`;
+}
+
+let _ldItem = null, _ldArquivo = null, _ldDataUrl = null, _ldIA = false;
+function _ldCamposHtml(it, d) {
+  d = d || {};
+  const campo = (k, rot, v) => `<span class="rotulo">${rot}</span><div class="campo"><input type="text" id="ld-${k}" value="${esc(v ?? '')}"/></div>`;
+  return it.campos.map(([k, rot]) => {
+    if (k === '@' || k === '@endereco') { const e = k === '@' ? d : (d.endereco || {}); return (rot ? `<div class="gest-titulo" style="margin:8px 0 4px;font-size:13px">${rot}</div>` : '') + CAMPOS_END_L.map(([ke, re]) => campo((k === '@' ? '' : 'e_') + ke, re, e[ke])).join(''); }
+    return campo(k, rot, d[k]);
+  }).join('');
+}
+function _ldColetar(it) {
+  const v = id => { const el = document.getElementById('ld-' + id); return el ? el.value.trim() || null : null; };
+  const d = {};
+  it.campos.forEach(([k]) => {
+    if (k === '@') CAMPOS_END_L.forEach(([ke]) => { d[ke] = v(ke); });
+    else if (k === '@endereco') { d.endereco = {}; CAMPOS_END_L.forEach(([ke]) => { d.endereco[ke] = v('e_' + ke); }); }
+    else d[k] = v(k);
+  });
+  if (it.de) d.de = it.de;
+  return d;
+}
+function abrirLeituraDono(k) {
+  const it = ITENS_DONO[k]; _ldItem = k; _ldArquivo = null; _ldDataUrl = null; _ldIA = false;
+  abrirFormGestao({
+    titulo: `${it.ic} ${it.rot}`, rotuloSalvar: 'Enviar para o escritório',
+    html: `<div id="ld-passo1"><button type="button" class="pf-foto-ct" onclick="document.getElementById('ld-arq').click()"><div class="g">📷</div><b>Foto: ${esc(it.sub)}</b><small>${navigator.onLine ? 'A IA lê e preenche. Depois é só conferir.' : '📴 Sem internet: a foto fica guardada e sobe depois.'}</small></button>
+        <button type="button" class="gf-novo-link" onclick="_ldMostrarCampos()">✍️ Preencher sem foto</button></div>
+      <input type="file" id="ld-arq" accept="image/*,application/pdf" style="display:none" onchange="_ldArquivoEscolhido(this.files[0]);this.value=''"/>
+      <div id="ld-campos" style="display:none">
+        <div id="ld-ia" class="dica" style="margin:0 0 10px"></div>
+        <div id="ld-form">${_ldCamposHtml(it)}</div>
+        <button type="button" class="gf-novo-link" id="ld-trocar" onclick="document.getElementById('ld-arq').click()">📎 Anexar foto</button>
+      </div>`,
+    onSalvar: async () => {
+      const dados = _ldColetar(it);
+      const temDado = Object.entries(dados).some(([kk, vv]) => kk !== 'de' && (vv && (typeof vv !== 'object' || Object.values(vv).some(Boolean))));
+      if (!_ldDataUrl && !temDado) return _gfErro('Tire a foto ou preencha pelo menos um campo.');
+      const nome = _ldArquivo ? (_ldArquivo.name || `${k}.jpg`) : null;
+      await enfileirar('leitura_imovel', { id: crypto.randomUUID(), imovel_id: imovelAtual.id, tipo: it.tipo, nome, mime: _ldArquivo ? (_ldArquivo.type || 'image/jpeg') : null,
+        base64: _ldDataUrl, dados, preenchido_por: _ldIA ? 'ia' : 'manual', em: new Date().toISOString() });
+      mostrarToast(navigator.onLine ? 'Enviado para o escritório conferir!' : 'Guardado — sobe quando tiver internet.', 'sucesso');
+    },
+    semInternet: true,
+  });
+  document.getElementById('gf-salvar').style.display = 'none';
+}
+function _ldMostrarCampos() {
+  const p1 = document.getElementById('ld-passo1'); if (p1) p1.style.display = 'none';
+  document.getElementById('ld-campos').style.display = '';
+  document.getElementById('gf-salvar').style.display = '';
+}
+async function _ldArquivoEscolhido(f) {
+  if (!f) return;
+  if (f.size > 10 * 1024 * 1024) { mostrarToast('Arquivo grande demais (máx. 10 MB).', 'erro'); return; }
+  const it = ITENS_DONO[_ldItem];
+  _ldArquivo = f;
+  _ldDataUrl = /^image\//.test(f.type) ? await _reduzirImagem(f, 1600) : await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(f); });
+  _ldMostrarCampos();
+  document.getElementById('ld-trocar').textContent = '📎 Foto anexada · trocar';
+  const ia = document.getElementById('ld-ia');
+  if (!navigator.onLine) { ia.innerHTML = '📴 <b>Sem internet</b> — a foto fica guardada e o escritório lê. Se quiser, preencha os campos.'; return; }
+  ia.innerHTML = '🤖 Lendo… (alguns segundos)';
+  try {
+    const r = await sgIaLer(it.ia, f), d = r.dados || {};
+    document.getElementById('ld-form').innerHTML = _ldCamposHtml(it, d);
+    _ldIA = true;
+    const av = sgIaConferir(it.ia, d);
+    ia.innerHTML = av ? `<b style="color:var(--warn-txt)">⚠️ ${esc(av.msg)}</b><br><button type="button" class="gf-novo-link" style="margin:6px 0 0" onclick="document.getElementById('ld-arq').click()">📷 Tirar outra foto</button><span style="font-size:12px">ou confira e envie assim mesmo.</span>`
+      : `🤖 <b>Lido!</b> Confira os campos${(d.campos_incertos || []).length ? ' — em dúvida: <b>' + esc(d.campos_incertos.join(', ')) + '</b>' : ''}.`;
+  } catch (e) {
+    ia.innerHTML = '⚠️ <b>Não consegui ler.</b> A foto continua anexada — preencha à mão se quiser, ou só envie.';
   }
 }
 
