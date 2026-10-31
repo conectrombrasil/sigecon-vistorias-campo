@@ -1460,9 +1460,158 @@ function sgBoletoImprimir(linha) {
   w.document.close();
 }
 // ════════════════ SIGECON BOLETO E UNIDADES v1 — fim ════════════════
+const SG_CHAT_ORIGEM = 'app_campo';
+// ══════════════════════════════════════════════════════════════
+// SIGECON CHAT v1 — conversa de cada pedido (conta de casa, pagamento avulso, medição, imóvel)
+// Mesma conversa em todos os módulos: fica presa ao registro de origem (entidade + id).
+// Tabelas: sig_chat_mensagens / sig_chat_leituras (sigecon-chat.sql). Ao mudar este bloco, mudar igual em todos os módulos.
+//   sgChatBotao(entidade, id, titulo[, rotulo]) → HTML do botão 💬 (com o número de não lidas)
+//   sgChatPreencher()                   → busca os números de todos os botões 💬 da tela
+//   sgChatAbrir(entidade, id, titulo)   → abre a barra lateral à direita com a conversa
+// ══════════════════════════════════════════════════════════════
+const SG_CHAT_MODULO = (typeof SG_CHAT_ORIGEM !== 'undefined' && SG_CHAT_ORIGEM) || 'sigecon';
+const SG_CHAT_ROT_MOD = { gestao_imoveis: 'Gestão de Imóveis', contas_pagar: 'Contas a Pagar', app_campo: 'App de campo', solicitacao_pagamentos: 'Solicitação de Pagamentos', medicoes: 'Medições' };
+const SG_CHAT_RAPIDAS = ['Falta enviar a fatura / comprovante.', 'O vencimento está errado.', 'O valor não confere.', 'Pode conferir e me confirmar?', 'Resolvido, obrigado!'];
+let _sgcAberto = null, _sgcCanal = null, _sgcMeuNome = null, _sgcMsgs = [];
+const _sgcEsc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+(function _sgcCss() {
+  if (document.getElementById('sgc-css')) return;
+  const st = document.createElement('style'); st.id = 'sgc-css';
+  st.textContent = `
+  .sgc-btn{display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(90,166,238,.45);background:rgba(90,166,238,.1);color:#5AA6EE;border-radius:9px;min-height:28px;padding:0 8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .sgc-btn:hover{background:rgba(90,166,238,.2)}
+  .sgc-n:empty{display:none}
+  .sgc-n{font-size:11px;font-weight:800;color:var(--text2,#9aa4b2)}
+  .sgc-n.novas{background:#E05555;color:#fff;border-radius:9px;min-width:17px;height:17px;line-height:17px;text-align:center;padding:0 4px}
+  .sgc-fundo{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9998;opacity:0;transition:opacity .2s}
+  .sgc-fundo.on{opacity:1}
+  .sgc-painel{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:100vw;z-index:9999;background:var(--navy2,#1b1f27);color:var(--text,#e8ecf1);border-left:1px solid var(--border,rgba(255,255,255,.1));box-shadow:-12px 0 30px rgba(0,0,0,.35);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;font-family:inherit}
+  .sgc-painel.on{transform:none}
+  body.light .sgc-painel{background:#fff;color:#1d2533}
+  .sgc-topo{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border,rgba(127,127,127,.2))}
+  .sgc-topo b{display:block;font-size:15px}.sgc-topo small{display:block;font-size:12px;color:var(--text3,#8a94a3);margin-top:2px}
+  .sgc-fechar{margin-left:auto;background:none;border:1px solid var(--border2,rgba(127,127,127,.3));color:inherit;border-radius:9px;width:34px;height:34px;font-size:16px;cursor:pointer;flex:none}
+  .sgc-lista{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+  .sgc-vazio{margin:auto;text-align:center;color:var(--text3,#8a94a3);font-size:13px;line-height:1.5;padding:20px}
+  .sgc-msg{max-width:85%;align-self:flex-start;background:var(--navy3,rgba(127,127,127,.12));border:1px solid var(--border,rgba(127,127,127,.18));border-radius:12px 12px 12px 4px;padding:8px 11px}
+  .sgc-msg.eu{align-self:flex-end;background:rgba(249,115,22,.14);border-color:rgba(249,115,22,.35);border-radius:12px 12px 4px 12px}
+  .sgc-msg .q{font-size:11px;font-weight:700;color:var(--text2,#aab3c0);margin-bottom:3px}
+  .sgc-msg .t{font-size:13.5px;white-space:pre-wrap;word-break:break-word;line-height:1.4}
+  .sgc-msg .h{font-size:10.5px;color:var(--text3,#8a94a3);margin-top:4px;text-align:right}
+  .sgc-rapidas{display:flex;gap:6px;overflow-x:auto;padding:8px 16px 0}
+  .sgc-rapidas button{flex:none;border:1px solid var(--border2,rgba(127,127,127,.3));background:none;color:var(--text2,#aab3c0);border-radius:14px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+  .sgc-enviar{display:flex;gap:8px;padding:10px 16px 14px;align-items:flex-end}
+  .sgc-enviar textarea{flex:1;min-height:42px;max-height:120px;resize:none;border-radius:11px;border:1px solid var(--border2,rgba(127,127,127,.3));background:var(--navy3,rgba(127,127,127,.08));color:inherit;padding:10px 12px;font-size:14px;font-family:inherit}
+  .sgc-enviar button{background:#F97316;border:none;color:#fff;border-radius:11px;height:42px;padding:0 16px;font-weight:700;cursor:pointer;font-family:inherit}
+  .sgc-enviar button:disabled{opacity:.5}
+  .sgc-erro{color:#E05555;font-size:12px;padding:0 16px}
+  @media (max-width:600px){.sgc-painel{width:100vw;border-left:none}}`;
+  document.head.appendChild(st);
+})();
+function sgChatBotao(entidade, id, titulo, rotulo) {
+  if (!id) return '';
+  return `<button type="button" class="sgc-btn" title="Conversa sobre este pedido" data-t="${_sgcEsc(titulo || '')}" onclick="event.stopPropagation();sgChatAbrir('${entidade}','${id}',this.dataset.t)">💬${rotulo ? ' ' + _sgcEsc(rotulo) : ''}<span class="sgc-n" data-sgc="${entidade}:${id}"></span></button>`;
+}
+async function sgChatPreencher() {
+  const els = [...document.querySelectorAll('[data-sgc]')];
+  if (!els.length || !navigator.onLine) return;
+  const porEnt = {};
+  els.forEach(e => { const [ent, id] = e.dataset.sgc.split(':'); (porEnt[ent] = porEnt[ent] || new Set()).add(id); });
+  _sgcAssinar();
+  for (const ent of Object.keys(porEnt)) {
+    try {
+      const { data, error } = await sb.rpc('sig_chat_resumo', { p_entidade: ent, p_ids: [...porEnt[ent]] });
+      if (error) return;
+      const m = {}; (data || []).forEach(r => { m[r.registro_id] = r; });
+      els.filter(e => e.dataset.sgc.startsWith(ent + ':')).forEach(e => {
+        const r = m[e.dataset.sgc.split(':')[1]];
+        e.classList.toggle('novas', !!(r && r.nao_lidas));
+        e.textContent = !r ? '' : r.nao_lidas ? r.nao_lidas : r.total;
+        e.title = !r ? '' : r.nao_lidas ? `${r.nao_lidas} mensagem(ns) nova(s)` : `${r.total} mensagem(ns)`;
+      });
+    } catch (e) { }
+  }
+}
+function _sgcAssinar() {
+  if (_sgcCanal || typeof sb.channel !== 'function') return;
+  try {
+    _sgcCanal = sb.channel('sgc-' + Math.random().toString(36).slice(2))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sig_chat_mensagens' }, p => {
+        const m = p.new || {};
+        if (_sgcAberto && m.entidade === _sgcAberto.entidade && m.registro_id === _sgcAberto.id) {
+          if (!_sgcMsgs.some(x => x.id === m.id)) { _sgcMsgs.push(m); _sgcRender(); _sgcMarcarLido(); }
+        }
+        clearTimeout(_sgcAssinar._t); _sgcAssinar._t = setTimeout(sgChatPreencher, 400);
+      }).subscribe();
+  } catch (e) { _sgcCanal = null; }
+}
+async function _sgcNome() {
+  if (_sgcMeuNome) return _sgcMeuNome;
+  try { const uid = (await sb.auth.getSession()).data.session.user.id; const { data } = await sb.from('usuarios').select('nome').eq('id', uid).maybeSingle(); _sgcMeuNome = data?.nome || null; } catch (e) { }
+  return _sgcMeuNome;
+}
+async function sgChatAbrir(entidade, id, titulo) {
+  if (!navigator.onLine) { alert('Sem internet — a conversa precisa de conexão.'); return; }
+  sgChatFechar(true);
+  _sgcAberto = { entidade, id }; _sgcMsgs = [];
+  const fundo = document.createElement('div'); fundo.className = 'sgc-fundo'; fundo.id = 'sgc-fundo'; fundo.onclick = () => sgChatFechar();
+  const p = document.createElement('div'); p.className = 'sgc-painel'; p.id = 'sgc-painel';
+  p.innerHTML = `<div class="sgc-topo"><div><b>💬 Conversa</b><small>${_sgcEsc(titulo || '')}</small><small>Quem vê este pedido em qualquer módulo vê e responde aqui.</small></div><button class="sgc-fechar" onclick="sgChatFechar()" title="Fechar">✕</button></div>
+    <div class="sgc-lista" id="sgc-lista"><div class="sgc-vazio">Carregando…</div></div>
+    <div class="sgc-rapidas">${SG_CHAT_RAPIDAS.map(t => `<button type="button" onclick="_sgcRapida(this)">${_sgcEsc(t)}</button>`).join('')}</div>
+    <div class="sgc-erro" id="sgc-erro"></div>
+    <div class="sgc-enviar"><textarea id="sgc-txt" maxlength="2000" placeholder="Escreva uma mensagem…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sgChatEnviar()}"></textarea><button id="sgc-env" onclick="sgChatEnviar()">Enviar</button></div>`;
+  document.body.appendChild(fundo); document.body.appendChild(p);
+  requestAnimationFrame(() => { fundo.classList.add('on'); p.classList.add('on'); });
+  _sgcAssinar(); _sgcNome();
+  try { _sgcRender._uid = (await sb.auth.getSession()).data.session?.user?.id || null; } catch (e) { }
+  const { data, error } = await sb.from('sig_chat_mensagens').select('*').eq('entidade', entidade).eq('registro_id', id).order('criado_em');
+  if (!_sgcAberto || _sgcAberto.id !== id) return;
+  if (error) { document.getElementById('sgc-lista').innerHTML = `<div class="sgc-vazio">Não foi possível abrir a conversa.<br><small>${_sgcEsc(error.message)}</small></div>`; return; }
+  _sgcMsgs = data || []; _sgcRender(); _sgcMarcarLido();
+  setTimeout(() => { const t = document.getElementById('sgc-txt'); if (t && window.innerWidth > 600) t.focus(); }, 250);
+}
+function sgChatFechar(rapido) {
+  const p = document.getElementById('sgc-painel'), f = document.getElementById('sgc-fundo');
+  if (!p && !f) return;
+  _sgcAberto = null;
+  if (rapido) { p && p.remove(); f && f.remove(); return; }
+  p && p.classList.remove('on'); f && f.classList.remove('on');
+  setTimeout(() => { p && p.remove(); f && f.remove(); }, 230);
+  sgChatPreencher();
+}
+function _sgcRapida(b) { const t = document.getElementById('sgc-txt'); t.value = (t.value ? t.value.trimEnd() + ' ' : '') + b.textContent; t.focus(); }
+function _sgcRender() {
+  const el = document.getElementById('sgc-lista'); if (!el) return;
+  if (!_sgcMsgs.length) { el.innerHTML = '<div class="sgc-vazio">Nenhuma mensagem ainda.<br>Use para avisar o que falta, pedir correção ou confirmar algo com quem lançou.</div>'; return; }
+  el.innerHTML = _sgcMsgs.map(m => {
+    const eu = m.autor_id === _sgcRender._uid;
+    const h = new Date(m.criado_em); const hs = h.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + h.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `<div class="sgc-msg${eu ? ' eu' : ''}"><div class="q">${eu ? 'Você' : _sgcEsc(m.autor_nome || 'Usuário')}${m.modulo && SG_CHAT_ROT_MOD[m.modulo] ? ' · ' + SG_CHAT_ROT_MOD[m.modulo] : ''}</div><div class="t">${_sgcEsc(m.conteudo)}</div><div class="h">${hs}</div></div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+async function _sgcMarcarLido() {
+  if (!_sgcAberto) return;
+  try { await sb.rpc('sig_chat_marcar_lido', { p_entidade: _sgcAberto.entidade, p_registro: _sgcAberto.id }); } catch (e) { }
+}
+async function sgChatEnviar() {
+  if (!_sgcAberto) return;
+  const t = document.getElementById('sgc-txt'), b = document.getElementById('sgc-env'), er = document.getElementById('sgc-erro');
+  const txt = (t.value || '').trim(); if (!txt) return;
+  if (!navigator.onLine) { er.textContent = 'Sem internet — conecte para enviar.'; return; }
+  b.disabled = true; er.textContent = '';
+  const { data, error } = await sb.from('sig_chat_mensagens').insert({ entidade: _sgcAberto.entidade, registro_id: _sgcAberto.id, conteudo: txt, autor_nome: await _sgcNome(), modulo: SG_CHAT_MODULO }).select().single();
+  b.disabled = false;
+  if (error) { er.textContent = 'Não foi possível enviar: ' + error.message; return; }
+  t.value = '';
+  if (!_sgcRender._uid) _sgcRender._uid = data.autor_id;
+  if (!_sgcMsgs.some(x => x.id === data.id)) _sgcMsgs.push(data);
+  _sgcRender(); _sgcMarcarLido();
+}
 
 
-const APP_VERSAO = 'v10 · 31/10';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v11 · 31/10';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -3309,9 +3458,12 @@ async function renderizarGestao() {
   const corpo = { resumo: htmlAlertas + htmlResumo, moradores: htmlColab, contas: htmlContas, mobilia: htmlPatr, docs: htmlDocs }[_secEq];
   el.innerHTML = atualizando + faixa + barra + corpo +
     `<div class="dica" style="margin:6px 0 4px">Atualizado em ${_fmtDataHora(reg.em)} · ${APP_VERSAO}</div>`;
+  if (_secEq === 'contas' && _chatContasApp()) sgChatPreencher();
 }
 let _secEq = 'resumo';
 function _irSecEq(k) { _secEq = k; renderizarGestao(); const e = document.getElementById('aba-gestao'); if (e) e.scrollTop = 0; }
+// 💬 conversa das contas: 🧪 em teste — só o administrador vê (com internet)
+const _chatContasApp = () => perfilImoveis === 'admin' && navigator.onLine;
 // Lista de contas (equipe e prefeito): as que estão na fila do aparelho + as enviadas, com a situação da aprovação
 function _htmlContasLista(contas, fila, podeAbrir) {
   const naFila = fila.filter(f => f.tipo === 'criar_conta_imovel' && f.payload.imovel_id === imovelAtual.id);
@@ -3326,6 +3478,7 @@ function _htmlContasLista(contas, fila, podeAbrir) {
       <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[x.tipo] || x.tipo || 'Conta')} · ${_fmtMes(x.mes_referencia)}</b>
         <span>${x.valor ? _fmtMoedaSimples(x.valor) : 'sem valor'}${x.vencimento ? ' · vence ' + formatarDataBR(x.vencimento) : ''}${x.consumo != null ? ' · ' + Number(x.consumo).toLocaleString('pt-BR') + ' ' + esc(x.consumo_unidade || '') : ''}</span>
         ${k === 'negada' && x.negada_motivo ? `<span class="gest-reprov">⚠️ ${esc(x.negada_motivo)}</span>` : ''}</div>
+      ${_chatContasApp() ? sgChatBotao('imovel_conta', x.id, `${TIPO_CONTA_GESTAO[x.tipo] || 'Conta'} · ${_fmtMes(x.mes_referencia)} · ${(imovelAtual && (imovelAtual.apelido || imovelAtual.logradouro)) || 'Casa'}`) : ''}
       <span class="gest-chip ${st[0]}">${st[1]}</span></div>`;
   };
   if (!naFila.length && !contas.length) return '<div class="card-sub">Nenhuma conta lançada ainda.</div>';
@@ -3857,6 +4010,7 @@ async function _renderizarGestaoPrefeito(el) {
   el.innerHTML = atualizando + faixa + (!reg && online ? '<div class="dica" style="margin:0 0 10px">Carregando os dados da casa…</div>' : '') + corpo +
     (reg ? `<div class="dica" style="margin:6px 0 4px">Atualizado em ${_fmtDataHora(reg.em)} · ${APP_VERSAO}</div>` : '');
   await _renderizarPainelPrefeito();   // atualiza os números dos botões
+  if (_secPf === 'contas' && _chatContasApp()) sgChatPreencher();
 }
 
 // ── Conta (prefeito): foto primeiro → a IA lê → confere → vai para aprovação ──
