@@ -268,9 +268,16 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .nc-foto-item button{border:0;background:transparent;color:var(--err-txt);font-size:18px;cursor:pointer;}
   .nc-det{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--navy2);}
   .nc-det summary{font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;}
-  .pf-atalhos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;}
-  .pf-atalhos button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:12px;border:1px solid var(--border2);background:var(--navy3);color:var(--text);font-size:22px;cursor:pointer;font-family:inherit;}
-  .pf-atalhos button span{font-size:11.5px;font-weight:600;color:var(--text2);}
+  .pf-atalhos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:12px;}
+  .pf-atalhos button{position:relative;}
+  .pf-atalhos button.on{background:var(--orange);border-color:var(--orange);}
+  .pf-atalhos button.on span{color:#fff;}
+  .pf-atalhos button i{position:absolute;top:4px;right:5px;font-style:normal;font-size:10.5px;font-weight:800;min-width:17px;height:17px;line-height:17px;border-radius:9px;background:var(--navy2);color:var(--text2);padding:0 4px;}
+  .pf-atalhos button.on i{background:rgba(0,0,0,.25);color:#fff;}
+  .sec-novo{width:100%;margin:0 0 12px;}
+  .sec-trava{padding:14px;border-radius:12px;background:var(--navy3);color:var(--text2);font-size:13.5px;margin-bottom:12px;}
+  .pf-atalhos button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 2px;border-radius:12px;border:1px solid var(--border2);background:var(--navy3);color:var(--text);font-size:20px;cursor:pointer;font-family:inherit;}
+  .pf-atalhos button span{font-size:10.5px;font-weight:600;color:var(--text2);}
   .pf-pessoa{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
   .pf-pessoa button{padding:10px;border-radius:12px;border:1.5px solid var(--border2);background:var(--navy3);color:var(--text);font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;}
   .pf-pessoa button.on{border-color:var(--orange);background:rgba(249,115,22,.12);color:var(--orange);}
@@ -661,7 +668,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   <div class="passos" id="passos-imovel"></div>
   <div class="conteudo" id="aba-fluxo">
     <div id="imovel-painel"></div>
-    <div class="secao-titulo">Vistorias deste imóvel</div>
+    <div class="secao-titulo" id="vist-titulo">Vistorias deste imóvel</div>
     <div id="lista-vistorias"></div>
   </div>
   <div class="conteudo" id="aba-gestao" style="display:none"></div>
@@ -1455,7 +1462,7 @@ function sgBoletoImprimir(linha) {
 // ════════════════ SIGECON BOLETO E UNIDADES v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v8 · 31/10';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v9 · 31/10';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -3110,9 +3117,9 @@ async function _carregarGestaoDoServidor(ids) {
 const _abaPorImovel = {};
 function mostrarAbaImovel(aba) {
   if (ehPrefeito()) {   // prefeito: uma tela só — resumo, vistorias e, embaixo, moradores/contas/mobília/fotos
-    ['aba-fluxo', 'aba-gestao'].forEach(id => { document.getElementById(id).style.display = ''; });
+    document.getElementById('aba-fluxo').style.display = '';
     document.getElementById('passos-imovel').style.display = 'none';
-    document.getElementById('fab-vistoria').style.display = '';
+    _aplicarSecPf();
     abrirGestao(); return;
   }
   if (imovelAtual) _abaPorImovel[imovelAtual.id] = aba;
@@ -3121,6 +3128,7 @@ function mostrarAbaImovel(aba) {
   document.getElementById('aba-gestao').style.display = gest ? '' : 'none';
   document.getElementById('passos-imovel').style.display = gest ? 'none' : 'flex';
   document.getElementById('fab-vistoria').style.display = gest ? 'none' : '';
+  document.getElementById('vist-titulo').style.display = ''; document.getElementById('lista-vistorias').style.display = '';
   document.getElementById('aba-btn-fluxo').classList.toggle('ativa', !gest);
   document.getElementById('aba-btn-gestao').classList.toggle('ativa', gest);
   if (gest) abrirGestao();
@@ -3178,6 +3186,7 @@ async function renderizarGestao() {
   const reg = await idbPegar('gestao', imovelAtual.id);
   const online = navigator.onLine;
   const podeEditar = ehGestorImoveis() && online;
+  const podeLancarConta = ehGestorImoveis() || perfilImoveis === 'operador';   // operador também lança contas (vão para aprovação)
   const atualizando = `<div id="gestao-atualizando" class="dica" style="display:none;margin:0 0 10px">Atualizando…</div>`;
   if (!reg) {
     el.innerHTML = atualizando + `<div class="vazio"><div class="vazio-icone">🏢</div>${online ? 'Carregando a gestão deste imóvel…' : 'Sem dados guardados deste imóvel ainda.<br/>Abra esta aba com internet uma vez pra poder consultar offline.'}</div>`;
@@ -3194,8 +3203,9 @@ async function renderizarGestao() {
 
   // Faixa de perfil / offline
   const faixa = !online
-    ? `<div class="gest-faixa offline">📴 Sem internet — dados de ${_fmtDataHora(reg.em)}. Pra alterar, conecte.</div>`
-    : ehGestorImoveis() ? '' : `<div class="gest-faixa">👁️ Somente consulta — quem gerencia é o gestor do módulo de imóveis.</div>`;
+    ? `<div class="gest-faixa offline">📴 Sem internet — dados de ${_fmtDataHora(reg.em)}.${podeLancarConta ? ' Contas podem ser lançadas e sobem quando conectar; o resto precisa de internet.' : ' Pra alterar, conecte.'}</div>`
+    : ehGestorImoveis() ? '' : perfilImoveis === 'operador' ? `<div class="gest-faixa">✍️ Você pode lançar contas — moradores, mobília e documentos ficam com o gestor do módulo.</div>`
+    : `<div class="gest-faixa">👁️ Somente consulta — quem gerencia é o gestor do módulo de imóveis.</div>`;
 
   // Alertas
   const al = _alertasGestao(g, cap);
@@ -3239,9 +3249,8 @@ async function renderizarGestao() {
   </div>`;
 
   // Colaboradores
-  const htmlColab = g.colaboradores === null ? _cardIndisponivel('Colaboradores alocados') : `<div class="gest-card">
-    <div class="gest-titulo">Colaboradores alocados <span class="gest-cont">${atuais.length}</span>
-      ${podeEditar ? '<button class="gest-btn-add" onclick="abrirAlocarColaborador()">+ Alocar</button>' : ''}</div>
+  const htmlColab = g.colaboradores === null ? _cardIndisponivel('Colaboradores alocados') : `${podeEditar ? '<button class="btn sec-novo" onclick="abrirAlocarColaborador()">＋ Novo morador</button>' : ''}<div class="gest-card">
+    <div class="gest-titulo">👥 Moradores <span class="gest-cont">${atuais.length}${cap ? ' de ' + cap : ''}</span></div>
     ${atuais.length ? atuais.map(a => `<div class="gest-item">
         <div class="gest-item-txt"><b>${esc(a.colaboradores?.nome || '—')}</b><span>desde ${formatarDataBR(a.data_inicio)}${a.observacao ? ' · ' + esc(a.observacao) : ''}</span></div>
         ${podeEditar ? `<button class="gest-btn" onclick="abrirEncerrarAlocacao('${a.id}')">Encerrar</button>` : ''}
@@ -3252,32 +3261,19 @@ async function renderizarGestao() {
     </details>` : ''}
   </div>`;
 
-  // Contas
-  const contas = g.contas || [];
-  const pendentes = contas.filter(x => !x.pago);
-  const itemConta = x => {
-    const venc = x.vencimento ? _diasAte(x.vencimento) : null;
-    const st = x.pago ? ['paga', 'Paga'] : (venc !== null && venc < 0) ? ['vencida', 'Vencida'] : ['pendente', 'Pendente'];
-    return `<div class="gest-item" ${podeEditar ? `onclick="abrirFormConta('${x.id}')" style="cursor:pointer"` : ''}>
-      <div class="gest-item-ic">${ICONE_CONTA[x.tipo] || '🧾'}</div>
-      <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[x.tipo] || x.tipo || 'Conta')} · ${_fmtMes(x.mes_referencia)}</b>
-        <span>${x.valor ? _fmtMoedaSimples(x.valor) : 'sem valor'}${x.vencimento ? ' · vence ' + formatarDataBR(x.vencimento) : ''}</span></div>
-      <span class="gest-chip ${st[0]}">${st[1]}</span>
-      ${podeEditar && !x.pago ? `<button class="gest-btn" onclick="event.stopPropagation();marcarContaPaga('${x.id}')">✓ Paga</button>` : ''}
-    </div>`;
-  };
-  const htmlContas = g.contas === null ? _cardIndisponivel('Contas') : `<div class="gest-card">
-    <div class="gest-titulo">Contas <span class="gest-cont">${pendentes.length ? pendentes.length + ' em aberto · ' + _fmtMoedaSimples(pendentes.reduce((s, x) => s + (Number(x.valor) || 0), 0)) : 'em dia'}</span>
-      ${podeEditar ? '<button class="gest-btn-add" onclick="abrirFormConta()">+ Conta</button>' : ''}</div>
-    ${contas.length ? contas.slice(0, 8).map(itemConta).join('') : '<div class="card-sub">Nenhuma conta lançada.</div>'}
-    ${contas.length > 8 ? `<details class="gest-det"><summary>Mais antigas (${contas.length - 8})</summary>${contas.slice(8).map(itemConta).join('')}</details>` : ''}
-  </div>`;
+  // Contas — mesmo fluxo do prefeito: foto → IA → aprovação (sem "já está paga": quem baixa é o Contas a Pagar)
+  const fila = await idbTodos('fila');
+  const temContrato = !!g.contrato;
+  const htmlContas = g.contas === null ? _cardIndisponivel('Contas') :
+    (!temContrato ? `<div class="sec-trava">🔒 As contas liberam quando o imóvel tiver <b>contrato ativo</b>.</div>`
+      : podeLancarConta ? '<button class="btn sec-novo" onclick="abrirFormConta()">＋ Nova conta</button>' : '') +
+    `<div class="gest-card"><div class="gest-titulo">💡 Contas lançadas <span class="gest-cont">${(g.contas || []).length}</span></div>
+      ${_htmlContasLista(g.contas || [], fila, podeLancarConta && online)}</div>`;
 
   // Patrimônio
   const patr = g.patrimonio || [];
-  const htmlPatr = g.patrimonio === null ? _cardIndisponivel('Patrimônio da empresa') : `<div class="gest-card">
-    <div class="gest-titulo">Patrimônio da empresa <span class="gest-cont">${patr.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 1), 0)} ite${patr.length === 1 ? 'm' : 'ns'}</span>
-      ${podeEditar ? '<button class="gest-btn-add" onclick="abrirFormPatrimonio()">+ Item</button>' : ''}</div>
+  const htmlPatr = g.patrimonio === null ? _cardIndisponivel('Patrimônio da empresa') : `${podeEditar ? '<button class="btn sec-novo" onclick="abrirFormPatrimonio()">＋ Novo item</button>' : ''}<div class="gest-card">
+    <div class="gest-titulo">🪑 Mobília da empresa <span class="gest-cont">${patr.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 1), 0)} ite${patr.length === 1 ? 'm' : 'ns'}</span></div>
     <div class="card-sub" style="margin:-4px 0 6px">Móveis e equipamentos da empresa neste imóvel (não do locador).</div>
     ${patr.length ? patr.map(p => `<div class="gest-item" ${podeEditar ? `onclick="abrirFormPatrimonio('${p.id}')" style="cursor:pointer"` : ''}>
       <div class="gest-item-txt"><b>${esc(p.descricao)}${(parseInt(p.quantidade, 10) || 1) > 1 ? ' × ' + p.quantidade : ''}</b>
@@ -3289,7 +3285,7 @@ async function renderizarGestao() {
   const lstDocs = _docsComStatus(g);
   _gdocTipos = lstDocs.map(x => x.ex.tipo_doc);
   const htmlDocs = (g.docsExigidos === null || g.docs === null) ? _cardIndisponivel('Documentos do imóvel') : `<div class="gest-card">
-    <div class="gest-titulo">Documentos do imóvel <span class="gest-cont">${lstDocs.filter(x => x.ultimo && x.ultimo.status === 'aprovado').length}/${lstDocs.length} aprovados</span></div>
+    <div class="gest-titulo">📎 Documentos do imóvel <span class="gest-cont">${lstDocs.filter(x => x.ultimo && x.ultimo.status === 'aprovado').length}/${lstDocs.length} aprovados</span></div>
     ${lstDocs.length ? lstDocs.map(({ ex, ultimo }, iDoc) => {
       const st = ultimo?.status;
       const ic = !ultimo ? '⏳' : st === 'aprovado' ? '✅' : st === 'reprovado' ? '❌' : '📎';
@@ -3307,8 +3303,38 @@ async function renderizarGestao() {
     }).join('') : '<div class="card-sub">Nenhum documento configurado pra imóveis.</div>'}
   </div>`;
 
-  el.innerHTML = atualizando + faixa + htmlAlertas + htmlResumo + htmlColab + htmlContas + htmlPatr + htmlDocs +
-    `<div class="dica" style="margin:6px 0 4px">Atualizado em ${_fmtDataHora(reg.em)}</div>`;
+  const nFila = fila.filter(f => f.tipo === 'criar_conta_imovel' && f.payload.imovel_id === imovelAtual.id).length;
+  const SECS = [['resumo', '📊', 'Resumo', al.length || ''], ['moradores', '👥', 'Moradores', atuais.length || ''],
+    ['contas', '💡', 'Contas', ((g.contas || []).filter(x => !x.pago && !['negada', 'cancelada'].includes(x.situacao)).length + nFila) || ''],
+    ['mobilia', '🪑', 'Mobília', patr.length || ''], ['docs', '📎', 'Docs', lstDocs.length ? lstDocs.filter(x => x.ultimo && x.ultimo.status === 'aprovado').length + '/' + lstDocs.length : '']];
+  if (!SECS.some(x => x[0] === _secEq)) _secEq = 'resumo';
+  const barra = `<div class="pf-atalhos" style="margin:0 0 12px">${SECS.map(([k, ic, rot, n]) => `<button class="${_secEq === k ? 'on' : ''}" onclick="_irSecEq('${k}')">${ic}<span>${rot}</span>${n !== '' ? `<i>${n}</i>` : ''}</button>`).join('')}</div>`;
+  const corpo = { resumo: htmlAlertas + htmlResumo, moradores: htmlColab, contas: htmlContas, mobilia: htmlPatr, docs: htmlDocs }[_secEq];
+  el.innerHTML = atualizando + faixa + barra + corpo +
+    `<div class="dica" style="margin:6px 0 4px">Atualizado em ${_fmtDataHora(reg.em)} · ${APP_VERSAO}</div>`;
+}
+let _secEq = 'resumo';
+function _irSecEq(k) { _secEq = k; renderizarGestao(); const e = document.getElementById('aba-gestao'); if (e) e.scrollTop = 0; }
+// Lista de contas (equipe e prefeito): as que estão na fila do aparelho + as enviadas, com a situação da aprovação
+function _htmlContasLista(contas, fila, podeAbrir) {
+  const naFila = fila.filter(f => f.tipo === 'criar_conta_imovel' && f.payload.imovel_id === imovelAtual.id);
+  const htmlFila = naFila.map(f => `<div class="gest-item"><div class="gest-item-ic">${ICONE_CONTA[f.payload.campos.tipo] || '🧾'}</div>
+      <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[f.payload.campos.tipo] || 'Conta')} · ${_fmtMes(f.payload.campos.mes_referencia)}</b><span>${f.payload.campos.valor ? _fmtMoedaSimples(f.payload.campos.valor) : 'sem valor'}${f.payload.campos.vencimento ? ' · vence ' + formatarDataBR(f.payload.campos.vencimento) : ''}</span></div>
+      <span class="gest-chip pendente">⏳ não enviada</span></div>`).join('');
+  const item = x => {
+    const k = x.pago ? 'paga' : (x.situacao || 'aguardando'), st = SIT_CT_PF[k] || SIT_CT_PF.aguardando;
+    const vencida = !x.pago && k !== 'negada' && k !== 'cancelada' && x.vencimento && _diasAte(x.vencimento) < 0;
+    const abre = k === 'aguardando' && podeAbrir;
+    return `<div class="gest-item" ${abre ? `onclick="abrirFormConta('${x.id}')" style="cursor:pointer"` : ''}>
+      <div class="gest-item-ic">${ICONE_CONTA[x.tipo] || '🧾'}</div>
+      <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[x.tipo] || x.tipo || 'Conta')} · ${_fmtMes(x.mes_referencia)}</b>
+        <span>${x.valor ? _fmtMoedaSimples(x.valor) : 'sem valor'}${x.vencimento ? ' · vence ' + formatarDataBR(x.vencimento) : ''}${x.consumo != null ? ' · ' + Number(x.consumo).toLocaleString('pt-BR') + ' ' + esc(x.consumo_unidade || '') : ''}${vencida ? ' · <b style="color:var(--err-txt)">vencida</b>' : ''}</span>
+        ${k === 'negada' && x.negada_motivo ? `<span class="gest-reprov">⚠️ ${esc(x.negada_motivo)}</span>` : ''}</div>
+      <span class="gest-chip ${st[0]}">${st[1]}</span></div>`;
+  };
+  if (!naFila.length && !contas.length) return '<div class="card-sub">Nenhuma conta lançada ainda.</div>';
+  return htmlFila + contas.slice(0, 10).map(item).join('') +
+    (contas.length > 10 ? `<details class="gest-det"><summary>Mais antigas (${contas.length - 10})</summary>${contas.slice(10).map(item).join('')}</details>` : '');
 }
 function _cardIndisponivel(titulo) {
   return `<div class="gest-card"><div class="gest-titulo">${titulo}</div><div class="card-sub">Não foi possível carregar (sem permissão ou tabela indisponível).</div></div>`;
@@ -3534,51 +3560,8 @@ async function abrirEncerrarAlocacao(id) {
 }
 
 // ── Contas ──
-async function abrirFormConta(id) {
-  if (ehPrefeito()) return abrirFormContaPrefeito(id);
-  const c = id ? ((await _gestaoAtual()).contas || []).find(x => x.id === id) : null;
-  if (id && !c) return;
-  const mesAtual = hojeLocalISO().slice(0, 7);
-  abrirFormGestao({
-    titulo: c ? 'Editar conta' : 'Lançar conta',
-    html: `<span class="rotulo">Tipo</span>
-      <div class="campo"><select id="gf-conta-tipo">${Object.entries(TIPO_CONTA_GESTAO).map(([k, v]) => `<option value="${k}" ${(c?.tipo || 'agua') === k ? 'selected' : ''}>${ICONE_CONTA[k]} ${v}</option>`).join('')}</select></div>
-      <div style="display:flex;gap:10px">
-        <div class="campo" style="flex:1"><span class="rotulo">Mês de referência</span><input type="month" id="gf-conta-mes" value="${c?.mes_referencia ? c.mes_referencia.slice(0, 7) : mesAtual}"/></div>
-        <div class="campo" style="flex:1"><span class="rotulo">Valor (R$)</span><input type="number" id="gf-conta-valor" step="0.01" min="0" inputmode="decimal" value="${c?.valor ?? ''}"/></div>
-      </div>
-      <span class="rotulo">Vencimento</span>
-      <div class="campo"><input type="date" id="gf-conta-venc" value="${c?.vencimento || ''}"/></div>
-      <label class="gf-check"><input type="checkbox" id="gf-conta-pago" ${c?.pago ? 'checked' : ''}/> Já está paga</label>`,
-    onSalvar: async () => {
-      const mes = _gfValor('gf-conta-mes');
-      if (!mes) return _gfErro('Informe o mês de referência.');
-      const payload = {
-        tipo: _gfValor('gf-conta-tipo'), mes_referencia: mes + '-01',
-        valor: _gfValor('gf-conta-valor') ? parseFloat(_gfValor('gf-conta-valor')) : null,
-        vencimento: _gfValor('gf-conta-venc') || null, pago: document.getElementById('gf-conta-pago').checked,
-      };
-      const { error } = c
-        ? await sb.from('imovel_contas').update(payload).eq('id', c.id)
-        : await sb.from('imovel_contas').insert({ ...payload, imovel_id: imovelAtual.id, criado_por: sessaoAtual.user.id });
-      if (error) throw error;
-      mostrarToast('Conta salva!', 'sucesso');
-    },
-    onExcluir: c ? async () => {
-      if (!confirm('Excluir esta conta?')) return false;
-      const { error } = await sb.from('imovel_contas').delete().eq('id', c.id);
-      if (error) throw error;
-    } : null,
-  });
-}
-async function marcarContaPaga(id) {
-  if (!navigator.onLine) { mostrarToast('Sem internet — conecte pra alterar.', 'erro'); return; }
-  const { error } = await sb.from('imovel_contas').update({ pago: true }).eq('id', id);
-  if (error) { mostrarToast('Erro: ' + error.message, 'erro'); return; }
-  mostrarToast('Conta marcada como paga.', 'sucesso');
-  await _carregarGestaoDoServidor([imovelAtual.id]);
-  await renderizarGestao();
-}
+// Todos os perfis usam o mesmo formulário: foto → IA (com internet) → confere → aprovação. Sem "já está paga".
+function abrirFormConta(id) { return abrirFormContaPrefeito(id); }
 
 // ── Patrimônio ──
 async function abrirFormPatrimonio(id) {
@@ -3808,12 +3791,17 @@ async function salvarNovaCasa() {
 }
 
 // ── Tela da casa (prefeito) ──
-function _irSecao(id) { const e = document.getElementById(id); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 async function _renderizarPainelPrefeito() {
   const [vist, fila, casas] = await Promise.all([idbTodos('vistorias'), idbTodos('fila'), _casasPf()]);
   const casa = casas.get(imovelAtual.id), emUso = !!casa?.em_uso;
   const naoSync = fila.some(f => f.tipo === 'criar_imovel' && f.payload.id === imovelAtual.id);
-  const sv = _situacaoVistoria(vist.filter(v => v.imovel_id === imovelAtual.id));
+  const vistCasa = vist.filter(v => v.imovel_id === imovelAtual.id);
+  const sv = _situacaoVistoria(vistCasa);
+  const g = ((await idbPegar('gestao', imovelAtual.id)) || {}).dados || {};
+  const nCtFila = fila.filter(f => f.tipo === 'criar_conta_imovel' && f.payload.imovel_id === imovelAtual.id).length;
+  const nLeit = new Set([...(g.leituras || []).map(l => _itemDaLeitura(l.tipo, l.dados)), ...fila.filter(f => f.tipo === 'leitura_imovel' && f.payload.imovel_id === imovelAtual.id).map(f => _itemDaLeitura(f.payload.tipo, f.payload.dados))]).size;
+  const SECS = [['vistorias', '📋', 'Vistorias', vistCasa.length], ['moradores', '👥', 'Moradores', (g.colaboradores || []).filter(x => !x.data_fim).length],
+    ['contas', '💡', 'Contas', (g.contas || []).length + nCtFila], ['mobilia', '🪑', 'Mobília', (g.patrimonio || []).length], ['dono', '👤', 'Dono', nLeit]];
   const cta = sv.emEdicao ? `<button class="btn" onclick="abrirVistoria('${sv.emEdicao.id}')">📋 Continuar a vistoria</button>`
     : sv.faltaAssinar ? `<button class="btn btn-assinar" onclick="assinarVistoria('${sv.faltaAssinar.id}', true)">✍️ Assinar a vistoria</button>`
     : `<button class="btn" onclick="abrirEscolhaTipoVistoria()">📋 ${sv.ult ? 'Nova vistoria' : 'Fazer a vistoria de entrada'}</button>`;
@@ -3822,14 +3810,24 @@ async function _renderizarPainelPrefeito() {
   document.getElementById('imovel-painel').innerHTML = `<div class="card card-estatico">
     <div class="painel-status"><span class="selo ${emUso ? 'selo-finalizado' : 'selo-neutro'}">${emUso ? '🏠 Em uso' : '🔎 Em análise'}</span>${emUso && casa.contrato ? `<span class="selo selo-neutro">📄 ${esc(casa.contrato)}</span>` : ''}${naoSync ? '<span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}</div>
     <div class="card-sub" style="margin:6px 0 12px">${emUso ? '' : 'O escritório está completando os dados e o contrato. <b>Moradores e contas</b> liberam quando a casa ficar <b>Em uso</b>.<br/>'}${vtxt}</div>
-    ${cta}
-    <div class="pf-atalhos">
-      <button onclick="_irSecao('sec-mor')">👥<span>Moradores</span></button>
-      <button onclick="_irSecao('sec-ct')">💡<span>Contas</span></button>
-      <button onclick="_irSecao('sec-mob')">🪑<span>Mobília</span></button>
-      <button onclick="_irSecao('sec-fot')">👤<span>Dono</span></button>
-    </div>
-  </div>`;
+    <div class="pf-atalhos">${SECS.map(([k, ic, rot, n]) => `<button class="${_secPf === k ? 'on' : ''}" onclick="_irSecPf('${k}')">${ic}<span>${rot}</span>${n ? `<i>${n}</i>` : ''}</button>`).join('')}</div>
+  </div>
+  ${_secPf === 'vistorias' ? `<div class="sec-vist-topo">${cta.replace('class="btn', 'class="btn sec-novo')}</div>` : ''}`;
+}
+// seção aberta na tela da casa (prefeito): vistorias | moradores | contas | mobilia | dono
+let _secPf = 'vistorias', _secPfCasa = null;
+function _aplicarSecPf() {
+  const v = _secPf === 'vistorias';
+  document.getElementById('vist-titulo').style.display = v ? '' : 'none';
+  document.getElementById('lista-vistorias').style.display = v ? '' : 'none';
+  document.getElementById('fab-vistoria').style.display = 'none';   // o botão "Nova vistoria" fica dentro da seção
+  document.getElementById('aba-gestao').style.display = v ? 'none' : '';
+}
+async function _irSecPf(k) {
+  _secPf = k; _aplicarSecPf();
+  await _renderizarPainelPrefeito();
+  if (k !== 'vistorias') await renderizarGestao();
+  const p = document.getElementById('imovel-painel'); if (p) p.scrollIntoView({ block: 'start' });
 }
 const SIT_CT_PF = { aguardando: ['aguardando', '⏳ Aguardando aprovação'], aprovada: ['aprovada', '✅ Aprovada'], paga: ['paga', '💰 Paga'], negada: ['negada', '✗ Não aprovada'], cancelada: ['negada', 'Cancelada'] };
 async function _renderizarGestaoPrefeito(el) {
@@ -3842,35 +3840,27 @@ async function _renderizarGestaoPrefeito(el) {
   const trava = t => `<div class="card-sub">🔒 ${t} liberam quando a casa estiver <b>Em uso</b> (contrato ativo).</div>`;
   const cap = parseInt((g.imovel || imovelAtual).capacidade_pessoas, 10) || 0;
   const atuais = (g.colaboradores || []).filter(x => !x.data_fim);
-  const htmlMor = `<div class="gest-card" id="sec-mor"><div class="gest-titulo">👥 Moradores <span class="gest-cont">${atuais.length}${cap ? ' de ' + cap : ''}</span>
-      ${emUso && online ? '<button class="gest-btn-add" onclick="abrirAlocarColaborador()">+ Morador</button>' : ''}</div>
+  const htmlMor = (!emUso ? '' : online ? '<button class="btn sec-novo" onclick="abrirAlocarColaborador()">＋ Novo morador</button>' : '<div class="sec-trava">📴 Para incluir morador, conecte na internet.</div>') + `<div class="gest-card" id="sec-mor"><div class="gest-titulo">👥 Moradores <span class="gest-cont">${atuais.length}${cap ? ' de ' + cap : ''}</span>
+</div>
     ${!emUso ? trava('Os moradores') : atuais.length ? atuais.map(a => `<div class="gest-item"><div class="gest-item-txt"><b>${esc(a.colaboradores?.nome || '—')}</b><span>desde ${formatarDataBR(a.data_inicio)}${a.observacao ? ' · ' + esc(a.observacao) : ''}</span></div>
       ${online ? `<button class="gest-btn" onclick="abrirEncerrarAlocacao('${a.id}')">Saiu</button>` : ''}</div>`).join('') : '<div class="card-sub">Ninguém morando ainda.</div>'}
   </div>`;
   const contas = g.contas || [];
-  const htmlCt = `<div class="gest-card" id="sec-ct"><div class="gest-titulo">💡 Contas
-      ${emUso ? '<button class="gest-btn-add" onclick="abrirFormContaPrefeito()">+ Conta</button>' : ''}</div>
-    ${emUso ? fila.filter(f => f.tipo === 'criar_conta_imovel' && f.payload.imovel_id === imovelAtual.id).map(f => `<div class="gest-item"><div class="gest-item-ic">${ICONE_CONTA[f.payload.campos.tipo] || '🧾'}</div>
-      <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[f.payload.campos.tipo] || 'Conta')} · ${_fmtMes(f.payload.campos.mes_referencia)}</b><span>${_fmtMoedaSimples(f.payload.campos.valor)} · vence ${formatarDataBR(f.payload.campos.vencimento)}</span></div>
-      <span class="gest-chip pendente">⏳ não enviada</span></div>`).join('') : ''}
-    ${!emUso ? trava('As contas') : contas.length ? contas.slice(0, 12).map(x => {
-      const k = x.pago ? 'paga' : (x.situacao || 'aguardando'), st = SIT_CT_PF[k] || SIT_CT_PF.aguardando;
-      return `<div class="gest-item" ${k === 'aguardando' && online ? `onclick="abrirFormContaPrefeito('${x.id}')" style="cursor:pointer"` : ''}>
-        <div class="gest-item-ic">${ICONE_CONTA[x.tipo] || '🧾'}</div>
-        <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[x.tipo] || x.tipo || 'Conta')} · ${_fmtMes(x.mes_referencia)}</b>
-          <span>${x.valor ? _fmtMoedaSimples(x.valor) : 'sem valor'}${x.consumo != null ? ' · ' + Number(x.consumo).toLocaleString('pt-BR') + ' ' + esc(x.consumo_unidade || '') : ''}${x.vencimento ? ' · vence ' + formatarDataBR(x.vencimento) : ''}${k === 'negada' && x.negada_motivo ? ' · ' + esc(x.negada_motivo) : ''}</span></div>
-        <span class="gest-chip ${st[0]}">${st[1]}</span></div>`;
-    }).join('') : fila.some(f => f.tipo === 'criar_conta_imovel' && f.payload.imovel_id === imovelAtual.id) ? '' : '<div class="card-sub">Nenhuma conta lançada. Toque em <b>+ Conta</b> e tire a foto da fatura.</div>'}
-  </div>`;
+  const htmlCt = (emUso ? '<button class="btn sec-novo" onclick="abrirFormConta()">＋ Nova conta</button>' : '') +
+    `<div class="gest-card" id="sec-ct"><div class="gest-titulo">💡 Contas lançadas <span class="gest-cont">${contas.length}</span></div>
+    ${!emUso ? trava('As contas') : _htmlContasLista(contas, fila, online)}
+    ${emUso ? '<div class="card-sub" style="margin-top:6px">Toque numa conta <b>aguardando</b> para corrigir. Depois de aprovada, quem paga é o escritório.</div>' : ''}</div>`;
   const patr = g.patrimonio || [];
-  const htmlMob = `<div class="gest-card" id="sec-mob"><div class="gest-titulo">🪑 Mobília da empresa <span class="gest-cont">${patr.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 1), 0)}</span>
-      ${online ? '<button class="gest-btn-add" onclick="abrirFormPatrimonio()">+ Item</button>' : ''}</div>
+  const htmlMob = (online ? '<button class="btn sec-novo" onclick="abrirFormPatrimonio()">＋ Novo item</button>' : '<div class="sec-trava">📴 Para incluir item, conecte na internet.</div>') + `<div class="gest-card" id="sec-mob"><div class="gest-titulo">🪑 Mobília da empresa <span class="gest-cont">${patr.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 1), 0)}</span>
+</div>
     <div class="card-sub" style="margin:-4px 0 6px">Móveis e equipamentos da empresa nesta casa (não do dono).</div>
     ${patr.length ? patr.map(p => `<div class="gest-item" ${online ? `onclick="abrirFormPatrimonio('${p.id}')" style="cursor:pointer"` : ''}><div class="gest-item-txt"><b>${esc(p.descricao)}${(parseInt(p.quantidade, 10) || 1) > 1 ? ' × ' + p.quantidade : ''}</b><span>${p.observacao ? esc(p.observacao) : '&nbsp;'}</span></div></div>`).join('') : '<div class="card-sub">Nenhum item cadastrado.</div>'}
   </div>`;
   const htmlFot = await _htmlDonoEndereco(g, fila);
-  el.innerHTML = atualizando + faixa + (!reg && online ? '<div class="dica" style="margin:0 0 10px">Carregando os dados da casa…</div>' : '') + htmlMor + htmlCt + htmlMob + htmlFot +
+  const corpo = { moradores: htmlMor, contas: htmlCt, mobilia: htmlMob, dono: htmlFot }[_secPf] || '';
+  el.innerHTML = atualizando + faixa + (!reg && online ? '<div class="dica" style="margin:0 0 10px">Carregando os dados da casa…</div>' : '') + corpo +
     (reg ? `<div class="dica" style="margin:6px 0 4px">Atualizado em ${_fmtDataHora(reg.em)} · ${APP_VERSAO}</div>` : '');
+  await _renderizarPainelPrefeito();   // atualiza os números dos botões
 }
 
 // ── Conta (prefeito): foto primeiro → a IA lê → confere → vai para aprovação ──
@@ -4105,7 +4095,7 @@ async function abrirImovel(id) {
   document.getElementById('imovel-titulo').textContent = ehPrefeito() ? _nomeCasa(imovelAtual) : (imovelAtual.logradouro || '(sem endereço)') + (imovelAtual.numero ? ', ' + imovelAtual.numero : '');
   document.getElementById('imovel-sub').textContent = ehPrefeito() ? _endCasa(imovelAtual) : [imovelAtual.bairro, imovelAtual.cidade].filter(Boolean).join(' — ');
   document.querySelector('#tela-imovel .abas-imovel').style.display = ehPrefeito() ? 'none' : '';
-  if (ehPrefeito()) { mostrarTela('tela-imovel'); await renderizarListaVistorias(); mostrarAbaImovel('prefeito'); return; }
+  if (ehPrefeito()) { if (_secPfCasa !== id) { _secPf = 'vistorias'; _secPfCasa = id; } mostrarTela('tela-imovel'); await renderizarListaVistorias(); mostrarAbaImovel('prefeito'); return; }
   mostrarTela('tela-imovel');
   _atualizarBotaoMensagens();
   await renderizarListaVistorias();
