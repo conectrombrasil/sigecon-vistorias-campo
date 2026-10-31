@@ -1462,7 +1462,7 @@ function sgBoletoImprimir(linha) {
 // ════════════════ SIGECON BOLETO E UNIDADES v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v9 · 31/10';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v10 · 31/10';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -3162,10 +3162,7 @@ function _alertasGestao(g, capacidade) {
     else if (d <= 60) al.push({ t: 'aviso', m: `Contrato vence em ${d} dia${d === 1 ? '' : 's'} (${formatarDataBR(c.data_fim)})` });
   }
   const contas = g.contas || [];
-  const vencidas = contas.filter(x => !x.pago && x.vencimento && _diasAte(x.vencimento) < 0);
-  if (vencidas.length) al.push({ t: 'erro', m: `${vencidas.length} conta${vencidas.length > 1 ? 's' : ''} vencida${vencidas.length > 1 ? 's' : ''} · ${_fmtMoedaSimples(vencidas.reduce((s, x) => s + (Number(x.valor) || 0), 0))}` });
-  const logo = contas.filter(x => !x.pago && x.vencimento && _diasAte(x.vencimento) >= 0 && _diasAte(x.vencimento) <= 7);
-  if (logo.length) al.push({ t: 'aviso', m: `${logo.length} conta${logo.length > 1 ? 's' : ''} vence${logo.length > 1 ? 'm' : ''} nos próximos 7 dias` });
+  // contas a pagar: NÃO acompanhamos se foram pagas — sem alerta de vencida/a vencer
   const ativos = (g.colaboradores || []).filter(x => !x.data_fim).length;
   if (capacidade && ativos > capacidade) al.push({ t: 'erro', m: `Acima da capacidade: ${ativos} pessoas pra ${capacidade} vagas` });
   else if (capacidade && ativos === capacidade) al.push({ t: 'info', m: 'Imóvel lotado — sem vagas' });
@@ -3261,7 +3258,7 @@ async function renderizarGestao() {
     </details>` : ''}
   </div>`;
 
-  // Contas — mesmo fluxo do prefeito: foto → IA → aprovação (sem "já está paga": quem baixa é o Contas a Pagar)
+  // Contas — mesmo fluxo do prefeito: foto → IA → aprovação. NÃO acompanhamos se a conta foi paga.
   const fila = await idbTodos('fila');
   const temContrato = !!g.contrato;
   const htmlContas = g.contas === null ? _cardIndisponivel('Contas') :
@@ -3305,7 +3302,7 @@ async function renderizarGestao() {
 
   const nFila = fila.filter(f => f.tipo === 'criar_conta_imovel' && f.payload.imovel_id === imovelAtual.id).length;
   const SECS = [['resumo', '📊', 'Resumo', al.length || ''], ['moradores', '👥', 'Moradores', atuais.length || ''],
-    ['contas', '💡', 'Contas', ((g.contas || []).filter(x => !x.pago && !['negada', 'cancelada'].includes(x.situacao)).length + nFila) || ''],
+    ['contas', '💡', 'Contas', ((g.contas || []).filter(x => (x.situacao || 'aguardando') === 'aguardando').length + nFila) || ''],
     ['mobilia', '🪑', 'Mobília', patr.length || ''], ['docs', '📎', 'Docs', lstDocs.length ? lstDocs.filter(x => x.ultimo && x.ultimo.status === 'aprovado').length + '/' + lstDocs.length : '']];
   if (!SECS.some(x => x[0] === _secEq)) _secEq = 'resumo';
   const barra = `<div class="pf-atalhos" style="margin:0 0 12px">${SECS.map(([k, ic, rot, n]) => `<button class="${_secEq === k ? 'on' : ''}" onclick="_irSecEq('${k}')">${ic}<span>${rot}</span>${n !== '' ? `<i>${n}</i>` : ''}</button>`).join('')}</div>`;
@@ -3322,13 +3319,12 @@ function _htmlContasLista(contas, fila, podeAbrir) {
       <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[f.payload.campos.tipo] || 'Conta')} · ${_fmtMes(f.payload.campos.mes_referencia)}</b><span>${f.payload.campos.valor ? _fmtMoedaSimples(f.payload.campos.valor) : 'sem valor'}${f.payload.campos.vencimento ? ' · vence ' + formatarDataBR(f.payload.campos.vencimento) : ''}</span></div>
       <span class="gest-chip pendente">⏳ não enviada</span></div>`).join('');
   const item = x => {
-    const k = x.pago ? 'paga' : (x.situacao || 'aguardando'), st = SIT_CT_PF[k] || SIT_CT_PF.aguardando;
-    const vencida = !x.pago && k !== 'negada' && k !== 'cancelada' && x.vencimento && _diasAte(x.vencimento) < 0;
+    const k = x.situacao || 'aguardando', st = SIT_CT_PF[k] || SIT_CT_PF.aguardando;   // só a aprovação — não acompanhamos pagamento
     const abre = k === 'aguardando' && podeAbrir;
     return `<div class="gest-item" ${abre ? `onclick="abrirFormConta('${x.id}')" style="cursor:pointer"` : ''}>
       <div class="gest-item-ic">${ICONE_CONTA[x.tipo] || '🧾'}</div>
       <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[x.tipo] || x.tipo || 'Conta')} · ${_fmtMes(x.mes_referencia)}</b>
-        <span>${x.valor ? _fmtMoedaSimples(x.valor) : 'sem valor'}${x.vencimento ? ' · vence ' + formatarDataBR(x.vencimento) : ''}${x.consumo != null ? ' · ' + Number(x.consumo).toLocaleString('pt-BR') + ' ' + esc(x.consumo_unidade || '') : ''}${vencida ? ' · <b style="color:var(--err-txt)">vencida</b>' : ''}</span>
+        <span>${x.valor ? _fmtMoedaSimples(x.valor) : 'sem valor'}${x.vencimento ? ' · vence ' + formatarDataBR(x.vencimento) : ''}${x.consumo != null ? ' · ' + Number(x.consumo).toLocaleString('pt-BR') + ' ' + esc(x.consumo_unidade || '') : ''}</span>
         ${k === 'negada' && x.negada_motivo ? `<span class="gest-reprov">⚠️ ${esc(x.negada_motivo)}</span>` : ''}</div>
       <span class="gest-chip ${st[0]}">${st[1]}</span></div>`;
   };
@@ -3829,7 +3825,7 @@ async function _irSecPf(k) {
   if (k !== 'vistorias') await renderizarGestao();
   const p = document.getElementById('imovel-painel'); if (p) p.scrollIntoView({ block: 'start' });
 }
-const SIT_CT_PF = { aguardando: ['aguardando', '⏳ Aguardando aprovação'], aprovada: ['aprovada', '✅ Aprovada'], paga: ['paga', '💰 Paga'], negada: ['negada', '✗ Não aprovada'], cancelada: ['negada', 'Cancelada'] };
+const SIT_CT_PF = { aguardando: ['aguardando', '⏳ Aguardando aprovação'], aprovada: ['aprovada', '✅ Aprovada'], negada: ['negada', '✗ Não aprovada'], cancelada: ['negada', 'Cancelada'] };
 async function _renderizarGestaoPrefeito(el) {
   const reg = await idbPegar('gestao', imovelAtual.id), online = navigator.onLine;
   const casa = (await _casasPf()).get(imovelAtual.id), emUso = !!casa?.em_uso;
@@ -3849,7 +3845,7 @@ async function _renderizarGestaoPrefeito(el) {
   const htmlCt = (emUso ? '<button class="btn sec-novo" onclick="abrirFormConta()">＋ Nova conta</button>' : '') +
     `<div class="gest-card" id="sec-ct"><div class="gest-titulo">💡 Contas lançadas <span class="gest-cont">${contas.length}</span></div>
     ${!emUso ? trava('As contas') : _htmlContasLista(contas, fila, online)}
-    ${emUso ? '<div class="card-sub" style="margin-top:6px">Toque numa conta <b>aguardando</b> para corrigir. Depois de aprovada, quem paga é o escritório.</div>' : ''}</div>`;
+    ${emUso ? '<div class="card-sub" style="margin-top:6px">Toque numa conta <b>aguardando</b> para corrigir. Depois de aprovada, segue para o escritório.</div>' : ''}</div>`;
   const patr = g.patrimonio || [];
   const htmlMob = (online ? '<button class="btn sec-novo" onclick="abrirFormPatrimonio()">＋ Novo item</button>' : '<div class="sec-trava">📴 Para incluir item, conecte na internet.</div>') + `<div class="gest-card" id="sec-mob"><div class="gest-titulo">🪑 Mobília da empresa <span class="gest-cont">${patr.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 1), 0)}</span>
 </div>
