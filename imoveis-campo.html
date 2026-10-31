@@ -255,6 +255,28 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .abas-imovel button.ativa{background:var(--orange);border-color:var(--orange);color:#fff;}
   .gest-faixa{background:var(--navy3);border:1px solid var(--border2);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--text2);margin-bottom:12px;}
   .gest-faixa.offline{background:rgba(224,85,85,.12);border-color:rgba(224,85,85,.4);color:var(--err-txt);}
+  .nc-fotos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px;}
+  .nc-fotos button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border-radius:14px;border:1.5px dashed var(--border2);background:var(--navy3);color:var(--text);font-size:26px;cursor:pointer;font-family:inherit;}
+  .nc-fotos button span{font-size:12px;font-weight:600;color:var(--text2);line-height:1.2;text-align:center;}
+  .nc-foto-item{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:12px;margin-bottom:6px;background:var(--navy2);}
+  .nc-foto-item img{width:46px;height:46px;object-fit:cover;border-radius:8px;}
+  .nc-foto-item b{flex:1;font-size:13px;}
+  .nc-foto-item button{border:0;background:transparent;color:var(--err-txt);font-size:18px;cursor:pointer;}
+  .nc-det{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--navy2);}
+  .nc-det summary{font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;}
+  .pf-atalhos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;}
+  .pf-atalhos button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:12px;border:1px solid var(--border2);background:var(--navy3);color:var(--text);font-size:22px;cursor:pointer;font-family:inherit;}
+  .pf-atalhos button span{font-size:11.5px;font-weight:600;color:var(--text2);}
+  .pf-foto-ct{width:100%;padding:24px 12px;border-radius:14px;border:2px dashed var(--orange);background:rgba(249,115,22,.08);color:var(--text);cursor:pointer;font-family:inherit;text-align:center;}
+  .pf-foto-ct .g{font-size:36px;line-height:1;}
+  .pf-foto-ct b{display:block;font-size:15px;margin-top:6px;}
+  .pf-foto-ct small{display:block;font-size:12.5px;color:var(--text3);margin-top:4px;}
+  .gest-chip.aguardando{background:rgba(224,168,48,.18);color:var(--warn-txt);}
+  .gest-chip.aprovada{background:rgba(46,204,138,.16);color:var(--ok-txt);}
+  .gest-chip.negada{background:rgba(224,85,85,.18);color:var(--err-txt);}
+  body.modo-prefeito .so-equipe{display:none !important;}
+  body.modo-prefeito #aba-fluxo{padding-bottom:0;flex:none;}
+  body.modo-prefeito #aba-gestao{padding-top:10px;}
   .gest-card{background:var(--navy2);border:1px solid var(--border);border-radius:var(--raio);padding:14px 14px 10px 16px;margin-bottom:12px;}
   .gest-titulo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;margin-bottom:8px;}
   .gest-cont{font-size:12px;font-weight:600;color:var(--text3);}
@@ -583,7 +605,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   <path d="M84 262 L256 116 L428 262" fill="none" stroke="#F15A24" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
 </svg></div>
     <div class="login-titulo">Imóveis em Campo</div>
-    <div class="login-sub">SIGECON — funciona sem internet, sincroniza depois</div>
+    <div class="login-sub">SIGECON — funciona sem internet, sincroniza depois · <span id="login-versao"></span></div>
     <button class="btn-instalar" style="display:none" onclick="instalarApp()">📲 Instalar o app no celular</button>
     <div class="campo"><input type="email" id="login-email" placeholder="E-mail" autocomplete="username" inputmode="email" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('login-senha').focus();}"/></div>
     <div class="campo"><input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();fazerLogin();}"/></div>
@@ -711,6 +733,48 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     <div class="barra-acao">
       <div class="erro-msg" id="ni-erro"></div>
       <button class="btn" id="ni-btn-salvar" onclick="salvarNovoImovel()">Salvar imóvel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= NOVA CASA (prefeito) ================= -->
+<div class="tela" id="tela-nova-casa">
+  <div class="topo">
+    <button class="topo-voltar" aria-label="Voltar" onclick="voltarDaNovaCasa()"><svg class="ic"><use href="#i-voltar"/></svg></button>
+    <div class="topo-textos"><div class="topo-titulo" id="nc-titulo-tela">Nova casa</div><div class="topo-sub">Só o básico — o escritório completa o resto</div></div>
+  </div>
+  <div class="conteudo conteudo-form">
+    <span class="rotulo">Obra *</span>
+    <div class="campo"><select id="nc-obra"></select></div>
+    <span class="rotulo">Nome da casa *</span>
+    <div class="campo"><input type="text" id="nc-apelido" maxlength="60" placeholder="Ex.: Casa do Zé, Alojamento da praça"/></div>
+    <span class="rotulo">Localização</span>
+    <button type="button" class="btn btn-secundario" id="nc-gps-btn" onclick="ncPegarGps()">📍 Usar a localização do celular</button>
+    <div class="dica" id="nc-gps-info" style="margin:6px 0 12px">Fique em frente à casa e toque no botão.</div>
+    <details class="nc-det" id="nc-end-det"><summary>Endereço (se souber)</summary>
+      <div class="campo" style="margin-top:8px"><span class="rotulo">Rua</span><input type="text" id="nc-logradouro" autocomplete="address-line1"/></div>
+      <div style="display:flex;gap:10px">
+        <div class="campo" style="flex:1"><span class="rotulo">Número</span><input type="text" id="nc-numero" inputmode="numeric"/></div>
+        <div class="campo" style="flex:2"><span class="rotulo">Bairro</span><input type="text" id="nc-bairro"/></div>
+      </div>
+      <div class="campo"><span class="rotulo">Cidade</span><input type="text" id="nc-cidade"/></div>
+    </details>
+    <span class="rotulo" style="margin-top:12px">Quantas pessoas cabem?</span>
+    <div class="campo"><input type="number" id="nc-capacidade" min="1" inputmode="numeric" placeholder="Se souber"/></div>
+    <div id="nc-fotos-bloco">
+      <span class="rotulo" style="margin-top:6px">Fotos para o escritório (opcional)</span>
+      <div class="dica" style="margin:0 0 8px">Tire foto do que tiver em mãos. O escritório lê e preenche os dados do dono e do endereço.</div>
+      <div class="nc-fotos">
+        <button type="button" onclick="ncFoto('documento')">🪪<span>Documento do dono</span></button>
+        <button type="button" onclick="ncFoto('conta')">💡<span>Conta de luz ou água</span></button>
+        <button type="button" onclick="ncFoto('endereco')">🏠<span>Fachada / endereço</span></button>
+      </div>
+      <div id="nc-fotos-lista"></div>
+    </div>
+    <input type="file" id="nc-foto-inp" accept="image/*" style="display:none" onchange="ncFotoEscolhida(this.files[0]);this.value=''"/>
+    <div class="barra-acao">
+      <div class="erro-msg" id="nc-erro"></div>
+      <button class="btn" id="nc-btn-salvar" onclick="salvarNovaCasa()">Salvar casa</button>
     </div>
   </div>
 </div>
@@ -865,8 +929,8 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   <div class="modal">
     <div class="modal-titulo">Opções do imóvel</div>
     <div class="opcao-lista">
-      <button onclick="fecharModais();abrirEditarImovel()"><span class="opcao-ic">✏️</span><span>Editar dados do imóvel<small>Endereço, obra, capacidade</small></span></button>
-      <button onclick="fecharModais();irParaPasso(1)"><span class="opcao-ic">👤</span><span>Editar fornecedor<small>Só se foi você quem cadastrou</small></span></button>
+      <button onclick="fecharModais();ehPrefeito()?abrirEditarCasa():abrirEditarImovel()"><span class="opcao-ic">✏️</span><span>Editar dados do imóvel<small>Endereço, obra, capacidade</small></span></button>
+      <button class="so-equipe" onclick="fecharModais();irParaPasso(1)"><span class="opcao-ic">👤</span><span>Editar fornecedor<small>Só se foi você quem cadastrou</small></span></button>
       <button class="opcao-perigo" onclick="fecharModais();deletarImovelLocal(imovelAtual.id)"><span class="opcao-ic">🗑️</span><span>Excluir do aparelho<small>Pede confirmação antes</small></span></button>
     </div>
     <button class="btn btn-secundario" onclick="fecharModais()">Cancelar</button>
@@ -1203,6 +1267,77 @@ function sgAbrirPorChave(chave) { const r = _sgRegistros[chave]; if (r) sgAbrirA
 function sgBaixarPorChave(chave, nome) { const r = _sgRegistros[chave]; if (r) sgBaixarArquivo(r, nome); }
 // ════════════════ SIGECON ARQUIVOS v1 — fim ════════════════
 
+// ════════════════ SIGECON IA v1 — início (pode ser copiado para outros módulos) ════════════════
+// Lê uma foto ou PDF com a IA (Edge Function "sigecon-ia-ler") e devolve os dados em campos.
+// Uso:  const r = await sgIaLer('conta', arquivoDoInput);   →  r.dados.valor_total, r.dados.vencimento…
+// Tipos: 'endereco' | 'documento' | 'banco' | 'conta'.   Teste da chave: await sgIaLer('teste')
+// Não guarda nada. Fotos grandes são reduzidas antes de enviar (fica mais rápido e barato).
+const SG_IA_FUNCAO = 'sigecon-ia-ler';
+const SG_IA_LIMITE = 10 * 1024 * 1024;
+
+function _sgIaBase64(blob) {
+  return new Promise((ok, falha) => {
+    const fr = new FileReader();
+    fr.onload = () => ok(String(fr.result).split(',')[1] || '');
+    fr.onerror = () => falha(new Error('Não consegui ler o arquivo.'));
+    fr.readAsDataURL(blob);
+  });
+}
+// Foto → JPEG de no máximo 1600 px no lado maior. PDF e formatos que o navegador não abre (HEIC no PC) vão como estão.
+async function sgIaPreparar(arquivo) {
+  let mime = (arquivo.type || '').toLowerCase();
+  if (!mime && /\.pdf$/i.test(arquivo.name || '')) mime = 'application/pdf';
+  if (!mime && /\.(heic|heif)$/i.test(arquivo.name || '')) mime = 'image/heic';
+  if (mime.startsWith('image/') && !/heic|heif/.test(mime)) {
+    try {
+      const bmp = await createImageBitmap(arquivo);
+      const fator = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(bmp.width * fator); cv.height = Math.round(bmp.height * fator);
+      const cx = cv.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+      cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+      const jpg = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.88));
+      if (jpg && jpg.size < arquivo.size) return { mime: 'image/jpeg', base64: await _sgIaBase64(jpg), bytes: jpg.size };
+    } catch (e) { /* segue com o original */ }
+  }
+  if (arquivo.size > SG_IA_LIMITE) throw new Error('Arquivo grande demais (máx. 10 MB).');
+  return { mime, base64: await _sgIaBase64(arquivo), bytes: arquivo.size };
+}
+async function sgIaLer(tipo, arquivo) {
+  const body = { tipo };
+  if (tipo !== 'teste') {
+    const p = await sgIaPreparar(arquivo);
+    body.arquivo = { mime: p.mime, base64: p.base64 };
+  }
+  const { data, error } = await sb.functions.invoke(SG_IA_FUNCAO, { body });
+  if (error) {
+    let msg = '', info = null;
+    try { info = await error.context.json(); msg = (info?.erro || '') + (info?.detalhe ? ' (' + info.detalhe + ')' : ''); } catch (e) { }
+    if (!msg && error.context?.status === 504) msg = 'A IA demorou demais e o Supabase interrompeu. Tente de novo.';
+    if (!msg && /Failed to send|fetch/i.test(error.message || '')) msg = 'Não achei a função "' + SG_IA_FUNCAO + '" no Supabase. Ela já foi publicada?';
+    const err = new Error(msg || error.message || 'Erro ao ler.'); err.info = info; throw err;
+  }
+  if (data?.erro) throw new Error(data.erro + (data.detalhe ? ' (' + data.detalhe + ')' : ''));
+  return data;
+}
+// Conferências simples (não dependem da IA)
+function sgIaCpfOk(v) {
+  const d = String(v || '').replace(/\D/g, '');
+  if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false;
+  const dv = n => { let s = 0; for (let i = 0; i < n; i++) s += +d[i] * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
+  return dv(9) === +d[9] && dv(10) === +d[10];
+}
+function sgIaCnpjOk(v) {
+  const d = String(v || '').replace(/\D/g, '');
+  if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false;
+  const dv = n => { const p = n === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2]; let s = 0; for (let i = 0; i < n; i++) s += +d[i] * p[i]; const r = s % 11; return r < 2 ? 0 : 11 - r; };
+  return dv(12) === +d[12] && dv(13) === +d[13];
+}
+// ════════════════ SIGECON IA v1 — fim ════════════════
+
+const APP_VERSAO = 'v6 · 30/10';   // aparece no login e na tela inicial — muda a cada versão
+
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
 
@@ -1357,6 +1492,11 @@ async function processarItemFila(item) {
   } else if (item.tipo === 'atualizar_imovel') {
     const { error } = await sb.from('imoveis').update(p.campos).eq('id', p.id);
     if (error) throw error;
+  } else if (item.tipo === 'leitura_imovel') {
+    // Foto mandada pelo prefeito (documento do dono, conta, fachada) → "a conferir" no escritório
+    const env = await sgEnviarArquivo(p.base64, { modulo: 'imoveis', registroId: p.imovel_id, nomeArquivo: p.nome, mimeType: p.mime });
+    const { error } = await sb.from('imovel_leituras').insert({ id: p.id, imovel_id: p.imovel_id, tipo: p.tipo, arquivo_url: env.drive_url, arquivo_nome: p.nome, mime_type: p.mime, observacao: p.obs || null });
+    if (error && error.code !== '23505') { await sgRemoverArquivo(env); throw error; }
   } else if (item.tipo === 'mensagem_solicitacao') {
     const { error } = await sb.from('solicitacoes_mensagens').insert({ id: p.id, solicitacao_id: p.solicitacao_id, autor_id: p.autor_id, tipo: 'texto', conteudo: p.conteudo });
     if (error && error.code !== '23505') throw error;
@@ -1794,6 +1934,7 @@ async function _espelharFornecedores(ativos, imoveis, campos) {
 }
 
 async function carregarImoveisDoServidor() {
+  if (ehPrefeito()) return _carregarPrefeitoDoServidor();
   const { data: vinc } = await sb.from('usuario_obras').select('obra_id').eq('usuario_id', sessaoAtual.user.id);
   obrasIds = (vinc || []).map(v => v.obra_id);
   await idbSalvar('sessao', { chave: 'obras_ids', valor: obrasIds });
@@ -1829,6 +1970,28 @@ async function carregarImoveisDoServidor() {
   if (!erroForn) await _espelharFornecedores(fornecedoresData || [], imoveis || [], CAMPOS_FORN);
   await _carregarSolicitacoesDoServidor(imoveis || []);
 
+  await _carregarVistoriasDoServidor(imoveis);
+}
+
+// ── Prefeito: obras e casas dele (via função do banco, que já diz se a casa está "Em uso") ──
+async function _carregarPrefeitoDoServidor() {
+  const { data: pn, error } = await sb.rpc('imv_prefeito_painel');
+  if (error) throw error;
+  const obras = (pn && pn.obras) || [], casas = (pn && pn.casas) || [];
+  obrasIds = obras.map(o => o.id);
+  await idbSalvar('sessao', { chave: 'obras_ids', valor: obrasIds });
+  await idbEspelhar('obras', obras);
+  await idbSalvar('sessao', { chave: 'prefeito_casas', valor: casas });
+  const ids = casas.map(c => c.imovel_id);
+  let imoveis = [];
+  if (ids.length) { const r = await sb.from('imoveis').select('*').in('id', ids); if (r.error) throw r.error; imoveis = r.data || []; }
+  await idbSalvarVarios('imoveis', imoveis);
+  await _removerImoveisQueNaoDevemMaisAparecer(imoveis);
+  await _carregarVistoriasDoServidor(imoveis);
+}
+
+async function _carregarVistoriasDoServidor(imoveis) {
+  const verTodas = ehGestorImoveis() || ehPrefeito();   // prefeito vê todas as vistorias das casas dele
   // Também traz as vistorias em rascunho (pra continuar) e as mais
   // recentes de cada imóvel — offline, a pessoa só precisa ver o
   // suficiente pra saber o que já existe, não o histórico inteiro
@@ -1838,14 +2001,14 @@ async function carregarImoveisDoServidor() {
     // Gestor: as de todos, pra ver a situação real dos imóveis da obra.
     let qVist = sb.from('imovel_vistorias')
       .select('id,imovel_id,tipo,status,data_vistoria,responsavel,criado_por,finalizado_em,assinatura')
-      .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(ehGestorImoveis() ? 500 : 200);
-    if (!ehGestorImoveis()) qVist = qVist.eq('criado_por', sessaoAtual.user.id);
+      .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(verTodas ? 500 : 200);
+    if (!verTodas) qVist = qVist.eq('criado_por', sessaoAtual.user.id);
     let { data: vistorias, error: erroVist } = await qVist;
     if (erroVist && /assinatura/.test(erroVist.message || '')) {
       // SQL da assinatura ainda não rodado — carrega sem o campo, pra não travar o app
       let q2 = sb.from('imovel_vistorias').select('id,imovel_id,tipo,status,data_vistoria,responsavel,criado_por')
-        .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(ehGestorImoveis() ? 500 : 200);
-      if (!ehGestorImoveis()) q2 = q2.eq('criado_por', sessaoAtual.user.id);
+        .in('imovel_id', ids).order('data_vistoria', { ascending: false }).limit(verTodas ? 500 : 200);
+      if (!verTodas) q2 = q2.eq('criado_por', sessaoAtual.user.id);
       ({ data: vistorias } = await q2);
     }
     // Vistoria com alteração ainda na fila (ex.: assinada offline): vale a do aparelho
@@ -2135,6 +2298,8 @@ let _somenteMeus = false; // gestor: alterna entre "todos da obra" e "só os meu
 function alternarSomenteMeus() { _somenteMeus = !_somenteMeus; renderizarListaImoveis(); }
 
 async function renderizarListaImoveis() {
+  _ajustarHomePerfil();
+  if (ehPrefeito()) return _renderListaCasas();
   const uid = sessaoAtual.user.id;
   const solicitados = new Set(((await idbPegar('sessao', 'imoveis_solicitados')) || {}).valor || []);
   const meu = i => !i.criado_por || i.criado_por === uid || solicitados.has(i.id);
@@ -2258,6 +2423,7 @@ async function deletarImovelLocal(id) {
 
 // ── Passo 1: escolher fornecedor ──
 async function abrirEscolhaFornecedor() {
+  if (ehPrefeito()) return abrirNovaCasa();
   renderPassos('passos-forn', 1);
   document.getElementById('forn-busca').value = '';
   await renderizarListaFornecedores();
@@ -2706,6 +2872,8 @@ async function salvarNovoFornecedor() {
 const MODULOS_PERFIL_IMOVEIS = ['gestao_imoveis', 'imoveis', 'imoveis_gestao', 'gestao_de_imoveis'];
 let perfilImoveis = null; // 'gestor' | 'operador' | 'admin' | null
 function ehGestorImoveis() { return perfilImoveis === 'gestor' || perfilImoveis === 'admin'; }
+// Prefeito: cuida das casas dele (vistorias, moradores, contas, mobília). Não vê fornecedor, contrato nem valores.
+function ehPrefeito() { return perfilImoveis === 'prefeito'; }
 
 async function _carregarPerfilImoveis() {
   if (navigator.onLine && sessaoAtual) {
@@ -2720,6 +2888,8 @@ async function _carregarPerfilImoveis() {
         const m = linhas.find(x => MODULOS_PERFIL_IMOVEIS.includes(x.modulo)) || linhas.find(x => /imove/i.test(x.modulo || ''));
         let p = m && m.perfil ? String(m.perfil).toLowerCase() : null;
         if (String(u?.perfis?.nome || '').toLowerCase() === 'admin') p = 'admin';
+        // Sem perfil no módulo: pode ser PREFEITO de casas (cadastrado na Gestão de Imóveis → Prefeitos)
+        if (!p) { try { const { data: pf } = await sb.rpc('imv_sou_prefeito'); if (pf === true) p = 'prefeito'; } catch (e) { } }
         await idbSalvar('sessao', { chave: 'perfil_imoveis', valor: p });
       }
     } catch (e) { /* segue com o perfil guardado */ }
@@ -2744,14 +2914,19 @@ async function _carregarGestaoDoServidor(ids) {
   if (!navigator.onLine || !ids || !ids.length) return;
   const lista = ids.join(',');
   const pegar = async (p) => { try { const r = await p; return r.error ? null : (r.data || []); } catch (e) { return null; } };
-  const [ativos, colabs, contas, patr, cfgDocs, docs, imvs] = await Promise.all([
-    pegar(sb.from('contrato_ativos').select('imovel_id,contrato_id,status,contratos(numero,valor_total,data_inicio,data_fim,status,solicitacao_origem_id)').in('imovel_id', ids).eq('status', 'ativo')),
-    pegar(sb.from('imovel_colaboradores').select('*, colaboradores(nome)').in('imovel_id', ids).order('data_inicio', { ascending: false })),
+  const pf = ehPrefeito();
+  const casasPf = pf ? (((await idbPegar('sessao', 'prefeito_casas')) || {}).valor || []) : [];
+  const [ativos, colabs, contas, patr, cfgDocs, docs, imvs, leituras] = await Promise.all([
+    pf ? Promise.resolve(casasPf.filter(c => c.em_uso && ids.includes(c.imovel_id)).map(c => ({ imovel_id: c.imovel_id, contrato_id: null, status: 'ativo', contratos: { numero: c.contrato } })))
+    : pegar(sb.from('contrato_ativos').select('imovel_id,contrato_id,status,contratos(numero,valor_total,data_inicio,data_fim,status,solicitacao_origem_id)').in('imovel_id', ids).eq('status', 'ativo')),
+    pf ? pegar(sb.rpc('imv_prefeito_moradores', { p_casas: ids })).then(l => l && l.map(x => ({ ...x, colaboradores: { nome: x.nome } })))
+    : pegar(sb.from('imovel_colaboradores').select('*, colaboradores(nome)').in('imovel_id', ids).order('data_inicio', { ascending: false })),
     pegar(sb.from('imovel_contas').select('*').in('imovel_id', ids).order('mes_referencia', { ascending: false })),
     pegar(sb.from('imovel_patrimonio').select('*').in('imovel_id', ids).order('criado_em')),
-    pegar(sb.from('imovel_config_documentos').select('*').or(`imovel_id.is.null,imovel_id.in.(${lista})`).order('ordem')),
-    pegar(sb.from('documentos').select('*').eq('modulo', 'imoveis').in('registro_id', ids).order('criado_em', { ascending: false })),
+    pf ? Promise.resolve([]) : pegar(sb.from('imovel_config_documentos').select('*').or(`imovel_id.is.null,imovel_id.in.(${lista})`).order('ordem')),
+    pf ? Promise.resolve([]) : pegar(sb.from('documentos').select('*').eq('modulo', 'imoveis').in('registro_id', ids).order('criado_em', { ascending: false })),
     pegar(sb.from('imoveis').select('*').in('id', ids)),
+    pegar(sb.from('imovel_leituras').select('*').in('imovel_id', ids).order('criado_em', { ascending: false })),
   ]);
   // Condições do contrato (caução, dia do aluguel) e valor do aluguel vêm da solicitação de origem
   const solIds = [...new Set((ativos || []).map(a => a.contratos?.solicitacao_origem_id).filter(Boolean))];
@@ -2788,6 +2963,7 @@ async function _carregarGestaoDoServidor(ids) {
         patrimonio: patr ? patr.filter(p => p.imovel_id === id) : null,
         docsExigidos: cfgDocs ? cfgDocs.filter(c => !c.imovel_id || c.imovel_id === id) : null,
         docs: docs ? docs.filter(d => d.registro_id === id) : null,
+        leituras: leituras ? leituras.filter(l => l.imovel_id === id) : null,
         nomes,
       },
     };
@@ -2798,6 +2974,12 @@ async function _carregarGestaoDoServidor(ids) {
 // ── Abas do imóvel: "Vistoria e contrato" × "Gestão" ──
 const _abaPorImovel = {};
 function mostrarAbaImovel(aba) {
+  if (ehPrefeito()) {   // prefeito: uma tela só — resumo, vistorias e, embaixo, moradores/contas/mobília/fotos
+    ['aba-fluxo', 'aba-gestao'].forEach(id => { document.getElementById(id).style.display = ''; });
+    document.getElementById('passos-imovel').style.display = 'none';
+    document.getElementById('fab-vistoria').style.display = '';
+    abrirGestao(); return;
+  }
   if (imovelAtual) _abaPorImovel[imovelAtual.id] = aba;
   const gest = aba === 'gestao';
   document.getElementById('aba-fluxo').style.display = gest ? 'none' : '';
@@ -2821,8 +3003,8 @@ async function abrirGestao() {
 }
 
 // ── Formatação ──
-const TIPO_CONTA_GESTAO = { agua: 'Água', luz: 'Luz', internet: 'Internet', gas: 'Gás', outro: 'Outro' };
-const ICONE_CONTA = { agua: '💧', luz: '💡', internet: '🌐', gas: '🔥', outro: '🧾' };
+const TIPO_CONTA_GESTAO = { agua: 'Água', luz: 'Luz', internet: 'Internet', gas: 'Gás', higienizacao: 'Higienização de alojamento', outro: 'Outro' };
+const ICONE_CONTA = { agua: '💧', luz: '💡', internet: '🌐', gas: '🔥', higienizacao: '🧹', outro: '🧾' };
 function _diasAte(iso) { if (!iso) return null; const d = new Date(iso + 'T12:00:00'); const h = new Date(hojeLocalISO() + 'T12:00:00'); return Math.round((d - h) / 86400000); }
 function _fmtMes(iso) { return iso ? new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '') : ''; }
 function _fmtDataHora(iso) { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
@@ -2857,6 +3039,7 @@ function _docsComStatus(g) {
 async function renderizarGestao() {
   const el = document.getElementById('aba-gestao');
   if (!el || !imovelAtual) return;
+  if (ehPrefeito()) return _renderizarGestaoPrefeito(el);
   const reg = await idbPegar('gestao', imovelAtual.id);
   const online = navigator.onLine;
   const podeEditar = ehGestorImoveis() && online;
@@ -3003,7 +3186,7 @@ function abrirFormGestao({ titulo, html, rotuloSalvar, onSalvar, onExcluir, rotu
   document.getElementById('gf-corpo').innerHTML = html;
   document.getElementById('gf-erro').textContent = '';
   const bs = document.getElementById('gf-salvar');
-  bs.textContent = rotuloSalvar || 'Salvar'; bs.disabled = false;
+  bs.textContent = rotuloSalvar || 'Salvar'; bs.disabled = false; bs.style.display = '';
   const be = document.getElementById('gf-excluir');
   be.style.display = onExcluir ? '' : 'none';
   be.querySelector('span').textContent = rotuloExcluir || 'Excluir';
@@ -3033,7 +3216,7 @@ function _gfErro(msg) { document.getElementById('gf-erro').textContent = msg; re
 async function _gestaoAtual() { return ((await idbPegar('gestao', imovelAtual.id)) || {}).dados || {}; }
 
 // ── Colaboradores ──
-let _colabsAtivosCache = null;
+let _colabsAtivosCache = null, _colabsPf = null;
 async function abrirAlocarColaborador() {
   if (!navigator.onLine) { mostrarToast('Sem internet — conecte pra alocar.', 'erro'); return; }
   abrirFormGestao({
@@ -3065,6 +3248,14 @@ async function abrirAlocarColaborador() {
     onSalvar: salvarAlocacao,
   });
   _novoColabModo = false;
+  if (ehPrefeito()) {
+    document.getElementById('gf-colab-novo-btn').style.display = 'none';
+    const { data, error } = await sb.rpc('imv_colaboradores_para_alocar', { p_imovel: imovelAtual.id });
+    if (error) { document.getElementById('gf-colab-lista').innerHTML = '<div class="card-sub">Não foi possível carregar os colaboradores.</div>'; return; }
+    _colabsAtivosCache = null;
+    _colabsPf = (data || []).map(c => ({ id: c.id, nome: c.nome, cpf: c.cpf_final }));
+    _filtrarColabsForm(); return;
+  }
   _carregarCargosColab();
   if (!_colabsAtivosCache) {
     const { data, error } = await sb.from('colaboradores').select('id,nome,cpf').eq('ativo', true).order('nome');
@@ -3076,7 +3267,7 @@ async function abrirAlocarColaborador() {
 function _filtrarColabsForm() {
   const termo = _normalizar(_gfValor('gf-colab-busca'));
   const sel = _gfValor('gf-colab-id');
-  const lista = (_colabsAtivosCache || []).filter(c => !termo || _normalizar(c.nome).includes(termo)).slice(0, 40);
+  const lista = ((ehPrefeito() ? _colabsPf : _colabsAtivosCache) || []).filter(c => !termo || _normalizar(c.nome).includes(termo)).slice(0, 40);
   document.getElementById('gf-colab-lista').innerHTML = lista.length
     ? lista.map(c => `<button type="button" class="gf-opcao ${c.id === sel ? 'sel' : ''}" onclick="_escolherColab('${c.id}')">${esc(c.nome)}</button>`).join('')
     : '<div class="card-sub">Nenhum colaborador encontrado.</div>';
@@ -3207,6 +3398,7 @@ async function abrirEncerrarAlocacao(id) {
 
 // ── Contas ──
 async function abrirFormConta(id) {
+  if (ehPrefeito()) return abrirFormContaPrefeito(id);
   const c = id ? ((await _gestaoAtual()).contas || []).find(x => x.id === id) : null;
   if (id && !c) return;
   const mesAtual = hojeLocalISO().slice(0, 7);
@@ -3310,12 +3502,337 @@ async function anexarDocImovel(iDoc, input) {
 }
 
 
+// ══════════════════════════════════════════════════════════════
+// 👷 MODO PREFEITO — o prefeito cuida das casas dele:
+//   casa nova (só o básico), vistorias, moradores, contas (foto → IA → aprovação),
+//   mobília e fotos de documentos para o escritório. Não vê fornecedor, contrato nem valores.
+//   Moradores e contas só quando a casa está "Em uso" (contrato de locação ativo).
+// ══════════════════════════════════════════════════════════════
+function _ajustarHomePerfil() {
+  const pf = ehPrefeito();
+  document.body.classList.toggle('modo-prefeito', pf);
+  const tit = document.querySelector('#tela-home .topo-titulo'); if (tit) tit.textContent = pf ? 'Minhas casas' : 'Meus imóveis';
+  const fab = document.querySelector('#tela-home .fab'); if (fab) fab.innerHTML = `<svg class="ic"><use href="#i-mais"/></svg>${pf ? 'Nova casa' : 'Novo imóvel'}`;
+  const bus = document.getElementById('busca-imovel'); if (bus) bus.placeholder = pf ? 'Buscar casa' : 'Buscar endereço, fornecedor ou obra';
+  const lv = document.getElementById('login-versao'); if (lv) lv.textContent = APP_VERSAO;
+}
+const _nomeCasa = i => (i && (i.apelido || (i.numero_interno ? `${i.tipo_interno || 'Alojamento'} ${String(i.numero_interno).padStart(2, '0')}` : '') || [i.logradouro, i.numero].filter(Boolean).join(', '))) || 'Casa sem nome';
+const _endCasa = i => [[i.logradouro, i.numero].filter(Boolean).join(', '), i.bairro, i.cidade].filter(Boolean).join(' — ');
+async function _casasPf() { return new Map((((await idbPegar('sessao', 'prefeito_casas')) || {}).valor || []).map(c => [c.imovel_id, c])); }
+function _situacaoVistoria(vs) {
+  const emEdicao = vs.find(v => v.status !== 'finalizado');
+  const fin = vs.filter(v => v.status === 'finalizado').sort((a, b) => String(b.data_vistoria || '').localeCompare(String(a.data_vistoria || '')));
+  const faltaAssinar = !emEdicao ? fin.find(v => !v.assinatura) : null;
+  const ult = fin[0] || null, dias = ult && ult.data_vistoria ? -_diasAte(String(ult.data_vistoria).slice(0, 10)) : null;
+  return { emEdicao, faltaAssinar, ult, dias };
+}
+
+async function _renderListaCasas() {
+  const el = document.getElementById('lista-imoveis'), elSub = document.getElementById('home-sub');
+  const ferramentas = document.querySelector('#tela-home .home-ferramentas');
+  document.getElementById('filtros-imoveis').innerHTML = '';
+  const [imoveis, vist, fila, obras, casas] = await Promise.all([idbTodos('imoveis'), idbTodos('vistorias'), idbTodos('fila'), idbTodos('obras'), _casasPf()]);
+  if (!imoveis.length) {
+    ferramentas.style.display = 'none';
+    elSub.textContent = 'Prefeito · ' + APP_VERSAO;
+    el.innerHTML = `<div class="vazio"><div class="vazio-icone">🏠</div><b style="color:var(--text2)">Nenhuma casa ainda</b><br/>Toque em "Nova casa" para cadastrar a primeira.${navigator.onLine ? '' : '<br/><b>Sem internet:</b> as casas aparecem depois que o app conectar pelo menos uma vez.'}</div>`;
+    return;
+  }
+  ferramentas.style.display = '';
+  elSub.textContent = `${imoveis.length} casa${imoveis.length > 1 ? 's' : ''} · Prefeito · ${APP_VERSAO}`;
+  const obraPorId = new Map(obras.map(o => [o.id, o]));
+  const termo = _normalizar((document.getElementById('busca-imovel') || {}).value);
+  const lista = imoveis.filter(i => !termo || _normalizar([_nomeCasa(i), _endCasa(i), (obraPorId.get(i.obra_id) || {}).nome].join(' ')).includes(termo))
+    .sort((a, b) => _nomeCasa(a).localeCompare(_nomeCasa(b)));
+  el.innerHTML = !lista.length ? '<div class="vazio"><div class="vazio-icone">🔎</div>Nenhuma casa encontrada.</div>' : lista.map(i => {
+    const naoSync = fila.some(f => f.tipo === 'criar_imovel' && f.payload.id === i.id);
+    const emUso = !!casas.get(i.id)?.em_uso;
+    const sv = _situacaoVistoria(vist.filter(v => v.imovel_id === i.id));
+    const vtxt = sv.emEdicao ? '📋 Vistoria em andamento' : sv.faltaAssinar ? '✍️ Vistoria sem assinatura' : !sv.ult ? '📋 Ainda sem vistoria'
+      : sv.dias > 30 ? `⚠️ Última vistoria há ${sv.dias} dias` : `✅ Vistoria há ${sv.dias} dia${sv.dias === 1 ? '' : 's'}`;
+    const obra = obraPorId.get(i.obra_id);
+    return `<div class="card card-imovel" onclick="abrirImovel('${i.id}')">
+      <div class="card-linha"><div style="flex:1;min-width:0">
+        <div class="card-topo-linha"><span class="selo ${emUso ? 'selo-finalizado' : 'selo-neutro'}">${emUso ? '🏠 Em uso' : '🔎 Em análise'}</span>${naoSync ? '<span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}</div>
+        <div class="card-titulo">${esc(_nomeCasa(i))}</div>
+        <div class="card-sub">${esc(_endCasa(i)) || '&nbsp;'}</div>
+        ${obra ? `<div class="card-info-extra"><span>🏗️ ${esc(obra.nome)}</span></div>` : ''}
+        <div class="card-rodape"><span class="card-proximo">${vtxt}</span></div>
+      </div><span class="card-seta"><svg class="ic"><use href="#i-seta"/></svg></span></div>
+    </div>`;
+  }).join('');
+}
+
+// ── Casa nova / editar casa ──
+let _ncFotos = [], _ncGps = null, _ncEditId = null, _ncTipoFoto = null, _fotoParaCasa = false;
+const ROT_FOTO = { documento: '🪪 Documento do dono', conta: '💡 Conta de luz/água', endereco: '🏠 Fachada / endereço', banco: '🏦 Dados bancários', outro: '📎 Outro' };
+async function _ncPreencherObras(sel) {
+  const obras = await idbTodos('obras');
+  const el = document.getElementById('nc-obra');
+  el.innerHTML = obras.length ? obras.map(o => `<option value="${o.id}">${esc(o.nome)}</option>`).join('') : '<option value="">Nenhuma obra — conecte à internet uma vez</option>';
+  if (sel) el.value = sel;
+}
+async function abrirNovaCasa() {
+  _ncEditId = null; _ncFotos = []; _ncGps = null;
+  ['nc-apelido', 'nc-logradouro', 'nc-numero', 'nc-bairro', 'nc-cidade', 'nc-capacidade'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('nc-erro').textContent = '';
+  document.getElementById('nc-gps-info').textContent = 'Fique em frente à casa e toque no botão.';
+  document.getElementById('nc-titulo-tela').textContent = 'Nova casa';
+  document.getElementById('nc-btn-salvar').textContent = 'Salvar casa';
+  document.getElementById('nc-fotos-bloco').style.display = '';
+  document.getElementById('nc-end-det').open = false;
+  await _ncPreencherObras();
+  _ncRenderFotos();
+  mostrarTela('tela-nova-casa');
+}
+async function abrirEditarCasa() {
+  const i = imovelAtual; _ncEditId = i.id; _ncFotos = []; _ncGps = null;
+  document.getElementById('nc-apelido').value = i.apelido || '';
+  document.getElementById('nc-logradouro').value = i.logradouro || '';
+  document.getElementById('nc-numero').value = i.numero || '';
+  document.getElementById('nc-bairro').value = i.bairro || '';
+  document.getElementById('nc-cidade').value = i.cidade || '';
+  document.getElementById('nc-capacidade').value = i.capacidade_pessoas || '';
+  document.getElementById('nc-erro').textContent = '';
+  document.getElementById('nc-gps-info').textContent = i.latitude != null ? `📍 Já tem localização (${i.latitude}, ${i.longitude}). Toque para atualizar.` : 'Fique em frente à casa e toque no botão.';
+  document.getElementById('nc-titulo-tela').textContent = 'Editar casa';
+  document.getElementById('nc-btn-salvar').textContent = 'Salvar alterações';
+  document.getElementById('nc-fotos-bloco').style.display = 'none';
+  document.getElementById('nc-end-det').open = !!(i.logradouro || i.bairro || i.cidade);
+  await _ncPreencherObras(i.obra_id);
+  mostrarTela('tela-nova-casa');
+}
+function voltarDaNovaCasa() { if (_ncEditId) abrirImovel(_ncEditId); else irParaHome(); }
+async function ncPegarGps() {
+  const b = document.getElementById('nc-gps-btn'), info = document.getElementById('nc-gps-info');
+  b.disabled = true; info.textContent = 'Buscando a localização…';
+  const g = await pegarLocalizacao();
+  b.disabled = false;
+  if (g.erro) { info.textContent = `Não consegui a localização (${g.erro}). Pode salvar sem ela.`; return; }
+  _ncGps = g; info.textContent = `✅ Localização: ${g.lat}, ${g.lng} (precisão de ${g.precisao_m} m)`;
+}
+function ncFoto(tipo) { _ncTipoFoto = tipo; _fotoParaCasa = false; document.getElementById('nc-foto-inp').click(); }
+function enviarFotoCasa(tipo) { _ncTipoFoto = tipo; _fotoParaCasa = true; document.getElementById('nc-foto-inp').click(); }
+function _reduzirImagem(arquivo, max) {
+  return new Promise(async ok => {
+    try {
+      const bmp = await createImageBitmap(arquivo);
+      const f = Math.min(1, (max || 1600) / Math.max(bmp.width, bmp.height));
+      const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * f); cv.height = Math.round(bmp.height * f);
+      const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+      ok(cv.toDataURL('image/jpeg', 0.85));
+    } catch (e) { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => ok(null); fr.readAsDataURL(arquivo); }
+  });
+}
+async function ncFotoEscolhida(f) {
+  if (!f) return;
+  const dataUrl = await _reduzirImagem(f, 1600);
+  if (!dataUrl) { mostrarToast('Não consegui abrir a foto.', 'erro'); return; }
+  const nome = `${_ncTipoFoto}-${hojeLocalISO()}-${Date.now().toString(36)}.jpg`;
+  if (_fotoParaCasa) {   // foto mandada de dentro da casa: vai direto para a fila (funciona sem internet)
+    await enfileirar('leitura_imovel', { id: crypto.randomUUID(), imovel_id: imovelAtual.id, tipo: _ncTipoFoto, nome, mime: 'image/jpeg', base64: dataUrl, em: new Date().toISOString() });
+    mostrarToast('Foto guardada — vai para o escritório conferir.', 'sucesso');
+    renderizarGestao(); return;
+  }
+  _ncFotos.push({ tipo: _ncTipoFoto, dataUrl, nome });
+  _ncRenderFotos();
+}
+function _ncRenderFotos() {
+  document.getElementById('nc-fotos-lista').innerHTML = _ncFotos.map((f, k) => `<div class="nc-foto-item"><img src="${f.dataUrl}" alt=""/><b>${ROT_FOTO[f.tipo] || f.tipo}</b><button type="button" onclick="_ncFotos.splice(${k},1);_ncRenderFotos()" aria-label="Tirar">✕</button></div>`).join('');
+}
+async function salvarNovaCasa() {
+  const erro = document.getElementById('nc-erro'); erro.textContent = '';
+  const obraId = document.getElementById('nc-obra').value, apelido = document.getElementById('nc-apelido').value.trim();
+  if (!obraId) { erro.textContent = 'Escolha a obra.'; return; }
+  if (!apelido) { erro.textContent = 'Dê um nome para a casa (ex.: "Casa do Zé").'; return; }
+  const v = id => document.getElementById(id).value.trim() || null;
+  const cap = parseInt(document.getElementById('nc-capacidade').value, 10);
+  const campos = { obra_id: obraId, apelido, logradouro: v('nc-logradouro'), numero: v('nc-numero'), bairro: v('nc-bairro'), cidade: v('nc-cidade'), capacidade_pessoas: cap > 0 ? cap : null };
+  if (_ncGps) Object.assign(campos, { latitude: _ncGps.lat, longitude: _ncGps.lng, coord_obs: `Localização do celular do prefeito (±${_ncGps.precisao_m} m)` });
+  const btn = document.getElementById('nc-btn-salvar'); btn.disabled = true;
+  try {
+    if (_ncEditId) {
+      const reg = await idbPegar('imoveis', _ncEditId); Object.assign(reg, campos); await idbSalvar('imoveis', reg);
+      await enfileirar('atualizar_imovel', { id: _ncEditId, campos });
+      mostrarToast('Casa atualizada!', 'sucesso');
+      await abrirImovel(_ncEditId);
+    } else {
+      const reg = { id: crypto.randomUUID(), ...campos, criado_por: sessaoAtual.user.id };
+      await idbSalvar('imoveis', reg);
+      const lst = ((await idbPegar('sessao', 'prefeito_casas')) || {}).valor || [];
+      lst.push({ imovel_id: reg.id, em_uso: false }); await idbSalvar('sessao', { chave: 'prefeito_casas', valor: lst });
+      await enfileirar('criar_imovel', reg);
+      for (const f of _ncFotos) await enfileirar('leitura_imovel', { id: crypto.randomUUID(), imovel_id: reg.id, tipo: f.tipo, nome: f.nome, mime: 'image/jpeg', base64: f.dataUrl, em: new Date().toISOString() });
+      _ncFotos = [];
+      mostrarToast('Casa cadastrada! Agora faça a vistoria de entrada.', 'sucesso');
+      await abrirImovel(reg.id);
+    }
+  } finally { btn.disabled = false; }
+}
+
+// ── Tela da casa (prefeito) ──
+function _irSecao(id) { const e = document.getElementById(id); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+async function _renderizarPainelPrefeito() {
+  const [vist, fila, casas] = await Promise.all([idbTodos('vistorias'), idbTodos('fila'), _casasPf()]);
+  const casa = casas.get(imovelAtual.id), emUso = !!casa?.em_uso;
+  const naoSync = fila.some(f => f.tipo === 'criar_imovel' && f.payload.id === imovelAtual.id);
+  const sv = _situacaoVistoria(vist.filter(v => v.imovel_id === imovelAtual.id));
+  const cta = sv.emEdicao ? `<button class="btn" onclick="abrirVistoria('${sv.emEdicao.id}')">📋 Continuar a vistoria</button>`
+    : sv.faltaAssinar ? `<button class="btn btn-assinar" onclick="assinarVistoria('${sv.faltaAssinar.id}', true)">✍️ Assinar a vistoria</button>`
+    : `<button class="btn" onclick="abrirEscolhaTipoVistoria()">📋 ${sv.ult ? 'Nova vistoria' : 'Fazer a vistoria de entrada'}</button>`;
+  const vtxt = sv.emEdicao ? 'Vistoria em andamento.' : sv.faltaAssinar ? 'Vistoria concluída, falta assinar.' : !sv.ult ? 'Ainda sem vistoria.'
+    : `Última vistoria ${sv.dias === 0 ? 'hoje' : `há ${sv.dias} dia${sv.dias === 1 ? '' : 's'}`}${sv.dias > 30 ? ' — <b>já passou de 30 dias, faça a periódica</b>' : ''}.`;
+  document.getElementById('imovel-painel').innerHTML = `<div class="card card-estatico">
+    <div class="painel-status"><span class="selo ${emUso ? 'selo-finalizado' : 'selo-neutro'}">${emUso ? '🏠 Em uso' : '🔎 Em análise'}</span>${emUso && casa.contrato ? `<span class="selo selo-neutro">📄 ${esc(casa.contrato)}</span>` : ''}${naoSync ? '<span class="selo selo-neutro">⏳ não sincronizado</span>' : ''}</div>
+    <div class="card-sub" style="margin:6px 0 12px">${emUso ? '' : 'O escritório está completando os dados e o contrato. <b>Moradores e contas</b> liberam quando a casa ficar <b>Em uso</b>.<br/>'}${vtxt}</div>
+    ${cta}
+    <div class="pf-atalhos">
+      <button onclick="_irSecao('sec-mor')">👥<span>Moradores</span></button>
+      <button onclick="_irSecao('sec-ct')">💡<span>Contas</span></button>
+      <button onclick="_irSecao('sec-mob')">🪑<span>Mobília</span></button>
+      <button onclick="_irSecao('sec-fot')">📷<span>Fotos</span></button>
+    </div>
+  </div>`;
+}
+const SIT_CT_PF = { aguardando: ['aguardando', '⏳ Aguardando aprovação'], aprovada: ['aprovada', '✅ Aprovada'], paga: ['paga', '💰 Paga'], negada: ['negada', '✗ Não aprovada'], cancelada: ['negada', 'Cancelada'] };
+async function _renderizarGestaoPrefeito(el) {
+  const reg = await idbPegar('gestao', imovelAtual.id), online = navigator.onLine;
+  const casa = (await _casasPf()).get(imovelAtual.id), emUso = !!casa?.em_uso;
+  const fila = await idbTodos('fila');
+  const pendFotos = fila.filter(f => f.tipo === 'leitura_imovel' && f.payload.imovel_id === imovelAtual.id);
+  const g = (reg && reg.dados) || {};
+  const atualizando = `<div id="gestao-atualizando" class="dica" style="display:none;margin:0 0 10px">Atualizando…</div>`;
+  const faixa = !online ? `<div class="gest-faixa offline">📴 Sem internet${reg ? ' — dados de ' + _fmtDataHora(reg.em) : ''}. Vistorias e fotos funcionam; moradores, contas e mobília precisam de conexão.</div>` : '';
+  const trava = t => `<div class="card-sub">🔒 ${t} liberam quando a casa estiver <b>Em uso</b> (contrato ativo).</div>`;
+  const cap = parseInt((g.imovel || imovelAtual).capacidade_pessoas, 10) || 0;
+  const atuais = (g.colaboradores || []).filter(x => !x.data_fim);
+  const htmlMor = `<div class="gest-card" id="sec-mor"><div class="gest-titulo">👥 Moradores <span class="gest-cont">${atuais.length}${cap ? ' de ' + cap : ''}</span>
+      ${emUso && online ? '<button class="gest-btn-add" onclick="abrirAlocarColaborador()">+ Morador</button>' : ''}</div>
+    ${!emUso ? trava('Os moradores') : atuais.length ? atuais.map(a => `<div class="gest-item"><div class="gest-item-txt"><b>${esc(a.colaboradores?.nome || '—')}</b><span>desde ${formatarDataBR(a.data_inicio)}${a.observacao ? ' · ' + esc(a.observacao) : ''}</span></div>
+      ${online ? `<button class="gest-btn" onclick="abrirEncerrarAlocacao('${a.id}')">Saiu</button>` : ''}</div>`).join('') : '<div class="card-sub">Ninguém morando ainda.</div>'}
+  </div>`;
+  const contas = g.contas || [];
+  const htmlCt = `<div class="gest-card" id="sec-ct"><div class="gest-titulo">💡 Contas
+      ${emUso && online ? '<button class="gest-btn-add" onclick="abrirFormContaPrefeito()">+ Conta</button>' : ''}</div>
+    ${!emUso ? trava('As contas') : contas.length ? contas.slice(0, 12).map(x => {
+      const k = x.pago ? 'paga' : (x.situacao || 'aguardando'), st = SIT_CT_PF[k] || SIT_CT_PF.aguardando;
+      return `<div class="gest-item" ${k === 'aguardando' && online ? `onclick="abrirFormContaPrefeito('${x.id}')" style="cursor:pointer"` : ''}>
+        <div class="gest-item-ic">${ICONE_CONTA[x.tipo] || '🧾'}</div>
+        <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[x.tipo] || x.tipo || 'Conta')} · ${_fmtMes(x.mes_referencia)}</b>
+          <span>${x.valor ? _fmtMoedaSimples(x.valor) : 'sem valor'}${x.vencimento ? ' · vence ' + formatarDataBR(x.vencimento) : ''}${k === 'negada' && x.negada_motivo ? ' · ' + esc(x.negada_motivo) : ''}</span></div>
+        <span class="gest-chip ${st[0]}">${st[1]}</span></div>`;
+    }).join('') : '<div class="card-sub">Nenhuma conta lançada. Toque em <b>+ Conta</b> e tire a foto da fatura.</div>'}
+  </div>`;
+  const patr = g.patrimonio || [];
+  const htmlMob = `<div class="gest-card" id="sec-mob"><div class="gest-titulo">🪑 Mobília da empresa <span class="gest-cont">${patr.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 1), 0)}</span>
+      ${online ? '<button class="gest-btn-add" onclick="abrirFormPatrimonio()">+ Item</button>' : ''}</div>
+    <div class="card-sub" style="margin:-4px 0 6px">Móveis e equipamentos da empresa nesta casa (não do dono).</div>
+    ${patr.length ? patr.map(p => `<div class="gest-item" ${online ? `onclick="abrirFormPatrimonio('${p.id}')" style="cursor:pointer"` : ''}><div class="gest-item-txt"><b>${esc(p.descricao)}${(parseInt(p.quantidade, 10) || 1) > 1 ? ' × ' + p.quantidade : ''}</b><span>${p.observacao ? esc(p.observacao) : '&nbsp;'}</span></div></div>`).join('') : '<div class="card-sub">Nenhum item cadastrado.</div>'}
+  </div>`;
+  const leit = g.leituras || [];
+  const ROT_SIT_L = { a_conferir: '⏳ O escritório vai conferir', conferida: '✅ Conferida', descartada: 'Descartada' };
+  const htmlFot = `<div class="gest-card" id="sec-fot"><div class="gest-titulo">📷 Fotos para o escritório</div>
+    <div class="card-sub" style="margin:-4px 0 8px">Documento do dono, conta de luz/água, fachada… O escritório lê e completa o cadastro.</div>
+    <div class="nc-fotos"><button type="button" onclick="enviarFotoCasa('documento')">🪪<span>Documento do dono</span></button><button type="button" onclick="enviarFotoCasa('conta')">💡<span>Conta de luz/água</span></button><button type="button" onclick="enviarFotoCasa('endereco')">🏠<span>Fachada</span></button></div>
+    ${pendFotos.map(f => `<div class="gest-item"><div class="gest-item-txt"><b>${ROT_FOTO[f.payload.tipo] || 'Foto'}</b><span>⏳ Esperando internet para enviar</span></div></div>`).join('')}
+    ${leit.map(l => `<div class="gest-item"><div class="gest-item-txt"><b>${ROT_FOTO[l.tipo] || 'Foto'}</b><span>${_fmtDataHora(l.criado_em)} · ${ROT_SIT_L[l.situacao] || l.situacao}</span></div></div>`).join('')}
+  </div>`;
+  el.innerHTML = atualizando + faixa + (!reg && online ? '<div class="dica" style="margin:0 0 10px">Carregando os dados da casa…</div>' : '') + htmlMor + htmlCt + htmlMob + htmlFot +
+    (reg ? `<div class="dica" style="margin:6px 0 4px">Atualizado em ${_fmtDataHora(reg.em)} · ${APP_VERSAO}</div>` : '');
+}
+
+// ── Conta (prefeito): foto primeiro → a IA lê → confere → vai para aprovação ──
+let _ctArquivo = null;
+const _ROT_IA_CT = { tipo_conta: 'tipo', mes_referencia: 'mês', valor_total: 'valor', vencimento: 'vencimento', concessionaria: 'concessionária', codigo_cliente: 'nº da instalação', linha_digitavel: 'linha digitável' };
+async function abrirFormContaPrefeito(id) {
+  if (!navigator.onLine) { mostrarToast('Sem internet — lançar conta precisa de conexão.', 'erro'); return; }
+  const c = id ? ((await _gestaoAtual()).contas || []).find(x => x.id === id) : null;
+  if (id && !c) return;
+  if (c && (c.situacao || 'aguardando') !== 'aguardando') { mostrarToast('Esta conta já foi decidida pelo escritório — não dá para mudar.', 'erro'); return; }
+  _ctArquivo = null;
+  const mesAtual = hojeLocalISO().slice(0, 7);
+  abrirFormGestao({
+    titulo: c ? 'Editar conta' : 'Nova conta', rotuloSalvar: c ? 'Salvar' : 'Enviar para aprovação',
+    html: `${c ? '' : `<div id="gf-ct-passo1"><button type="button" class="pf-foto-ct" onclick="document.getElementById('gf-ct-arq').click()"><div class="g">📷</div><b>Foto da fatura</b><small>A IA lê e preenche sozinha. Depois é só conferir.</small></button>
+        <button type="button" class="gf-novo-link" onclick="_ctMostrarCampos()">✍️ Preencher sem foto</button></div>`}
+      <input type="file" id="gf-ct-arq" accept="image/*,application/pdf" style="display:none" onchange="_ctArquivoEscolhido(this.files[0]);this.value=''"/>
+      <div id="gf-ct-campos" style="${c ? '' : 'display:none'}">
+        <div id="gf-ct-ia" class="dica" style="margin:0 0 10px">${c ? (c.fatura_url ? '📎 Fatura anexada.' : 'Sem foto da fatura.') : ''}</div>
+        <span class="rotulo">Tipo</span>
+        <div class="campo"><select id="gf-conta-tipo">${Object.entries(TIPO_CONTA_GESTAO).map(([k, v]) => `<option value="${k}" ${(c?.tipo || 'agua') === k ? 'selected' : ''}>${ICONE_CONTA[k]} ${v}</option>`).join('')}</select></div>
+        <div style="display:flex;gap:10px">
+          <div class="campo" style="flex:1"><span class="rotulo">Competência *</span><input type="month" id="gf-conta-mes" value="${c?.mes_referencia ? c.mes_referencia.slice(0, 7) : mesAtual}"/></div>
+          <div class="campo" style="flex:1"><span class="rotulo">Valor (R$) *</span><input type="number" id="gf-conta-valor" step="0.01" min="0" inputmode="decimal" value="${c?.valor ?? ''}"/></div>
+        </div>
+        <span class="rotulo">Vencimento *</span>
+        <div class="campo"><input type="date" id="gf-conta-venc" value="${c?.vencimento || ''}"/></div>
+        <span class="rotulo">Concessionária</span>
+        <div class="campo"><input type="text" id="gf-conta-conc" placeholder="Ex.: Coelba, Embasa" value="${esc(c?.concessionaria || '')}"/></div>
+        <span class="rotulo">Linha digitável do boleto</span>
+        <div class="campo"><input type="text" id="gf-conta-linha" inputmode="numeric" placeholder="Só os números" value="${esc(c?.linha_digitavel || '')}"/></div>
+        <input type="hidden" id="gf-conta-cod" value="${esc(c?.codigo_cliente || '')}"/>
+        <button type="button" class="gf-novo-link" id="gf-ct-trocar" onclick="document.getElementById('gf-ct-arq').click()">📎 ${c?.fatura_url ? 'Trocar a foto da fatura' : 'Anexar foto da fatura'}</button>
+      </div>`,
+    onSalvar: async () => {
+      const valor = parseFloat(_gfValor('gf-conta-valor')), venc = _gfValor('gf-conta-venc'), mes = _gfValor('gf-conta-mes');
+      if (!mes) return _gfErro('Informe o mês.');
+      if (!(valor > 0)) return _gfErro('Informe o valor da conta.');
+      if (!venc) return _gfErro('Informe o vencimento.');
+      const payload = { tipo: _gfValor('gf-conta-tipo'), mes_referencia: mes + '-01', valor, vencimento: venc,
+        concessionaria: _gfValor('gf-conta-conc') || null, linha_digitavel: _gfValor('gf-conta-linha').replace(/\D/g, '') || null, codigo_cliente: _gfValor('gf-conta-cod') || null };
+      if (_ctArquivo) {
+        const env = await sgEnviarArquivo(_ctArquivo, { modulo: 'imoveis', registroId: imovelAtual.id, nomeArquivo: _ctArquivo.name || 'fatura.jpg', mimeType: _ctArquivo.type || 'image/jpeg' });
+        payload.fatura_url = env.drive_url; payload.fatura_nome = _ctArquivo.name || 'fatura.jpg';
+      }
+      const { error } = c ? await sb.from('imovel_contas').update(payload).eq('id', c.id)
+        : await sb.from('imovel_contas').insert({ ...payload, imovel_id: imovelAtual.id, criado_por: sessaoAtual.user.id, origem: 'app' });
+      if (error) throw error;
+      mostrarToast(c ? 'Conta salva!' : 'Conta enviada para aprovação!', 'sucesso');
+    },
+    onExcluir: c ? async () => {
+      if (!confirm('Excluir esta conta?')) return false;
+      const { error } = await sb.from('imovel_contas').delete().eq('id', c.id);
+      if (error) throw error;
+    } : null,
+  });
+  if (!c) document.getElementById('gf-salvar').style.display = 'none';
+}
+function _ctMostrarCampos() {
+  const p1 = document.getElementById('gf-ct-passo1'); if (p1) p1.style.display = 'none';
+  document.getElementById('gf-ct-campos').style.display = '';
+  document.getElementById('gf-salvar').style.display = '';
+}
+async function _ctArquivoEscolhido(f) {
+  if (!f) return;
+  if (f.size > 10 * 1024 * 1024) { mostrarToast('Arquivo grande demais (máx. 10 MB).', 'erro'); return; }
+  _ctArquivo = f; _ctMostrarCampos();
+  { const t = document.getElementById('gf-ct-trocar'); if (t) t.textContent = '📎 Foto anexada · trocar'; }
+  const ia = document.getElementById('gf-ct-ia');
+  ia.innerHTML = '🤖 Lendo a fatura… (alguns segundos)';
+  try {
+    const r = await sgIaLer('conta', f), d = r.dados || {}, g = id => document.getElementById(id);
+    const poe = (id, v) => { if (v != null && v !== '' && g(id)) g(id).value = v; };
+    if (d.tipo_conta) poe('gf-conta-tipo', { agua: 'agua', luz: 'luz', internet: 'internet', gas: 'gas' }[d.tipo_conta] || 'outro');
+    if (/^\d{4}-\d{2}$/.test(d.mes_referencia || '')) poe('gf-conta-mes', d.mes_referencia);
+    if (typeof d.valor_total === 'number') poe('gf-conta-valor', d.valor_total.toFixed(2));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d.vencimento || '')) poe('gf-conta-venc', d.vencimento);
+    poe('gf-conta-conc', d.concessionaria); poe('gf-conta-cod', d.codigo_cliente);
+    if (d.linha_digitavel) poe('gf-conta-linha', String(d.linha_digitavel).replace(/\D/g, ''));
+    const duv = (d.campos_incertos || []).map(x => _ROT_IA_CT[String(x).split('.').pop()] || x);
+    ia.innerHTML = `🤖 <b>Lido!</b> Confira os campos${duv.length ? ' — em dúvida: <b>' + esc(duv.join(', ')) + '</b>' : ''}.`;
+  } catch (e) {
+    ia.innerHTML = '⚠️ <b>Não consegui ler esta fatura.</b> Preencha os campos à mão — a foto continua anexada.';
+  }
+}
+
 async function abrirImovel(id) {
   const imoveis = await idbTodos('imoveis');
   imovelAtual = imoveis.find(i => i.id === id);
   if (!imovelAtual) return;
-  document.getElementById('imovel-titulo').textContent = (imovelAtual.logradouro || '(sem endereço)') + (imovelAtual.numero ? ', ' + imovelAtual.numero : '');
-  document.getElementById('imovel-sub').textContent = [imovelAtual.bairro, imovelAtual.cidade].filter(Boolean).join(' — ');
+  document.getElementById('imovel-titulo').textContent = ehPrefeito() ? _nomeCasa(imovelAtual) : (imovelAtual.logradouro || '(sem endereço)') + (imovelAtual.numero ? ', ' + imovelAtual.numero : '');
+  document.getElementById('imovel-sub').textContent = ehPrefeito() ? _endCasa(imovelAtual) : [imovelAtual.bairro, imovelAtual.cidade].filter(Boolean).join(' — ');
+  document.querySelector('#tela-imovel .abas-imovel').style.display = ehPrefeito() ? 'none' : '';
+  if (ehPrefeito()) { mostrarTela('tela-imovel'); await renderizarListaVistorias(); mostrarAbaImovel('prefeito'); return; }
   mostrarTela('tela-imovel');
   _atualizarBotaoMensagens();
   await renderizarListaVistorias();
@@ -3546,11 +4063,11 @@ async function _renderizarPainelImovel() {
 }
 
 async function renderizarListaVistorias() {
-  await _renderizarPainelImovel();
+  if (ehPrefeito()) await _renderizarPainelPrefeito(); else await _renderizarPainelImovel();
   const todas = await idbTodos('vistorias');
   const doImovel = todas.filter(v => v.imovel_id === imovelAtual.id).sort((a, b) => (b.data_vistoria || '').localeCompare(a.data_vistoria || ''));
   const el = document.getElementById('lista-vistorias');
-  if (!doImovel.length) { el.innerHTML = `<div class="vazio" style="padding:28px 20px"><div class="vazio-icone">📋</div>Nenhuma vistoria ainda. Use o botão do Passo 3 acima.</div>`; return; }
+  if (!doImovel.length) { el.innerHTML = `<div class="vazio" style="padding:28px 20px"><div class="vazio-icone">📋</div>${ehPrefeito() ? 'Nenhuma vistoria ainda. Use o botão laranja acima.' : 'Nenhuma vistoria ainda. Use o botão do Passo 3 acima.'}</div>`; return; }
   const fila = await idbTodos('fila');
   el.innerHTML = doImovel.map(v => {
     const pendente = fila.some(f => (f.tipo === 'criar_vistoria' && f.payload.id === v.id));
