@@ -1,7 +1,7 @@
 // Service worker do app Imóveis em Campo (antigo Vistorias em Campo).
 // Tudo que é buscado com sucesso fica guardado; se a rede falhar, usa o que já está guardado.
 
-const CACHE_NOME = 'imoveis-campo-v9'; // trocar o número força os celulares a renovarem o cache
+const CACHE_NOME = 'imoveis-campo-v10'; // trocar o número força os celulares a renovarem o cache
 const ARQUIVOS_ESSENCIAIS = [
   './imoveis-campo.html',
   './manifest.json',
