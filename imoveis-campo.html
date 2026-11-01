@@ -1468,6 +1468,7 @@ const SG_CHAT_ORIGEM = 'app_campo';
 //   sgChatBotao(entidade, id, titulo[, rotulo]) → HTML do botão 💬 (com o número de não lidas)
 //   sgChatPreencher()                   → busca os números de todos os botões 💬 da tela
 //   sgChatAbrir(entidade, id, titulo)   → abre a barra lateral à direita com a conversa
+//   sgChatAtivarAvisos({ lado })        → aviso em destaque (💬 N novas), lista de conversas e alerta quando chega mensagem
 // ══════════════════════════════════════════════════════════════
 const SG_CHAT_MODULO = (typeof SG_CHAT_ORIGEM !== 'undefined' && SG_CHAT_ORIGEM) || 'sigecon';
 const SG_CHAT_ROT_MOD = { gestao_imoveis: 'Gestão de Imóveis', contas_pagar: 'Contas a Pagar', app_campo: 'App de campo', solicitacao_pagamentos: 'Solicitação de Pagamentos', medicoes: 'Medições' };
@@ -1505,6 +1506,20 @@ const _sgcEsc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;'
   .sgc-enviar button{background:#F97316;border:none;color:#fff;border-radius:11px;height:42px;padding:0 16px;font-weight:700;cursor:pointer;font-family:inherit}
   .sgc-enviar button:disabled{opacity:.5}
   .sgc-erro{color:#E05555;font-size:12px;padding:0 16px}
+  .sgc-aviso{position:fixed;bottom:18px;right:18px;z-index:9990;display:none;align-items:center;gap:8px;background:#E05555;color:#fff;border:none;border-radius:24px;padding:11px 16px;font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(224,85,85,.45);cursor:pointer;font-family:inherit;animation:sgcPulso 1.8s ease-in-out infinite}
+  .sgc-aviso.esq{right:auto;left:18px}
+  .sgc-aviso.on{display:inline-flex}
+  @keyframes sgcPulso{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  .sgc-alerta{position:fixed;top:16px;right:16px;z-index:10000;width:340px;max-width:calc(100vw - 32px);background:var(--navy2,#1b1f27);color:var(--text,#e8ecf1);border:1px solid rgba(90,166,238,.5);border-left:4px solid #5AA6EE;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.35);padding:12px 14px;cursor:pointer;transform:translateY(-130%);transition:transform .25s ease;font-family:inherit}
+  body.light .sgc-alerta{background:#fff;color:#1d2533}
+  .sgc-alerta.on{transform:none}
+  .sgc-alerta b{display:block;font-size:13px}.sgc-alerta small{display:block;font-size:11.5px;color:var(--text3,#8a94a3);margin:1px 0 4px}
+  .sgc-alerta div{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sgc-conv{display:block;width:100%;text-align:left;background:none;border:1px solid var(--border,rgba(127,127,127,.2));border-radius:11px;padding:10px 12px;color:inherit;cursor:pointer;font-family:inherit}
+  .sgc-conv.nova{border-color:rgba(224,85,85,.55);background:rgba(224,85,85,.07)}
+  .sgc-conv b{display:flex;gap:6px;align-items:center;font-size:13.5px}.sgc-conv b i{margin-left:auto;font-style:normal}
+  .sgc-conv span{display:block;font-size:12.5px;color:var(--text2,#aab3c0);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sgc-conv small{display:block;font-size:11px;color:var(--text3,#8a94a3);margin-top:2px}
   @media (max-width:600px){.sgc-painel{width:100vw;border-left:none}}`;
   document.head.appendChild(st);
 })();
@@ -1541,7 +1556,8 @@ function _sgcAssinar() {
         if (_sgcAberto && m.entidade === _sgcAberto.entidade && m.registro_id === _sgcAberto.id) {
           if (!_sgcMsgs.some(x => x.id === m.id)) { _sgcMsgs.push(m); _sgcRender(); _sgcMarcarLido(); }
         }
-        clearTimeout(_sgcAssinar._t); _sgcAssinar._t = setTimeout(sgChatPreencher, 400);
+        clearTimeout(_sgcAssinar._t); _sgcAssinar._t = setTimeout(() => { sgChatPreencher(); _sgcAtualizarAviso(); }, 400);
+        if (_sgcAvisosOn && m.autor_id && m.autor_id !== _sgcRender._uid && !(_sgcAberto && m.entidade === _sgcAberto.entidade && m.registro_id === _sgcAberto.id)) _sgcAlerta(m);
       }).subscribe();
   } catch (e) { _sgcCanal = null; }
 }
@@ -1553,7 +1569,7 @@ async function _sgcNome() {
 async function sgChatAbrir(entidade, id, titulo) {
   if (!navigator.onLine) { alert('Sem internet — a conversa precisa de conexão.'); return; }
   sgChatFechar(true);
-  _sgcAberto = { entidade, id }; _sgcMsgs = [];
+  _sgcAberto = { entidade, id, titulo: titulo || null }; _sgcMsgs = [];
   const fundo = document.createElement('div'); fundo.className = 'sgc-fundo'; fundo.id = 'sgc-fundo'; fundo.onclick = () => sgChatFechar();
   const p = document.createElement('div'); p.className = 'sgc-painel'; p.id = 'sgc-painel';
   p.innerHTML = `<div class="sgc-topo"><div><b>💬 Conversa</b><small>${_sgcEsc(titulo || '')}</small><small>Quem vê este pedido em qualquer módulo vê e responde aqui.</small></div><button class="sgc-fechar" onclick="sgChatFechar()" title="Fechar">✕</button></div>
@@ -1578,7 +1594,7 @@ function sgChatFechar(rapido) {
   if (rapido) { p && p.remove(); f && f.remove(); return; }
   p && p.classList.remove('on'); f && f.classList.remove('on');
   setTimeout(() => { p && p.remove(); f && f.remove(); }, 230);
-  sgChatPreencher();
+  sgChatPreencher(); _sgcAtualizarAviso();
 }
 function _sgcRapida(b) { const t = document.getElementById('sgc-txt'); t.value = (t.value ? t.value.trimEnd() + ' ' : '') + b.textContent; t.focus(); }
 function _sgcRender() {
@@ -1601,7 +1617,7 @@ async function sgChatEnviar() {
   const txt = (t.value || '').trim(); if (!txt) return;
   if (!navigator.onLine) { er.textContent = 'Sem internet — conecte para enviar.'; return; }
   b.disabled = true; er.textContent = '';
-  const { data, error } = await sb.from('sig_chat_mensagens').insert({ entidade: _sgcAberto.entidade, registro_id: _sgcAberto.id, conteudo: txt, autor_nome: await _sgcNome(), modulo: SG_CHAT_MODULO }).select().single();
+  const { data, error } = await sb.from('sig_chat_mensagens').insert({ entidade: _sgcAberto.entidade, registro_id: _sgcAberto.id, conteudo: txt, autor_nome: await _sgcNome(), modulo: SG_CHAT_MODULO, titulo: _sgcAberto.titulo }).select().single();
   b.disabled = false;
   if (error) { er.textContent = 'Não foi possível enviar: ' + error.message; return; }
   t.value = '';
@@ -1610,8 +1626,63 @@ async function sgChatEnviar() {
   _sgcRender(); _sgcMarcarLido();
 }
 
+// ── aviso em destaque, lista de conversas e alerta de mensagem nova ──
+let _sgcAvisosOn = false, _sgcAvisoTimer = null;
+function sgChatAtivarAvisos(op) {
+  if (_sgcAvisosOn) return; _sgcAvisosOn = true;
+  const b = document.createElement('button'); b.type = 'button'; b.id = 'sgc-aviso'; b.className = 'sgc-aviso' + (op && op.lado === 'esquerda' ? ' esq' : '');
+  b.title = 'Conversas com mensagens novas'; b.onclick = () => sgChatConversas();
+  document.body.appendChild(b);
+  _sgcAssinar(); _sgcAtualizarAviso();
+  _sgcAvisoTimer = setInterval(() => { if (!document.hidden) _sgcAtualizarAviso(); }, 60000);
+}
+async function _sgcAtualizarAviso() {
+  const b = document.getElementById('sgc-aviso'); if (!b || !navigator.onLine) return;
+  try {
+    const { data, error } = await sb.rpc('sig_chat_minhas_conversas', { p_dias: 60 });
+    if (error) return;
+    const n = (data || []).reduce((s, c) => s + Number(c.nao_lidas || 0), 0);
+    b.innerHTML = `💬 ${n} mensage${n === 1 ? 'm nova' : 'ns novas'}`;
+    b.classList.toggle('on', n > 0);
+    return data;
+  } catch (e) { }
+}
+async function sgChatConversas() {
+  if (!navigator.onLine) { alert('Sem internet — as conversas precisam de conexão.'); return; }
+  sgChatFechar(true);
+  const fundo = document.createElement('div'); fundo.className = 'sgc-fundo'; fundo.id = 'sgc-fundo'; fundo.onclick = () => sgChatFechar();
+  const p = document.createElement('div'); p.className = 'sgc-painel'; p.id = 'sgc-painel';
+  p.innerHTML = `<div class="sgc-topo"><div><b>💬 Conversas</b><small>Últimos 60 dias — as que têm mensagem nova ficam em cima.</small></div><button class="sgc-fechar" onclick="sgChatFechar()" title="Fechar">✕</button></div>
+    <div class="sgc-lista" id="sgc-lista"><div class="sgc-vazio">Carregando…</div></div>`;
+  document.body.appendChild(fundo); document.body.appendChild(p);
+  requestAnimationFrame(() => { fundo.classList.add('on'); p.classList.add('on'); });
+  try { _sgcRender._uid = (await sb.auth.getSession()).data.session?.user?.id || null; } catch (e) { }
+  const { data, error } = await sb.rpc('sig_chat_minhas_conversas', { p_dias: 60 });
+  const el = document.getElementById('sgc-lista'); if (!el) return;
+  if (error) { el.innerHTML = `<div class="sgc-vazio">Não foi possível carregar.<br><small>${_sgcEsc(error.message)}</small></div>`; return; }
+  if (!(data || []).length) { el.innerHTML = '<div class="sgc-vazio">Nenhuma conversa nos últimos 60 dias.</div>'; return; }
+  const ROT = { imovel_conta: '💡 Conta de casa', pag_solicitacao: '🧾 Pagamento avulso', medicao: '📋 Medição', imovel: '🏠 Imóvel' };
+  el.innerHTML = data.map(c => {
+    const h = new Date(c.ultima_em), hs = h.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + h.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `<button type="button" class="sgc-conv${c.nao_lidas > 0 ? ' nova' : ''}" data-t="${_sgcEsc(c.titulo || '')}" onclick="sgChatAbrir('${c.entidade}','${c.registro_id}',this.dataset.t)">
+      <b>${_sgcEsc(c.titulo || ROT[c.entidade] || 'Conversa')}${c.nao_lidas > 0 ? `<i class="sgc-n novas">${c.nao_lidas}</i>` : ''}</b>
+      <span>${c.ultimo_autor_id === _sgcRender._uid ? 'Você' : _sgcEsc(c.ultimo_autor || 'Usuário')}: ${_sgcEsc(c.ultima_msg || '')}</span>
+      <small>${ROT[c.entidade] || ''} · ${hs} · ${c.total} mensage${c.total == 1 ? 'm' : 'ns'}</small></button>`;
+  }).join('');
+}
+function _sgcAlerta(m) {
+  document.querySelectorAll('.sgc-alerta').forEach(x => x.remove());
+  const a = document.createElement('div'); a.className = 'sgc-alerta';
+  a.innerHTML = `<b>💬 ${_sgcEsc(m.autor_nome || 'Nova mensagem')}${m.modulo && SG_CHAT_ROT_MOD[m.modulo] ? ' · ' + SG_CHAT_ROT_MOD[m.modulo] : ''}</b><small>${_sgcEsc(m.titulo || 'Conversa')} — toque para abrir</small><div>${_sgcEsc(m.conteudo || '')}</div>`;
+  a.onclick = () => { a.remove(); sgChatAbrir(m.entidade, m.registro_id, m.titulo || ''); };
+  document.body.appendChild(a);
+  requestAnimationFrame(() => a.classList.add('on'));
+  setTimeout(() => { a.classList.remove('on'); setTimeout(() => a.remove(), 300); }, 9000);
+}
+// ════════════════ SIGECON CHAT v1 — fim ════════════════
 
-const APP_VERSAO = 'v11 · 31/10';   // aparece no login e na tela inicial — muda a cada versão
+
+const APP_VERSAO = 'v12 · 31/10';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -2142,6 +2213,7 @@ async function iniciarAppLogado() {
   // precisam. Se estiver online, atualiza a lista de imóveis; se não,
   // usa o que já foi guardado da última vez.
   await _carregarPerfilImoveis(); // gestor ou operador (online atualiza; offline usa o guardado)
+  if (perfilImoveis === 'admin') sgChatAtivarAvisos({ lado: 'esquerda' });   // 🧪 chat em teste: só o administrador
   if (navigator.onLine) {
     await _carregarNomeUsuario();
     MinhaAssinatura.carregarDoSistema(); // em segundo plano
@@ -3477,7 +3549,8 @@ function _htmlContasLista(contas, fila, podeAbrir) {
       <div class="gest-item-ic">${ICONE_CONTA[x.tipo] || '🧾'}</div>
       <div class="gest-item-txt"><b>${esc(TIPO_CONTA_GESTAO[x.tipo] || x.tipo || 'Conta')} · ${_fmtMes(x.mes_referencia)}</b>
         <span>${x.valor ? _fmtMoedaSimples(x.valor) : 'sem valor'}${x.vencimento ? ' · vence ' + formatarDataBR(x.vencimento) : ''}${x.consumo != null ? ' · ' + Number(x.consumo).toLocaleString('pt-BR') + ' ' + esc(x.consumo_unidade || '') : ''}</span>
-        ${k === 'negada' && x.negada_motivo ? `<span class="gest-reprov">⚠️ ${esc(x.negada_motivo)}</span>` : ''}</div>
+        ${k === 'negada' && x.negada_motivo ? `<span class="gest-reprov">⚠️ ${esc(x.negada_motivo)}</span>` : ''}
+        ${k === 'aguardando' && x.devolvida_cp_em ? `<span class="gest-reprov">↩ Devolvida pelo financeiro: ${esc(x.devolvida_cp_motivo || '')} — toque para corrigir</span>` : ''}</div>
       ${_chatContasApp() ? sgChatBotao('imovel_conta', x.id, `${TIPO_CONTA_GESTAO[x.tipo] || 'Conta'} · ${_fmtMes(x.mes_referencia)} · ${(imovelAtual && (imovelAtual.apelido || imovelAtual.logradouro)) || 'Casa'}`) : ''}
       <span class="gest-chip ${st[0]}">${st[1]}</span></div>`;
   };
