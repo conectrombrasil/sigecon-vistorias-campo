@@ -1059,6 +1059,17 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     <div class="campo"><input type="text" id="nf-nome"/></div>
     <span class="rotulo" id="nf-rotulo-doc">CPF</span>
     <div class="campo"><input type="text" id="nf-cpf-cnpj" placeholder="Só números" inputmode="numeric"/></div>
+    <div id="bloco-nf-civil" style="display:none">
+      <span class="rotulo">Estado civil</span>
+      <div class="campo"><select id="nf-estado-civil" onchange="_nfCivil()"><option value="">Não informado</option><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="uniao_estavel">União Estável</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option></select></div>
+      <div id="bloco-nf-conjuge" style="display:none">
+        <div class="dica" style="margin:0 0 8px">💍 Na locação de imóvel, o cônjuge geralmente também assina o contrato.</div>
+        <span class="rotulo">Nome do cônjuge</span><div class="campo"><input type="text" id="nf-conjuge-nome"/></div>
+        <span class="rotulo">CPF do cônjuge</span><div class="campo"><input type="text" id="nf-conjuge-cpf" placeholder="Só números" inputmode="numeric"/></div>
+        <span class="rotulo">E-mail do cônjuge</span><div class="campo"><input type="email" id="nf-conjuge-email" inputmode="email"/></div>
+        <span class="rotulo">Telefone do cônjuge</span><div class="campo"><input type="text" id="nf-conjuge-telefone" inputmode="tel"/></div>
+      </div>
+    </div>
 
     <div id="bloco-nf-representante" style="display:none">
       <span class="rotulo">Nome do representante legal</span>
@@ -1703,7 +1714,7 @@ function _sgcAlerta(m) {
 // ════════════════ SIGECON CHAT v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v13 · 01/11';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v14 · 01/11';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -2328,7 +2339,7 @@ async function carregarImoveisDoServidor() {
   // formulário de "Novo Imóvel" offline — não precisa de mais nada deles
   const { data: obrasData, error: erroObras } = await sb.from('obras').select('id,nome').in('id', obrasIds).order('nome');
   if (!erroObras) await idbEspelhar('obras', obrasData || []);
-  const CAMPOS_FORN = 'id,razao_social,tipo_pessoa,cpf_cnpj,email,telefone,banco_nome,banco_agencia,banco_conta,banco_tipo,banco_titular,banco_titular_doc,banco_obs,criado_por';
+  const CAMPOS_FORN = 'id,razao_social,tipo_pessoa,cpf_cnpj,email,telefone,banco_nome,banco_agencia,banco_conta,banco_tipo,banco_titular,banco_titular_doc,banco_obs,criado_por,estado_civil,conjuge_nome,conjuge_cpf,conjuge_email,conjuge_telefone,cadastro_incompleto,logradouro,numero,bairro,cidade,estado,cep,pix_chaves';
   const { data: fornecedoresData, error: erroForn } = await sb.from('fornecedores').select(CAMPOS_FORN).eq('ativo', true).order('razao_social');
 
   // Categorias de documento e o checklist de cada uma — pra dar pra
@@ -2878,7 +2889,7 @@ async function abrirEditarFornecedor(id) {
   // Só quem cadastrou esse fornecedor pelo app de campo pode editar por
   // aqui — essa checagem precisa ficar AQUI (não só na lista), porque
   // esse é o único jeito de chegar na edição agora (pela bolinha do passo)
-  if (f.criado_por !== sessaoAtual.user.id) {
+  if (f.criado_por !== sessaoAtual.user.id && !(ehGestorImoveis() || perfilImoveis === 'operador')) {
     mostrarToast('Esse fornecedor não foi cadastrado por você — só quem cadastrou pode editar por aqui.', 'erro');
     return;
   }
@@ -2903,6 +2914,11 @@ async function abrirEditarFornecedor(id) {
   document.getElementById('nf-banco-titular').value = f.banco_titular || '';
   document.getElementById('nf-banco-titular-doc').value = f.banco_titular_doc || '';
   document.getElementById('nf-banco-obs').value = f.banco_obs || '';
+  document.getElementById('nf-estado-civil').value = f.estado_civil || '';
+  document.getElementById('nf-conjuge-nome').value = f.conjuge_nome || '';
+  document.getElementById('nf-conjuge-cpf').value = f.conjuge_cpf || '';
+  document.getElementById('nf-conjuge-email').value = f.conjuge_email || '';
+  document.getElementById('nf-conjuge-telefone').value = f.conjuge_telefone || '';
   document.getElementById('nf-erro').textContent = '';
   document.querySelectorAll('#tela-novo-fornecedor .secao-opcional').forEach(sec => sec.classList.remove('aberta'));
   document.getElementById('passos-nf').style.display = 'none';
@@ -3031,6 +3047,7 @@ async function abrirNovoFornecedor(origem) {
   _documentosAnexados = {};
   ['nf-nome', 'nf-cpf-cnpj', 'nf-rep-nome', 'nf-rep-cpf', 'nf-email', 'nf-telefone', 'nf-test-nome', 'nf-test-tel', 'nf-test-email', 'nf-banco-nome', 'nf-banco-agencia', 'nf-banco-conta', 'nf-banco-titular', 'nf-banco-titular-doc', 'nf-banco-obs'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('nf-banco-tipo').value = 'corrente';
+  ['nf-estado-civil', 'nf-conjuge-nome', 'nf-conjuge-cpf', 'nf-conjuge-email', 'nf-conjuge-telefone'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('nf-erro').textContent = '';
   document.querySelectorAll('#tela-novo-fornecedor .secao-opcional').forEach(sec => sec.classList.remove('aberta'));
   document.getElementById('sec-docs').classList.add('aberta');
@@ -3045,6 +3062,9 @@ function voltarDoFornecedor() {
   mostrarTela(_origemNovoFornecedor === 'escolha' ? 'tela-fornecedor-escolha' : 'tela-novo-imovel');
 }
 
+const ROT_CIVIL = { solteiro: 'Solteiro(a)', casado: 'Casado(a)', uniao_estavel: 'União Estável', divorciado: 'Divorciado(a)', viuvo: 'Viúvo(a)' };
+const _civilComConjuge = v => v === 'casado' || v === 'uniao_estavel';
+function _nfCivil() { const v = document.getElementById('nf-estado-civil').value; document.getElementById('bloco-nf-conjuge').style.display = _civilComConjuge(v) ? 'block' : 'none'; }
 function _selecionarTipoPessoaFornecedor(tipo) {
   _tipoPessoaFornecedorAtual = tipo;
   document.getElementById('nf-btn-pf').classList.toggle('sel', tipo === 'PF');
@@ -3052,6 +3072,7 @@ function _selecionarTipoPessoaFornecedor(tipo) {
   document.getElementById('nf-rotulo-nome').textContent = tipo === 'PF' ? 'Nome' : 'Razão Social';
   document.getElementById('nf-rotulo-doc').textContent = tipo === 'PF' ? 'CPF *' : 'CNPJ *';
   document.getElementById('bloco-nf-representante').style.display = tipo === 'PJ' ? 'block' : 'none';
+  document.getElementById('bloco-nf-civil').style.display = tipo === 'PF' ? 'block' : 'none'; _nfCivil();
   renderizarCategoriasFornecedor(); // o checklist de documentos muda conforme PF/PJ (aplica_pf / aplica_pj)
 }
 
@@ -3196,6 +3217,12 @@ async function salvarNovoFornecedor() {
     banco_titular_doc: document.getElementById('nf-banco-titular-doc').value.trim() || null,
     banco_obs: document.getElementById('nf-banco-obs').value.trim() || null,
   };
+  { // pessoa física: estado civil e cônjuge (como no Cadastro de Fornecedores)
+    const pf = _tipoPessoaFornecedorAtual === 'PF', civ = pf ? document.getElementById('nf-estado-civil').value || null : null, cj = pf && _civilComConjuge(civ);
+    const gv = id => document.getElementById(id).value.trim() || null;
+    Object.assign(camposComuns, { estado_civil: civ, conjuge_nome: cj ? gv('nf-conjuge-nome') : null, conjuge_cpf: cj ? gv('nf-conjuge-cpf') : null,
+      conjuge_email: cj ? gv('nf-conjuge-email') : null, conjuge_telefone: cj ? gv('nf-conjuge-telefone') : null });
+  }
 
   let registro;
   if (_fornecedorEditandoId) {
@@ -4272,7 +4299,8 @@ async function _ctArquivoEscolhido(f) {
 // ══════════════════════════════════════════════════════════════
 const CAMPOS_END_L = [['logradouro', 'Rua'], ['numero', 'Número'], ['complemento', 'Complemento'], ['bairro', 'Bairro'], ['cidade', 'Cidade'], ['uf', 'UF'], ['cep', 'CEP']];
 const ITENS_DONO = {
-  documento:     { ic: '🪪', rot: 'Documento do dono', sub: 'RG ou CNH', tipo: 'documento', ia: 'documento', campos: [['nome', 'Nome completo'], ['cpf', 'CPF'], ['rg', 'RG'], ['orgao_emissor', 'Órgão emissor'], ['data_nascimento', 'Nascimento (AAAA-MM-DD)']] },
+  documento:     { ic: '🪪', rot: 'Documento do dono', sub: 'RG ou CNH', tipo: 'documento', ia: 'documento', campos: [['nome', 'Nome completo'], ['cpf', 'CPF'], ['rg', 'RG'], ['orgao_emissor', 'Órgão emissor'], ['data_nascimento', 'Nascimento (AAAA-MM-DD)'], ['estado_civil', 'Estado civil']] },
+  conjuge:       { ic: '💍', rot: 'Documento do cônjuge', sub: 'Só se o dono for casado(a) ou em união estável — RG ou CNH', tipo: 'documento', ia: 'documento', de: 'conjuge', campos: [['nome', 'Nome completo'], ['cpf', 'CPF'], ['rg', 'RG'], ['orgao_emissor', 'Órgão emissor']] },
   cnpj:          { ic: '🏢', rot: 'Cartão CNPJ', sub: 'Dono empresa', tipo: 'cnpj', ia: 'cnpj', campos: [['razao_social', 'Razão social'], ['nome_fantasia', 'Nome fantasia'], ['cnpj', 'CNPJ'], ['@endereco', 'Endereço da empresa']] },
   endereco_dono: { ic: '🏠', rot: 'Endereço do dono', sub: 'Conta de luz ou comprovante de residência', tipo: 'endereco', ia: 'endereco', de: 'dono', campos: [['@', '']] },
   endereco_casa: { ic: '📍', rot: 'Endereço da casa', sub: 'Conta de luz da casa ou fachada', tipo: 'endereco', ia: 'endereco', de: 'casa', campos: [['@', '']] },
@@ -4281,12 +4309,37 @@ const ITENS_DONO = {
 async function _pessoaDono(id) { return ((await idbPegar('sessao', 'pessoa_' + id)) || {}).valor || null; }
 async function escolherPessoaDono(p) { await idbSalvar('sessao', { chave: 'pessoa_' + imovelAtual.id, valor: p }); renderizarGestao(); }
 // qual item uma leitura (enviada ou na fila) representa
-const _itemDaLeitura = (tipo, dados) => tipo === 'endereco' ? ((dados && dados.de) === 'dono' ? 'endereco_dono' : 'endereco_casa') : tipo;
+const _itemDaLeitura = (tipo, dados) => tipo === 'endereco' ? ((dados && dados.de) === 'dono' ? 'endereco_dono' : 'endereco_casa') : (tipo === 'documento' && dados && dados.de === 'conjuge') ? 'conjuge' : tipo;
+// Cartão do FORNECEDOR (dono) ligado à casa — nasce do documento que o prefeito envia (pré-cadastro 🆕)
+async function _htmlFornecedorDono(g) {
+  const fid = (g.imovel && g.imovel.fornecedor_id) || imovelAtual.fornecedor_id;
+  const equipe = ehGestorImoveis() || perfilImoveis === 'operador';
+  if (!fid) return `<div class="gest-card"><div class="gest-titulo">🧾 Cadastro do dono</div>
+    <div class="card-sub">Ainda sem cadastro. Ele nasce sozinho quando chegar o <b>documento do dono</b> (RG/CNH com CPF) ou o <b>cartão CNPJ</b> — e já fica pronto para pedir o contrato.</div></div>`;
+  let f = (await idbTodos('fornecedores')).find(x => x.id === fid) || null;
+  if (navigator.onLine) {
+    try { const { data } = await sb.from('fornecedores').select('id,razao_social,tipo_pessoa,cpf_cnpj,email,telefone,logradouro,cidade,banco_nome,banco_conta,pix_chaves,estado_civil,conjuge_nome,conjuge_cpf,cadastro_incompleto,criado_por').eq('id', fid).maybeSingle(); if (data) { f = { ...(f || {}), ...data }; if (equipe) await idbSalvar('fornecedores', f); } } catch (e) { }
+  }
+  if (!f) return `<div class="gest-card"><div class="gest-titulo">🧾 Cadastro do dono</div><div class="card-sub">Cadastro ligado à casa — abra com internet para ver.</div></div>`;
+  const pf = f.tipo_pessoa === 'PF', temPix = Array.isArray(f.pix_chaves) ? f.pix_chaves.length : !!f.pix_chaves;
+  const itens = [['Endereço', !!(f.logradouro && f.cidade)], ['Dados bancários', !!(f.banco_conta || temPix)], ['E-mail ou telefone', !!(f.email || f.telefone)]];
+  if (pf) itens.push(['Estado civil', !!f.estado_civil]);
+  if (pf && _civilComConjuge(f.estado_civil)) itens.push(['Cônjuge (nome e CPF)', !!(f.conjuge_nome && f.conjuge_cpf)]);
+  const falta = itens.filter(x => !x[1]).length;
+  return `<div class="gest-card"><div class="gest-titulo">🧾 Cadastro do dono${f.cadastro_incompleto ? ' <span class="gest-chip aguardando" style="margin-left:6px">🆕 incompleto</span>' : ''}</div>
+    <div class="gest-item"><div class="gest-item-ic">${pf ? '👤' : '🏢'}</div><div class="gest-item-txt"><b>${esc(f.razao_social || '—')}</b>
+      <span>${pf ? 'CPF' : 'CNPJ'} ${esc(_fmtDocImpressao(f.cpf_cnpj || ''))}${pf && f.estado_civil ? ' · ' + esc(ROT_CIVIL[f.estado_civil] || f.estado_civil) : ''}${f.conjuge_nome ? ' · cônjuge: ' + esc(f.conjuge_nome) : ''}</span></div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px">${itens.map(([t, ok]) => `<span class="gest-chip ${ok ? 'aprovada' : 'pendente'}">${ok ? '✓' : '•'} ${t}</span>`).join('')}</div>
+    ${equipe ? `<button class="btn ${falta ? '' : 'btn-secundario'} sec-novo" style="margin:0 0 4px" onclick="abrirEditarFornecedor('${f.id}')">✏️ ${falta ? 'Completar' : 'Ver / ajustar'} dados do dono</button>`
+      : `<div class="card-sub">${falta ? 'O escritório completa o que falta. Se puder, mande as fotos abaixo.' : 'Cadastro completo.'}</div>`}
+  </div>`;
+}
 async function _htmlDonoEndereco(g, fila) {
+  const cartaoForn = await _htmlFornecedorDono(g);
   const pessoa = await _pessoaDono(imovelAtual.id);
   const leit = g.leituras || [];
   const pend = fila.filter(f => f.tipo === 'leitura_imovel' && f.payload.imovel_id === imovelAtual.id);
-  const itens = pessoa === 'pj' ? ['cnpj', 'endereco_casa', 'banco'] : pessoa === 'pf' ? ['documento', 'endereco_dono', 'endereco_casa', 'banco'] : [];
+  const itens = pessoa === 'pj' ? ['cnpj', 'endereco_casa', 'banco'] : pessoa === 'pf' ? ['documento', 'conjuge', 'endereco_dono', 'endereco_casa', 'banco'] : [];
   const ROT_SIT = { a_conferir: '⏳ O escritório vai conferir', conferida: '✅ Conferido pelo escritório', descartada: '✗ Descartado — mande de novo' };
   const linhaItem = k => {
     const it = ITENS_DONO[k];
@@ -4297,7 +4350,7 @@ async function _htmlDonoEndereco(g, fila) {
       <div class="gest-item-txt"><b>${it.rot}</b><span>${p || l ? st : it.sub}</span></div>
       <span class="gest-chip ${p || (l && l.situacao === 'a_conferir') ? 'aguardando' : l && l.situacao === 'conferida' ? 'aprovada' : l ? 'negada' : 'pendente'}">${p || l ? (l && l.situacao === 'conferida' ? '✓' : l && l.situacao === 'descartada' ? 'refazer' : 'enviado') : 'enviar'}</span></div>`;
   };
-  return `<div class="gest-card" id="sec-fot"><div class="gest-titulo">👤 Dono e endereço</div>
+  return cartaoForn + `<div class="gest-card" id="sec-fot"><div class="gest-titulo">👤 Dono e endereço</div>
     <div class="card-sub" style="margin:-4px 0 8px">Tire foto dos documentos — a IA lê e o escritório confere. Dá para digitar também.</div>
     <div class="pf-pessoa"><button type="button" class="${pessoa === 'pf' ? 'on' : ''}" onclick="escolherPessoaDono('pf')">👤 Pessoa física</button><button type="button" class="${pessoa === 'pj' ? 'on' : ''}" onclick="escolherPessoaDono('pj')">🏢 Empresa</button></div>
     ${pessoa ? itens.map(linhaItem).join('') : '<div class="card-sub" style="margin-top:8px">Primeiro diga se o dono é pessoa física ou empresa.</div>'}
@@ -4310,6 +4363,7 @@ function _ldCamposHtml(it, d) {
   const campo = (k, rot, v) => `<span class="rotulo">${rot}</span><div class="campo"><input type="text" id="ld-${k}" value="${esc(v ?? '')}"/></div>`;
   return it.campos.map(([k, rot]) => {
     if (k === '@' || k === '@endereco') { const e = k === '@' ? d : (d.endereco || {}); return (rot ? `<div class="gest-titulo" style="margin:8px 0 4px;font-size:13px">${rot}</div>` : '') + CAMPOS_END_L.map(([ke, re]) => campo((k === '@' ? '' : 'e_') + ke, re, e[ke])).join(''); }
+    if (k === 'estado_civil') return `<span class="rotulo">${rot}</span><div class="campo"><select id="ld-estado_civil"><option value="">Não informado</option>${Object.entries(ROT_CIVIL).map(([v, t]) => `<option value="${v}" ${d.estado_civil === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div><div class="dica" style="margin:-4px 0 8px">Casado(a) ou união estável? Mande também o <b>documento do cônjuge</b>.</div>`;
     return campo(k, rot, d[k]);
   }).join('');
 }
@@ -5317,7 +5371,8 @@ async function imprimirRelatorioLocacao(imovelId) {
 
       ${sec('Dados do Locador (Proprietário)')}
       ${tab([[pj ? 'Razão social' : 'Nome', val(forn.razao_social)], [pj ? 'CNPJ' : 'CPF', val(forn.cpf_cnpj ? _fmtDocImpressao(forn.cpf_cnpj) : '')],
-        ...(pj ? [] : [['Estado civil', val(forn.estado_civil)]]), ['Endereço', val(endForn)], ['E-mail', val(forn.email)], ['Telefone', val(forn.telefone)]])}
+        ...(pj ? [] : [['Estado civil', val(ROT_CIVIL[forn.estado_civil] || forn.estado_civil)]]),
+        ...(!pj && forn.conjuge_nome ? [['Cônjuge', esc(forn.conjuge_nome + (forn.conjuge_cpf ? ' — CPF ' + _fmtDocImpressao(forn.conjuge_cpf) : ''))]] : []), ['Endereço', val(endForn)], ['E-mail', val(forn.email)], ['Telefone', val(forn.telefone)]])}
 
       ${sec('Dados Bancários para Pagamento')}
       ${tab([['Titular da conta', val(forn.banco_titular || forn.razao_social)], ['Banco', val(forn.banco_nome)], ['Agência', val(forn.banco_agencia)],
