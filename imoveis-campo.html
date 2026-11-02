@@ -1725,7 +1725,7 @@ function _sgcAlerta(m) {
 // ════════════════ SIGECON CHAT v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v15 · 01/11';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v16 · 01/11';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -4064,7 +4064,7 @@ async function ncPegarGps() {
   if (!navigator.onLine) { info.textContent += ' · Sem internet: o endereço é completado quando conectar.'; return; }
   info.textContent += ' · Buscando a rua…';
   const e = await _geoEndereco(g.lat, g.lng);
-  if (!e) { info.textContent = `✅ Localização guardada (±${g.precisao_m} m). Não achei a rua no mapa — digite ou mande a conta da casa.`; return; }
+  if (!e) { info.innerHTML = `✅ Localização guardada (±${g.precisao_m} m). Não consegui o endereço pelo mapa — digite ou mande a conta da casa.<br><small style="opacity:.7">${esc(_geoUltimoErro)}</small>`; return; }
   _ncGeo = e;
   const poe = (id, v) => { const el = document.getElementById(id); if (v && el && !el.value.trim()) el.value = v; };
   poe('nc-logradouro', e.logradouro); poe('nc-numero', e.numero); poe('nc-bairro', e.bairro); poe('nc-cidade', e.cidade); poe('nc-uf', e.uf); poe('nc-cep', e.cep);
@@ -4074,9 +4074,36 @@ async function ncPegarGps() {
 }
 // endereço pela localização (função sigecon-ia-ler, tipo "geo" → OpenStreetMap)
 let _ncGeo = null;
+// 1º pela nossa função (Supabase); se falhar, direto do celular no OpenStreetMap; por último, só a cidade (BigDataCloud)
+let _geoUltimoErro = '';
 async function _geoEndereco(lat, lng) {
-  try { const { data, error } = await sb.functions.invoke(SG_IA_FUNCAO, { body: { tipo: 'geo', lat, lng } }); if (error || !data || data.erro) return null; return data.dados || null; }
-  catch (e) { return null; }
+  _geoUltimoErro = '';
+  const temAlgo = e => e && (e.logradouro || e.cidade);
+  try {
+    const { data, error } = await sb.functions.invoke(SG_IA_FUNCAO, { body: { tipo: 'geo', lat, lng } });
+    if (!error && data && !data.erro && temAlgo(data.dados)) return data.dados;
+    _geoUltimoErro = 'função: ' + ((data && data.erro) || (error && error.message) || 'sem endereço');
+  } catch (e) { _geoUltimoErro = 'função: ' + (e.message || e); }
+  try {   // direto do celular
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=pt-BR&lat=${lat}&lon=${lng}`, { headers: { 'Accept': 'application/json' } });
+    if (r.ok) {
+      const j = await r.json(), a = (j && j.address) || {}, iso = String(a['ISO3166-2-lvl4'] || '');
+      const e = { logradouro: a.road || a.pedestrian || a.residential || null, numero: a.house_number || null,
+        bairro: a.suburb || a.neighbourhood || a.quarter || a.city_district || null, cidade: a.city || a.town || a.village || a.municipality || null,
+        uf: /^BR-[A-Z]{2}$/.test(iso) ? iso.slice(3) : null, cep: a.postcode ? String(a.postcode).replace(/\D/g, '') : null };
+      if (temAlgo(e)) return e;
+    } else _geoUltimoErro += ` · mapa: ${r.status}`;
+  } catch (e) { _geoUltimoErro += ' · mapa: ' + (e.message || e); }
+  try {   // pelo menos a cidade
+    const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`);
+    if (r.ok) {
+      const j = await r.json(), uf = String(j.principalSubdivisionCode || '');
+      const e = { logradouro: null, numero: null, bairro: j.locality && j.locality !== j.city ? j.locality : null, cidade: j.city || j.locality || null,
+        uf: /^BR-[A-Z]{2}$/.test(uf) ? uf.slice(3) : null, cep: j.postcode ? String(j.postcode).replace(/\D/g, '') : null };
+      if (temAlgo(e)) return e;
+    }
+  } catch (e) { _geoUltimoErro += ' · cidade: ' + (e.message || e); }
+  return null;
 }
 function ncFoto(tipo) { _ncTipoFoto = tipo; _fotoParaCasa = false; document.getElementById('nc-foto-inp').click(); }
 function enviarFotoCasa(tipo) { _ncTipoFoto = tipo; _fotoParaCasa = true; document.getElementById('nc-foto-inp').click(); }
