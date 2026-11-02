@@ -259,7 +259,12 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .abas-imovel button.ativa{background:var(--orange);border-color:var(--orange);color:#fff;}
   .gest-faixa{background:var(--navy3);border:1px solid var(--border2);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--text2);margin-bottom:12px;}
   .gest-faixa.offline{background:rgba(224,85,85,.12);border-color:rgba(224,85,85,.4);color:var(--err-txt);}
-  .nc-fotos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px;}
+  .nc-fotos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px;}
+  .nc-foto-item .nc-ia{font-size:12px;color:var(--text2);margin-top:2px;line-height:1.35;}
+  .nc-foto-item .nc-ia b{color:var(--text);}
+  .nc-foto-item .nc-av{color:var(--warn-txt);font-weight:700;}
+  .nc-foto-item .nc-bts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .nc-foto-item .nc-bts button{border:1px solid var(--border2);background:var(--navy3);color:var(--text);border-radius:9px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
   .nc-fotos button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border-radius:14px;border:1.5px dashed var(--border2);background:var(--navy3);color:var(--text);font-size:26px;cursor:pointer;font-family:inherit;}
   .nc-fotos button span{font-size:12px;font-weight:600;color:var(--text2);line-height:1.2;text-align:center;}
   .nc-foto-item{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:12px;margin-bottom:6px;background:var(--navy2);}
@@ -781,31 +786,37 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   <div class="conteudo conteudo-form">
     <span class="rotulo">Obra *</span>
     <div class="campo"><select id="nc-obra"></select></div>
-    <span class="rotulo">Nome da casa *</span>
-    <div class="campo"><input type="text" id="nc-apelido" maxlength="60" placeholder="Ex.: Casa do Zé, Alojamento da praça"/></div>
     <span class="rotulo">Localização</span>
     <button type="button" class="btn btn-secundario" id="nc-gps-btn" onclick="ncPegarGps()">📍 Usar a localização do celular</button>
-    <div class="dica" id="nc-gps-info" style="margin:6px 0 12px">Fique em frente à casa e toque no botão.</div>
-    <details class="nc-det" id="nc-end-det"><summary>Endereço (se souber)</summary>
+    <div class="dica" id="nc-gps-info" style="margin:6px 0 12px">Fique em frente à casa e toque no botão — o app busca a rua sozinho.</div>
+    <details class="nc-det" id="nc-end-det"><summary>Endereço da casa</summary>
       <div class="campo" style="margin-top:8px"><span class="rotulo">Rua</span><input type="text" id="nc-logradouro" autocomplete="address-line1"/></div>
       <div style="display:flex;gap:10px">
         <div class="campo" style="flex:1"><span class="rotulo">Número</span><input type="text" id="nc-numero" inputmode="numeric"/></div>
         <div class="campo" style="flex:2"><span class="rotulo">Bairro</span><input type="text" id="nc-bairro"/></div>
       </div>
-      <div class="campo"><span class="rotulo">Cidade</span><input type="text" id="nc-cidade"/></div>
+      <div style="display:flex;gap:10px">
+        <div class="campo" style="flex:3"><span class="rotulo">Cidade</span><input type="text" id="nc-cidade"/></div>
+        <div class="campo" style="flex:1"><span class="rotulo">UF</span><input type="text" id="nc-uf" maxlength="2" style="text-transform:uppercase"/></div>
+      </div>
+      <div class="campo"><span class="rotulo">CEP</span><input type="text" id="nc-cep" inputmode="numeric"/></div>
     </details>
-    <span class="rotulo" style="margin-top:12px">Quantas pessoas cabem?</span>
-    <div class="campo"><input type="number" id="nc-capacidade" min="1" inputmode="numeric" placeholder="Se souber"/></div>
     <div id="nc-fotos-bloco">
-      <span class="rotulo" style="margin-top:6px">Fotos para o escritório (opcional)</span>
-      <div class="dica" style="margin:0 0 8px">Tire foto do que tiver em mãos. O escritório lê e preenche os dados do dono e do endereço.</div>
+      <span class="rotulo" style="margin-top:12px">Fotos — a IA lê e preenche</span>
+      <div class="dica" style="margin:0 0 8px">Com internet, a IA lê na hora. Sem internet, a foto vai para o escritório ler. Cuidado: a <b>conta da casa</b> é a conta de água/luz <b>desta casa</b>; o <b>comprovante do dono</b> é da casa onde o <b>dono mora</b>.</div>
       <div class="nc-fotos">
-        <button type="button" onclick="ncFoto('documento')">🪪<span>Documento do dono</span></button>
-        <button type="button" onclick="ncFoto('conta')">💡<span>Conta de luz ou água</span></button>
-        <button type="button" onclick="ncFoto('endereco')">🏠<span>Fachada / endereço</span></button>
+        <button type="button" onclick="ncFoto('conta_casa')">💡<span>Conta de água/luz DESTA casa</span></button>
+        <button type="button" onclick="ncFoto('documento')">🪪<span>Documento do dono (RG/CNH)</span></button>
+        <button type="button" onclick="ncFoto('cnpj')">🏢<span>Cartão CNPJ (dono empresa)</span></button>
+        <button type="button" onclick="ncFoto('end_dono')">🏠<span>Comprovante de residência do DONO</span></button>
+        <button type="button" onclick="ncFoto('fachada')">📷<span>Fachada da casa</span></button>
       </div>
       <div id="nc-fotos-lista"></div>
     </div>
+    <span class="rotulo" style="margin-top:12px">Nome da casa</span>
+    <div class="campo"><input type="text" id="nc-apelido" maxlength="60" placeholder="Se deixar em branco, o app cria pelo endereço"/></div>
+    <span class="rotulo">Quantas pessoas cabem?</span>
+    <div class="campo"><input type="number" id="nc-capacidade" min="1" inputmode="numeric" placeholder="Se souber"/></div>
     <input type="file" id="nc-foto-inp" accept="image/*" style="display:none" onchange="ncFotoEscolhida(this.files[0]);this.value=''"/>
     <div class="barra-acao">
       <div class="erro-msg" id="nc-erro"></div>
@@ -1714,7 +1725,7 @@ function _sgcAlerta(m) {
 // ════════════════ SIGECON CHAT v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v14 · 01/11';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v15 · 01/11';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -1867,6 +1878,13 @@ async function processarItemFila(item) {
   if (item.tipo === 'criar_imovel') {
     const { error } = await sb.from('imoveis').insert(p);
     if (error) throw error;
+    if (!p.logradouro && p.latitude != null && p.longitude != null) {   // cadastrada sem internet: completa o endereço pela localização
+      try {
+        const e = await _geoEndereco(p.latitude, p.longitude);
+        const up = {}; if (e) { if (e.logradouro) up.logradouro = e.logradouro; if (!p.bairro && e.bairro) up.bairro = e.bairro; if (!p.cidade && e.cidade) up.cidade = e.cidade; if (!p.estado && e.uf) up.estado = e.uf; if (!p.cep && e.cep) up.cep = e.cep; }
+        if (Object.keys(up).length) { await sb.from('imoveis').update(up).eq('id', p.id); const loc = await idbPegar('imoveis', p.id); if (loc) { Object.assign(loc, up); await idbSalvar('imoveis', loc); } }
+      } catch (e) { /* fica sem rua; dá para digitar depois */ }
+    }
   } else if (item.tipo === 'atualizar_imovel') {
     const { error } = await sb.from('imoveis').update(p.campos).eq('id', p.id);
     if (error) throw error;
@@ -4004,7 +4022,8 @@ async function _ncPreencherObras(sel) {
 }
 async function abrirNovaCasa() {
   _ncEditId = null; _ncFotos = []; _ncGps = null;
-  ['nc-apelido', 'nc-logradouro', 'nc-numero', 'nc-bairro', 'nc-cidade', 'nc-capacidade'].forEach(id => { document.getElementById(id).value = ''; });
+  ['nc-apelido', 'nc-logradouro', 'nc-numero', 'nc-bairro', 'nc-cidade', 'nc-uf', 'nc-cep', 'nc-capacidade'].forEach(id => { document.getElementById(id).value = ''; });
+  _ncGeo = null;
   document.getElementById('nc-erro').textContent = '';
   document.getElementById('nc-gps-info').textContent = 'Fique em frente à casa e toque no botão.';
   document.getElementById('nc-titulo-tela').textContent = 'Nova casa';
@@ -4022,6 +4041,8 @@ async function abrirEditarCasa() {
   document.getElementById('nc-numero').value = i.numero || '';
   document.getElementById('nc-bairro').value = i.bairro || '';
   document.getElementById('nc-cidade').value = i.cidade || '';
+  document.getElementById('nc-uf').value = i.estado || '';
+  document.getElementById('nc-cep').value = i.cep || '';
   document.getElementById('nc-capacidade').value = i.capacidade_pessoas || '';
   document.getElementById('nc-erro').textContent = '';
   document.getElementById('nc-gps-info').textContent = i.latitude != null ? `📍 Já tem localização (${i.latitude}, ${i.longitude}). Toque para atualizar.` : 'Fique em frente à casa e toque no botão.';
@@ -4040,6 +4061,22 @@ async function ncPegarGps() {
   b.disabled = false;
   if (g.erro) { info.textContent = `Não consegui a localização (${g.erro}). Pode salvar sem ela.`; return; }
   _ncGps = g; info.textContent = `✅ Localização: ${g.lat}, ${g.lng} (precisão de ${g.precisao_m} m)`;
+  if (!navigator.onLine) { info.textContent += ' · Sem internet: o endereço é completado quando conectar.'; return; }
+  info.textContent += ' · Buscando a rua…';
+  const e = await _geoEndereco(g.lat, g.lng);
+  if (!e) { info.textContent = `✅ Localização guardada (±${g.precisao_m} m). Não achei a rua no mapa — digite ou mande a conta da casa.`; return; }
+  _ncGeo = e;
+  const poe = (id, v) => { const el = document.getElementById(id); if (v && el && !el.value.trim()) el.value = v; };
+  poe('nc-logradouro', e.logradouro); poe('nc-numero', e.numero); poe('nc-bairro', e.bairro); poe('nc-cidade', e.cidade); poe('nc-uf', e.uf); poe('nc-cep', e.cep);
+  document.getElementById('nc-end-det').open = true;
+  info.innerHTML = `✅ ${esc([e.logradouro, e.bairro, e.cidade].filter(Boolean).join(', ') || 'Localização guardada')} (±${g.precisao_m} m) — <b>confira e digite o número</b>.`;
+  if (!document.getElementById('nc-numero').value) setTimeout(() => document.getElementById('nc-numero').focus(), 200);
+}
+// endereço pela localização (função sigecon-ia-ler, tipo "geo" → OpenStreetMap)
+let _ncGeo = null;
+async function _geoEndereco(lat, lng) {
+  try { const { data, error } = await sb.functions.invoke(SG_IA_FUNCAO, { body: { tipo: 'geo', lat, lng } }); if (error || !data || data.erro) return null; return data.dados || null; }
+  catch (e) { return null; }
 }
 function ncFoto(tipo) { _ncTipoFoto = tipo; _fotoParaCasa = false; document.getElementById('nc-foto-inp').click(); }
 function enviarFotoCasa(tipo) { _ncTipoFoto = tipo; _fotoParaCasa = true; document.getElementById('nc-foto-inp').click(); }
@@ -4054,6 +4091,27 @@ function _reduzirImagem(arquivo, max) {
     } catch (e) { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => ok(null); fr.readAsDataURL(arquivo); }
   });
 }
+const NC_FOTO = {   // botão → leitura da IA e como vai para o escritório (imovel_leituras)
+  conta_casa: { rot: '💡 Conta desta casa', ia: 'conta' },
+  documento:  { rot: '🪪 Documento do dono', ia: 'documento' },
+  cnpj:       { rot: '🏢 Cartão CNPJ do dono', ia: 'cnpj' },
+  end_dono:   { rot: '🏠 Comprovante do dono', ia: 'endereco' },
+  fachada:    { rot: '📷 Fachada da casa', ia: null },
+};
+const _ncNorm = t => _normalizar(String(t || '')).replace(/\b(rua|r|avenida|av|travessa|tv|praca|pc|rodovia|rod|estrada|povoado|pv)\b\.?/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+// o endereço lido bate com o da casa (GPS ou digitado)? 'igual' | 'diferente' | null (sem como comparar)
+function _ncCompararEndereco(e) {
+  if (!e) return null;
+  const ref = { logradouro: document.getElementById('nc-logradouro').value || (_ncGeo && _ncGeo.logradouro), cidade: document.getElementById('nc-cidade').value || (_ncGeo && _ncGeo.cidade) };
+  if (!ref.cidade && !ref.logradouro) return null;
+  if (ref.cidade && e.cidade && _ncNorm(ref.cidade) !== _ncNorm(e.cidade)) return 'diferente';
+  if (ref.logradouro && e.logradouro) {
+    const a = _ncNorm(ref.logradouro), b = _ncNorm(e.logradouro);
+    if (!a || !b) return null;
+    return (a.includes(b) || b.includes(a)) ? 'igual' : 'diferente';
+  }
+  return null;
+}
 async function ncFotoEscolhida(f) {
   if (!f) return;
   const dataUrl = await _reduzirImagem(f, 1600);
@@ -4064,20 +4122,86 @@ async function ncFotoEscolhida(f) {
     mostrarToast('Foto guardada — vai para o escritório conferir.', 'sucesso');
     renderizarGestao(); return;
   }
-  _ncFotos.push({ tipo: _ncTipoFoto, dataUrl, nome });
+  const foto = { tipo: _ncTipoFoto, dataUrl, nome, arquivo: f, dados: null, estado: NC_FOTO[_ncTipoFoto]?.ia && navigator.onLine ? 'lendo' : 'guardada', aviso: null };
+  _ncFotos.push(foto); _ncRenderFotos();
+  if (foto.estado === 'lendo') _ncLer(foto);
+}
+async function _ncLer(foto) {
+  const def = NC_FOTO[foto.tipo];
+  try {
+    const r = await sgIaLer(def.ia, foto.arquivo), d = r.dados || {};
+    foto.dados = d; foto.estado = 'lida';
+    const conf = sgIaConferir(def.ia, d); foto.aviso = conf ? conf.msg : null;
+    if (foto.tipo === 'conta_casa' || foto.tipo === 'end_dono') {
+      const e = foto.tipo === 'conta_casa' ? (d.endereco || {}) : d;
+      const cmp = _ncCompararEndereco(e);
+      if (foto.tipo === 'conta_casa' && cmp === 'diferente') foto.troca = 'end_dono';
+      else if (foto.tipo === 'end_dono' && cmp === 'igual') foto.troca = 'conta_casa';
+      else foto.troca = null;
+      if (foto.tipo === 'conta_casa' && !foto.troca) _ncPreencherEndereco(e);
+    }
+  } catch (err) { foto.estado = 'erro'; foto.aviso = (err && err.message) || 'Não consegui ler.'; }
   _ncRenderFotos();
 }
+// a conta da casa traz o endereço completo (inclusive o número): completa o que estiver vazio
+function _ncPreencherEndereco(e) {
+  if (!e) return;
+  const poe = (id, v) => { const el = document.getElementById(id); if (v && el && !el.value.trim()) el.value = v; };
+  poe('nc-logradouro', e.logradouro); poe('nc-numero', e.numero); poe('nc-bairro', e.bairro); poe('nc-cidade', e.cidade); poe('nc-uf', e.uf); poe('nc-cep', e.cep);
+  if (e.logradouro || e.cidade) document.getElementById('nc-end-det').open = true;
+}
+function _ncTrocarTipo(k, novo) {
+  const f = _ncFotos[k]; if (!f) return;
+  f.tipo = novo; f.troca = null;
+  if (novo === 'conta_casa') _ncPreencherEndereco((f.dados && (f.dados.endereco || f.dados)) || null);
+  _ncRenderFotos();
+}
+function _ncManter(k) { const f = _ncFotos[k]; if (!f) return; f.troca = null; if (f.tipo === 'conta_casa') _ncPreencherEndereco(f.dados && f.dados.endereco); _ncRenderFotos(); }
+function _ncResumo(f) {
+  const d = f.dados || {}, e = f.tipo === 'conta_casa' ? (d.endereco || {}) : d;
+  const end = [e.logradouro, e.numero, e.bairro, e.cidade].filter(Boolean).join(', ');
+  if (f.tipo === 'documento') return [d.nome, d.cpf ? 'CPF ' + d.cpf : ''].filter(Boolean).join(' · ');
+  if (f.tipo === 'cnpj') return [d.razao_social, d.cnpj ? 'CNPJ ' + d.cnpj : ''].filter(Boolean).join(' · ');
+  if (f.tipo === 'conta_casa') return [end, d.titular ? 'titular: ' + d.titular : '', d.concessionaria].filter(Boolean).join(' · ');
+  return end;
+}
 function _ncRenderFotos() {
-  document.getElementById('nc-fotos-lista').innerHTML = _ncFotos.map((f, k) => `<div class="nc-foto-item"><img src="${f.dataUrl}" alt=""/><b>${ROT_FOTO[f.tipo] || f.tipo}</b><button type="button" onclick="_ncFotos.splice(${k},1);_ncRenderFotos()" aria-label="Tirar">✕</button></div>`).join('');
+  document.getElementById('nc-fotos-lista').innerHTML = _ncFotos.map((f, k) => {
+    const def = NC_FOTO[f.tipo] || { rot: ROT_FOTO[f.tipo] || f.tipo };
+    const st = f.estado === 'lendo' ? '🤖 Lendo…' : f.estado === 'lida' ? `🤖 <b>${esc(_ncResumo(f) || 'Lido')}</b>` : f.estado === 'erro' ? '⚠️ Não consegui ler — o escritório confere.' : def.ia ? '📴 Sem internet — o escritório lê.' : 'Foto guardada.';
+    const troca = f.troca === 'end_dono' ? `<div class="nc-av">⚠️ Este endereço não bate com onde você está. É o <b>comprovante de residência do dono</b>?</div><div class="nc-bts"><button type="button" onclick="_ncTrocarTipo(${k},'end_dono')">É do dono</button><button type="button" onclick="_ncManter(${k})">É desta casa mesmo</button></div>`
+      : f.troca === 'conta_casa' ? `<div class="nc-av">⚠️ Este endereço é o mesmo desta casa. É a <b>conta da casa</b>?</div><div class="nc-bts"><button type="button" onclick="_ncTrocarTipo(${k},'conta_casa')">É da casa</button><button type="button" onclick="_ncManter(${k})">É do dono mesmo</button></div>` : '';
+    const aviso = f.aviso && f.estado === 'lida' ? `<div class="nc-av">⚠️ ${esc(f.aviso)}</div><div class="nc-bts"><button type="button" onclick="_ncFotos.splice(${k},1);ncFoto('${f.tipo}')">📷 Mandar outra foto</button></div>` : '';
+    return `<div class="nc-foto-item" style="align-items:flex-start"><img src="${f.dataUrl}" alt=""/><div style="flex:1;min-width:0"><b>${def.rot}</b><div class="nc-ia">${st}</div>${aviso}${troca}</div>
+      <button type="button" class="gest-btn" onclick="_ncFotos.splice(${k},1);_ncRenderFotos()" aria-label="Tirar">✕</button></div>`;
+  }).join('');
+}
+// como cada foto vai para o escritório (imovel_leituras): tipo + dados lidos
+function _ncLeitura(f) {
+  const d = f.dados, ia = !!d;
+  if (f.tipo === 'conta_casa') return { tipo: 'endereco', dados: d ? { de: 'casa', ...(d.endereco || {}), titular: d.titular || null, concessionaria: d.concessionaria || null, codigo_cliente: d.codigo_cliente || null, tipo_conta: d.tipo_conta || null, fonte: 'conta da casa' } : { de: 'casa', fonte: 'conta da casa' }, ia };
+  if (f.tipo === 'end_dono') return { tipo: 'endereco', dados: { ...(d || {}), de: 'dono' }, ia };
+  if (f.tipo === 'documento') return { tipo: 'documento', dados: d, ia };
+  if (f.tipo === 'cnpj') return { tipo: 'cnpj', dados: d, ia };
+  return { tipo: f.tipo === 'fachada' ? 'outro' : f.tipo, dados: null, ia: false };
 }
 async function salvarNovaCasa() {
   const erro = document.getElementById('nc-erro'); erro.textContent = '';
-  const obraId = document.getElementById('nc-obra').value, apelido = document.getElementById('nc-apelido').value.trim();
+  const obraId = document.getElementById('nc-obra').value;
   if (!obraId) { erro.textContent = 'Escolha a obra.'; return; }
-  if (!apelido) { erro.textContent = 'Dê um nome para a casa (ex.: "Casa do Zé").'; return; }
+  if (_ncFotos.some(f => f.estado === 'lendo')) { erro.textContent = 'Espere a IA terminar de ler as fotos.'; return; }
+  if (_ncFotos.some(f => f.troca)) { erro.textContent = 'Responda o aviso da foto (é da casa ou do dono?).'; return; }
+  let apelido = document.getElementById('nc-apelido').value.trim();
+  if (!apelido) {   // sem nome: cria pelo endereço
+    const rua = document.getElementById('nc-logradouro').value.trim(), num = document.getElementById('nc-numero').value.trim();
+    const bai = document.getElementById('nc-bairro').value.trim(), cid = document.getElementById('nc-cidade').value.trim();
+    apelido = rua ? `Casa ${rua}${num ? ', ' + num : ''}` : bai || cid ? `Casa ${[bai, cid].filter(Boolean).join(' – ')}` : `Casa nova ${new Date().toLocaleDateString('pt-BR')}`;
+    apelido = apelido.slice(0, 60);
+  }
   const v = id => document.getElementById(id).value.trim() || null;
   const cap = parseInt(document.getElementById('nc-capacidade').value, 10);
-  const campos = { obra_id: obraId, apelido, logradouro: v('nc-logradouro'), numero: v('nc-numero'), bairro: v('nc-bairro'), cidade: v('nc-cidade'), capacidade_pessoas: cap > 0 ? cap : null };
+  const campos = { obra_id: obraId, apelido, logradouro: v('nc-logradouro'), numero: v('nc-numero'), bairro: v('nc-bairro'), cidade: v('nc-cidade'),
+    estado: v('nc-uf') ? v('nc-uf').toUpperCase() : null, cep: v('nc-cep') ? v('nc-cep').replace(/\D/g, '') : null, capacidade_pessoas: cap > 0 ? cap : null };
   if (_ncGps) Object.assign(campos, { latitude: _ncGps.lat, longitude: _ncGps.lng, coord_obs: `Localização do celular do prefeito (±${_ncGps.precisao_m} m)` });
   const btn = document.getElementById('nc-btn-salvar'); btn.disabled = true;
   try {
@@ -4092,7 +4216,10 @@ async function salvarNovaCasa() {
       const lst = ((await idbPegar('sessao', 'prefeito_casas')) || {}).valor || [];
       lst.push({ imovel_id: reg.id, em_uso: false }); await idbSalvar('sessao', { chave: 'prefeito_casas', valor: lst });
       await enfileirar('criar_imovel', reg);
-      for (const f of _ncFotos) await enfileirar('leitura_imovel', { id: crypto.randomUUID(), imovel_id: reg.id, tipo: f.tipo, nome: f.nome, mime: 'image/jpeg', base64: f.dataUrl, em: new Date().toISOString() });
+      for (const f of _ncFotos) { const l = _ncLeitura(f); await enfileirar('leitura_imovel', { id: crypto.randomUUID(), imovel_id: reg.id, tipo: l.tipo, dados: l.dados, preenchido_por: l.ia ? 'ia' : (l.dados ? 'manual' : null), nome: f.nome, mime: 'image/jpeg', base64: f.dataUrl, em: new Date().toISOString() }); }
+      // pessoa física/empresa já fica escolhida na seção Dono
+      if (_ncFotos.some(f => f.tipo === 'cnpj')) await idbSalvar('sessao', { chave: 'pessoa_' + reg.id, valor: 'pj' });
+      else if (_ncFotos.some(f => f.tipo === 'documento')) await idbSalvar('sessao', { chave: 'pessoa_' + reg.id, valor: 'pf' });
       _ncFotos = [];
       mostrarToast('Casa cadastrada! Agora faça a vistoria de entrada.', 'sucesso');
       await abrirImovel(reg.id);
