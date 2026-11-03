@@ -271,6 +271,11 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .nc-foto-item img{width:46px;height:46px;object-fit:cover;border-radius:8px;}
   .nc-foto-item b{flex:1;font-size:13px;}
   .nc-foto-item button{border:0;background:transparent;color:var(--err-txt);font-size:18px;cursor:pointer;}
+  .foto-escolha{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;}
+  .foto-escolha-cx{width:100%;background:var(--navy2);border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .foto-escolha-cx button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;border-radius:14px;border:1px solid var(--border2);background:var(--navy3);color:var(--text);font-size:28px;cursor:pointer;font-family:inherit;}
+  .foto-escolha-cx button span{font-size:14px;font-weight:700;}
+  .foto-escolha-cx .foto-escolha-sair{grid-column:1/-1;flex-direction:row;justify-content:center;font-size:14px;font-weight:600;padding:12px;background:transparent;}
   .nc-mapa{height:230px;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin:4px 0 0;}
   .nc-mapa{position:relative;}
   .nc-mapa #nc-mapa{height:100%;width:100%;}
@@ -1763,7 +1768,7 @@ function _sgcAlerta(m) {
 // ════════════════ SIGECON CHAT v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v22 · 03/11';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v24 · 03/11';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -3157,7 +3162,7 @@ async function renderizarCategoriasFornecedor() {
           const anexado = _documentosAnexados[t.id];
           return `<div class="doc-tipo-linha">
             <span class="doc-tipo-nome">${esc(t.nome)}${t.obrigatorio ? ' <span class="doc-tipo-obrig">*</span>' : ''}</span>
-            <button class="doc-tipo-btn ${anexado ? 'anexado' : ''}" onclick="document.getElementById('doc-input-${t.id}').click()">${anexado ? '✅ Anexado' : '📎 Anexar'}</button>
+            <button class="doc-tipo-btn ${anexado ? 'anexado' : ''}" onclick="_escolherFoto('doc-input-${t.id}')">${anexado ? '✅ Anexado' : '📎 Anexar'}</button>
             <input type="file" id="doc-input-${t.id}" accept="image/*,.pdf" style="display:none" onchange="anexarDocumentoFornecedor(this,'${t.id}')"/>
           </div>`;
         }).join('')}
@@ -3654,7 +3659,7 @@ async function renderizarGestao() {
           ${st === 'reprovado' && ultimo.observacao_gestor ? `<span class="gest-reprov">⚠️ ${esc(ultimo.observacao_gestor)}</span>` : ''}</div>
         <div class="gest-item-bts">
           ${ultimo && sgTemArquivo(ultimo) && online ? `<button class="gest-btn" onclick="sgAbrirPorChave('${sgGuardar(ultimo)}')">Abrir</button>` : ''}
-          ${podeEditar ? `<button class="gest-btn" onclick="document.getElementById('gdoc-${iDoc}').click()">${ultimo ? 'Trocar' : 'Anexar'}</button>
+          ${podeEditar ? `<button class="gest-btn" onclick="_escolherFoto('gdoc-${iDoc}')">${ultimo ? 'Trocar' : 'Anexar'}</button>
             <input type="file" id="gdoc-${iDoc}" accept="image/*,application/pdf" style="display:none" onchange="anexarDocImovel(${iDoc},this)"/>` : ''}
         </div>
       </div>`;
@@ -3915,7 +3920,7 @@ async function abrirEncerrarAlocacao(id) {
       mostrarToast('Alocação atualizada.', 'sucesso');
     },
     rotuloExcluir: 'Apagar este registro (lançado por engano)',
-    onExcluir: async () => {
+    onExcluir: perfilImoveis !== 'admin' ? null : async () => {   // v23: só o administrador apaga (evita tirar alguém sem querer)
       if (!confirm('Apagar este registro de alocação? Use só se foi lançado por engano.')) return false;
       const { error } = await sb.from('imovel_colaboradores').delete().eq('id', id);
       if (error) throw error;
@@ -4252,9 +4257,26 @@ const NC_DONO_SUB = [
   { s: 'conjuge', ic: '👫', rot: 'RG ou CNH do cônjuge (se casado)', ia: 'documento', cat: 'identidade' },
 ];
 let _ncSub = null, _ncDonoAberto = false;
-function ncFoto(grupo, sub) { _ncGrupo = grupo; _ncSub = sub || null; _ncTipoFoto = grupo; _fotoParaCasa = false; document.getElementById('nc-foto-inp').click(); }
+// ── Foto: escolher entre CÂMERA e GALERIA (o celular às vezes só abre a galeria) ──
+function _escolherFoto(inputId) {
+  const inp = document.getElementById(inputId); if (!inp) return;
+  if (!matchMedia('(pointer: coarse)').matches) { inp.removeAttribute('capture'); inp.click(); return; }   // computador: abre direto
+  document.getElementById('foto-escolha')?.remove();
+  const temPdf = /pdf/i.test(inp.getAttribute('accept') || '');
+  const m = document.createElement('div'); m.id = 'foto-escolha'; m.className = 'foto-escolha';
+  m.innerHTML = `<div class="foto-escolha-cx"><button type="button" data-o="cam">📷<span>Tirar foto</span></button><button type="button" data-o="gal">🖼️<span>${temPdf ? 'Galeria ou arquivo' : 'Da galeria'}</span></button>
+    <button type="button" class="foto-escolha-sair" data-o="sair">Cancelar</button></div>`;
+  m.addEventListener('click', ev => {
+    const o = ev.target.closest('button')?.dataset.o || (ev.target === m ? 'sair' : null); if (!o) return;
+    m.remove(); if (o === 'sair') return;
+    if (o === 'cam') inp.setAttribute('capture', 'environment'); else inp.removeAttribute('capture');
+    inp.click();
+  });
+  document.body.appendChild(m);
+}
+function ncFoto(grupo, sub) { _ncGrupo = grupo; _ncSub = sub || null; _ncTipoFoto = grupo; _fotoParaCasa = false; _escolherFoto('nc-foto-inp'); }
 function _ncAbrirDono() { _ncDonoAberto = !_ncDonoAberto; _ncRenderFotos(); }
-function enviarFotoCasa(tipo) { _ncTipoFoto = tipo; _fotoParaCasa = true; document.getElementById('nc-foto-inp').click(); }
+function enviarFotoCasa(tipo) { _ncTipoFoto = tipo; _fotoParaCasa = true; _escolherFoto('nc-foto-inp'); }
 function _reduzirImagem(arquivo, max) {
   return new Promise(async ok => {
     try {
@@ -4624,7 +4646,7 @@ async function abrirFormContaPrefeito(id) {
   const mesAtual = hojeLocalISO().slice(0, 7);
   abrirFormGestao({
     titulo: c ? 'Editar conta' : 'Nova conta', rotuloSalvar: c ? 'Salvar' : 'Enviar para aprovação',
-    html: `${c ? '' : `<div id="gf-ct-passo1"><button type="button" class="pf-foto-ct" onclick="document.getElementById('gf-ct-arq').click()"><div class="g">📷</div><b>Foto da fatura</b><small>${navigator.onLine ? 'A IA lê e preenche sozinha. Depois é só conferir.' : '📴 Sem internet: preencha à mão — a conta sobe quando conectar.'}</small></button>
+    html: `${c ? '' : `<div id="gf-ct-passo1"><button type="button" class="pf-foto-ct" onclick="_escolherFoto('gf-ct-arq')"><div class="g">📷</div><b>Foto da fatura</b><small>${navigator.onLine ? 'A IA lê e preenche sozinha. Depois é só conferir.' : '📴 Sem internet: preencha à mão — a conta sobe quando conectar.'}</small></button>
         <button type="button" class="gf-novo-link" onclick="_ctMostrarCampos()">✍️ Preencher sem foto</button></div>`}
       <input type="file" id="gf-ct-arq" accept="image/*,application/pdf" style="display:none" onchange="_ctArquivoEscolhido(this.files[0]);this.value=''"/>
       <div id="gf-ct-campos" style="${c ? '' : 'display:none'}">
@@ -4647,7 +4669,7 @@ async function abrirFormContaPrefeito(id) {
         <div class="campo"><input type="text" id="gf-conta-linha" inputmode="numeric" placeholder="Só os números" value="${esc(c?.linha_digitavel || '')}" oninput="document.getElementById('gf-ct-boleto').innerHTML=sgBoletoHtml(this.value)"/></div>
         <div id="gf-ct-boleto">${sgBoletoHtml(c?.linha_digitavel || '')}</div>
         <input type="hidden" id="gf-conta-cod" value="${esc(c?.codigo_cliente || '')}"/>
-        <button type="button" class="gf-novo-link" id="gf-ct-trocar" onclick="document.getElementById('gf-ct-arq').click()">📎 ${c?.fatura_url ? 'Trocar a foto da fatura' : 'Anexar foto da fatura'}</button>
+        <button type="button" class="gf-novo-link" id="gf-ct-trocar" onclick="_escolherFoto('gf-ct-arq')">📎 ${c?.fatura_url ? 'Trocar a foto da fatura' : 'Anexar foto da fatura'}</button>
       </div>`,
     semInternet: !c,
     onSalvar: async () => {
@@ -4718,7 +4740,7 @@ async function _ctArquivoEscolhido(f) {
     _ctIADados = d;
     const duv = (d.campos_incertos || []).map(x => _ROT_IA_CT[String(x).split('.').pop()] || x);
     const av = sgIaConferir('conta', d);   // filtro de documento errado: avisa, a pessoa decide
-    ia.innerHTML = av ? `<b style="color:var(--warn-txt)">⚠️ ${esc(av.msg)}</b><br><button type="button" class="gf-novo-link" style="margin:6px 0 0" onclick="document.getElementById('gf-ct-arq').click()">📷 Tirar outra foto</button><span style="font-size:12px">ou confira e envie assim mesmo.</span>`
+    ia.innerHTML = av ? `<b style="color:var(--warn-txt)">⚠️ ${esc(av.msg)}</b><br><button type="button" class="gf-novo-link" style="margin:6px 0 0" onclick="_escolherFoto('gf-ct-arq')">📷 Tirar outra foto</button><span style="font-size:12px">ou confira e envie assim mesmo.</span>`
       : `🤖 <b>Lido!</b> Confira os campos${duv.length ? ' — em dúvida: <b>' + esc(duv.join(', ')) + '</b>' : ''}.`;
   } catch (e) {
     ia.innerHTML = '⚠️ <b>Não consegui ler esta fatura.</b> Preencha os campos à mão — a foto continua anexada.';
@@ -4815,13 +4837,13 @@ function abrirLeituraDono(k) {
   const it = ITENS_DONO[k]; _ldItem = k; _ldArquivo = null; _ldDataUrl = null; _ldIA = false;
   abrirFormGestao({
     titulo: `${it.ic} ${it.rot}`, rotuloSalvar: 'Enviar para o escritório',
-    html: `<div id="ld-passo1"><button type="button" class="pf-foto-ct" onclick="document.getElementById('ld-arq').click()"><div class="g">📷</div><b>Foto: ${esc(it.sub)}</b><small>${navigator.onLine ? 'A IA lê e preenche. Depois é só conferir.' : '📴 Sem internet: a foto fica guardada e sobe depois.'}</small></button>
+    html: `<div id="ld-passo1"><button type="button" class="pf-foto-ct" onclick="_escolherFoto('ld-arq')"><div class="g">📷</div><b>Foto: ${esc(it.sub)}</b><small>${navigator.onLine ? 'A IA lê e preenche. Depois é só conferir.' : '📴 Sem internet: a foto fica guardada e sobe depois.'}</small></button>
         <button type="button" class="gf-novo-link" onclick="_ldMostrarCampos()">✍️ Preencher sem foto</button></div>
       <input type="file" id="ld-arq" accept="image/*,application/pdf" style="display:none" onchange="_ldArquivoEscolhido(this.files[0]);this.value=''"/>
       <div id="ld-campos" style="display:none">
         <div id="ld-ia" class="dica" style="margin:0 0 10px"></div>
         <div id="ld-form">${_ldCamposHtml(it)}</div>
-        <button type="button" class="gf-novo-link" id="ld-trocar" onclick="document.getElementById('ld-arq').click()">📎 Anexar foto</button>
+        <button type="button" class="gf-novo-link" id="ld-trocar" onclick="_escolherFoto('ld-arq')">📎 Anexar foto</button>
       </div>`,
     onSalvar: async () => {
       const dados = _ldColetar(it);
@@ -4857,7 +4879,7 @@ async function _ldArquivoEscolhido(f) {
     document.getElementById('ld-form').innerHTML = _ldCamposHtml(it, d);
     _ldIA = true;
     const av = sgIaConferir(it.ia, d);
-    ia.innerHTML = av ? `<b style="color:var(--warn-txt)">⚠️ ${esc(av.msg)}</b><br><button type="button" class="gf-novo-link" style="margin:6px 0 0" onclick="document.getElementById('ld-arq').click()">📷 Tirar outra foto</button><span style="font-size:12px">ou confira e envie assim mesmo.</span>`
+    ia.innerHTML = av ? `<b style="color:var(--warn-txt)">⚠️ ${esc(av.msg)}</b><br><button type="button" class="gf-novo-link" style="margin:6px 0 0" onclick="_escolherFoto('ld-arq')">📷 Tirar outra foto</button><span style="font-size:12px">ou confira e envie assim mesmo.</span>`
       : `🤖 <b>Lido!</b> Confira os campos${(d.campos_incertos || []).length ? ' — em dúvida: <b>' + esc(d.campos_incertos.join(', ')) + '</b>' : ''}.`;
   } catch (e) {
     ia.innerHTML = '⚠️ <b>Não consegui ler.</b> A foto continua anexada — preencha à mão se quiser, ou só envie.';
