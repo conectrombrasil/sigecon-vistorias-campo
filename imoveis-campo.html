@@ -298,6 +298,13 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .nc-mais{display:block;width:100%;border:0;border-top:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:600;padding:10px;cursor:pointer;font-family:inherit;}
   .nc-lnk{border:0;background:transparent;color:#F97316;font-weight:700;font-size:12px;padding:0;cursor:pointer;font-family:inherit;}
   .nc-dono{padding:0 12px 10px;}
+  .nc-subs{padding:0 10px 10px;}
+  .nc-sub{border:1px solid var(--border);border-radius:12px;margin-top:8px;background:var(--navy3);}
+  .nc-sub-cab{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer;font-family:inherit;font-size:13.5px;}
+  .nc-sub-cab > span:first-child{font-size:20px;}
+  .nc-sub-cab b{flex:1;font-weight:600;}
+  .nc-sub .nc-card-st{width:28px;height:28px;font-size:14px;}
+  .nc-sub .nc-card-docs{padding:0 10px;}
   .nc-dono select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--navy3);color:var(--text);font-size:13.5px;font-family:inherit;}
   .nc-det{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--navy2);}
   .nc-det summary{font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;}
@@ -1747,7 +1754,7 @@ function _sgcAlerta(m) {
 // ════════════════ SIGECON CHAT v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v20 · 03/11';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v21 · 03/11';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -4060,7 +4067,7 @@ function _ncLimparMapa() { try { if (_ncMapa) _ncMapa.remove(); } catch (e) { } 
 async function abrirNovaCasa() {
   _ncEditId = null; _ncFotos = []; _ncGps = null; _ncGpsOrig = null; _ncTravada = false;
   ['nc-apelido', 'nc-logradouro', 'nc-numero', 'nc-bairro', 'nc-cidade', 'nc-uf', 'nc-cep', 'nc-capacidade'].forEach(id => { document.getElementById(id).value = ''; });
-  _ncGeo = null; _ncOrigem = {}; _ncLimparMapa(); _ncSelo();
+  _ncGeo = null; _ncOrigem = {}; _ncDonoAberto = false; _ncLimparMapa(); _ncSelo();
   document.getElementById('nc-erro').textContent = '';
   document.getElementById('nc-gps-btn').style.display = '';
   document.getElementById('nc-gps-btn').textContent = '📍 Pegar a localização';
@@ -4199,7 +4206,16 @@ async function _geoEndereco(lat, lng) {
   } catch (e) { _geoUltimoErro += ' · cidade: ' + (e.message || e); }
   return null;
 }
-function ncFoto(grupo) { _ncGrupo = grupo; _ncTipoFoto = grupo; _fotoParaCasa = false; document.getElementById('nc-foto-inp').click(); }
+// documentos do dono: cada um no seu lugar (abre ao tocar no card)
+const NC_DONO_SUB = [
+  { s: 'doc', ic: '🪪', rot: 'RG ou CNH do dono', ia: 'documento', cat: 'identidade' },
+  { s: 'cnpj', ic: '🏢', rot: 'Cartão CNPJ (se for empresa)', ia: 'cnpj', cat: 'cnpj' },
+  { s: 'end', ic: '🏠', rot: 'Comprovante de residência do dono', ia: 'endereco', cat: 'comprovante_residencia' },
+  { s: 'conjuge', ic: '👫', rot: 'RG ou CNH do cônjuge (se casado)', ia: 'documento', cat: 'identidade' },
+];
+let _ncSub = null, _ncDonoAberto = false;
+function ncFoto(grupo, sub) { _ncGrupo = grupo; _ncSub = sub || null; _ncTipoFoto = grupo; _fotoParaCasa = false; document.getElementById('nc-foto-inp').click(); }
+function _ncAbrirDono() { _ncDonoAberto = !_ncDonoAberto; _ncRenderFotos(); }
 function enviarFotoCasa(tipo) { _ncTipoFoto = tipo; _fotoParaCasa = true; document.getElementById('nc-foto-inp').click(); }
 function _reduzirImagem(arquivo, max) {
   return new Promise(async ok => {
@@ -4244,7 +4260,8 @@ async function ncFotoEscolhida(f) {
     renderizarGestao(); return;
   }
   const card = NC_CARDS.find(c => c.k === _ncGrupo) || NC_CARDS[2];
-  const foto = { grupo: card.k, dataUrl, nome: `${card.k}-${hojeLocalISO()}-${Date.now().toString(36)}.jpg`, arquivo: f, dados: null, cat: null,
+  const sub = card.k === 'dono' ? (NC_DONO_SUB.find(x => x.s === _ncSub) || NC_DONO_SUB[0]) : null;
+  const foto = { grupo: card.k, sub: sub ? sub.s : null, dataUrl, nome: `${sub ? 'dono-' + sub.s : card.k}-${hojeLocalISO()}-${Date.now().toString(36)}.jpg`, arquivo: f, dados: null, cat: sub ? sub.cat : null,
     estado: card.ia && navigator.onLine ? 'lendo' : 'guardada', aviso: null, troca: null, conjuge: false };
   _ncFotos.push(foto); _ncRenderFotos();
   if (foto.estado === 'lendo') _ncLer(foto);
@@ -4253,7 +4270,14 @@ async function _ncLer(foto) {
   foto.estado = 'lendo'; foto.aviso = null; _ncRenderFotos();
   try {
     let d; foto.motivo = null;
-    const tipoNovo = foto.grupo === 'casa' ? 'imovel' : 'dono';
+    if (foto.grupo === 'dono') {   // cada documento tem o seu lugar: lê direto pelo tipo dele
+      const sub = NC_DONO_SUB.find(x => x.s === foto.sub) || NC_DONO_SUB[0];
+      const r = (await _ncIa(sub.ia, foto.arquivo)).dados || {};
+      foto.dados = sub.s === 'end' ? { categoria: sub.cat, endereco: r, titular: null } : { categoria: sub.cat, ...r };
+      foto.conjuge = sub.s === 'conjuge'; foto.estado = 'lida';
+      _ncAvaliar(foto); _ncRenderFotos(); return;
+    }
+    const tipoNovo = 'imovel';
     try { d = (await _ncIa(tipoNovo, foto.arquivo)).dados || {}; }
     catch (e1) {
       // qualquer falha na leitura nova: guarda o motivo (aparece pequeno no card) e lê pelos tipos antigos
@@ -4299,11 +4323,10 @@ function _ncAvaliar(foto) {
     if (!(e.logradouro || e.cep || e.cidade)) { foto.aviso = 'Não achei o endereço nesta foto. Está legível?'; return; }
     _ncPreencherEndereco(e); _ncChecarDivergencia(); return;
   }
-  foto.cat = d.categoria || 'outro';
+  foto.cat = d.categoria || foto.cat || 'outro';
   if (foto.cat === 'identidade') {
     const c = sgIaConferir('documento', d); foto.aviso = c ? c.msg : null;
-    const outro = _ncFotos.find(x => x !== foto && x.grupo === 'dono' && x.cat === 'identidade' && !x.conjuge && x.dados && x.dados.nome);
-    if (!foto.aviso && outro && d.nome && _ncNorm(outro.dados.nome) !== _ncNorm(d.nome)) foto.troca = 'p_conjuge';
+
   } else if (foto.cat === 'cnpj') { const c = sgIaConferir('cnpj', d); foto.aviso = c ? c.msg : null; }
   else if (foto.cat === 'comprovante_residencia') {
     const e = d.endereco || {};
@@ -4362,15 +4385,16 @@ async function _ncDonoSelect() {
 }
 function _ncDonoMudou() { _ncDonoId = document.getElementById('nc-dono').value || null; }
 function _ncTirar(k) { _ncFotos.splice(k, 1); _ncRenderFotos(); }
-function _ncOutra(k) { const g = _ncFotos[k] && _ncFotos[k].grupo; _ncFotos.splice(k, 1); _ncRenderFotos(); ncFoto(g || 'dono'); }
+function _ncOutra(k) { const x = _ncFotos[k] || {}; _ncFotos.splice(k, 1); _ncRenderFotos(); ncFoto(x.grupo || 'dono', x.sub); }
 function _ncRenderFotos() {
   const el = document.getElementById('nc-cards'); if (!el) return;
   const selAnt = document.getElementById('nc-dono'); if (selAnt) _ncDonoId = selAnt.value || null;
   el.innerHTML = NC_CARDS.map(c => {
     const fotos = _ncFotos.map((f, k) => ({ f, k })).filter(x => x.f.grupo === c.k);
+    const ok = x => x.f.estado !== 'lendo' && !x.f.troca;
     const pronto = fotos.length && fotos.every(x => x.f.estado !== 'lendo' && !x.f.troca);
     const donoSel = c.k === 'dono' && !ehPrefeito() ? `<div class="nc-dono" id="nc-dono-box"><select id="nc-dono" onchange="_ncDonoMudou()">${_ncDonoOpts}</select></div>` : '';
-    const itens = fotos.map(({ f, k }) => {
+    const itemHtml = ({ f, k }) => {
       const st = f.estado === 'lendo' ? '🤖 Lendo…' : f.estado === 'lida' ? `<b>${esc(_ncResumo(f) || 'Lido')}</b>${f.motivo ? `<br><small style="opacity:.6">ℹ️ leitura nova falhou: ${esc(f.motivo)}</small>` : ''}` : f.estado === 'erro' ? `⚠️ Não consegui ler agora. <button type="button" class="nc-lnk" onclick="_ncLerDeNovo(${k})">🔄 Tentar de novo</button><br><small style="opacity:.7">${esc([f.motivo ? 'nova: ' + f.motivo : '', f.aviso ? (f.motivo ? 'antiga: ' : '') + f.aviso : ''].filter(Boolean).join(' · '))}</small>` : c.ia ? '📴 Sem internet — vai assim mesmo.' : '';
       const P = { p_dono: ['Este endereço não é daqui. É o comprovante de residência do <b>dono</b>?', 'É do dono', 'É desta casa'],
                   p_casa: ['Este endereço é <b>desta casa</b>. É o comprovante da casa?', 'É da casa', 'É do dono'],
@@ -4380,7 +4404,21 @@ function _ncRenderFotos() {
         + (f.div ? `<div class="nc-av">⚠️ ${f.div.cidade ? 'A cidade' : 'A rua'} do comprovante é diferente da localização${f.div.logradouro_gps || f.div.cidade_gps ? ` (${esc(f.div.cidade ? f.div.cidade_gps || '' : f.div.logradouro_gps || '')})` : ''}. O escritório confere.</div>` : '');
       return `<div class="nc-doc"><img src="${f.dataUrl}" alt=""/><div class="nc-doc-t"><b>${_ncRotFoto(f)}</b><div class="nc-ia">${st}</div>${aviso}${perg}</div>
         <button type="button" class="nc-x" onclick="_ncTirar(${k})" aria-label="Tirar">✕</button></div>`;
-    }).join('');
+    };
+    if (c.k === 'dono') {   // abre e mostra cada documento separado
+      const subs = NC_DONO_SUB.map(sb0 => {
+        const fs = fotos.filter(x => x.f.sub === sb0.s), feito = fs.length && fs.every(ok);
+        return `<div class="nc-sub"><button type="button" class="nc-sub-cab" onclick="ncFoto('dono','${sb0.s}')"><span>${sb0.ic}</span><b>${sb0.rot}</b><span class="nc-card-st${feito ? ' ok' : ''}">${feito ? '✓' : fs.length ? '…' : '📷'}</span></button>
+          ${fs.length ? `<div class="nc-card-docs">${fs.map(itemHtml).join('')}</div>` : ''}</div>`;
+      }).join('');
+      const aberto = _ncDonoAberto || fotos.length > 0;
+      return `<div class="nc-card${fotos.length ? ' tem' : ''}">
+        <button type="button" class="nc-card-cab" onclick="_ncAbrirDono()"><span class="nc-card-ic">${c.ic}</span><span class="nc-card-tx"><b>${c.rot}</b><small>${fotos.length ? fotos.length + (fotos.length > 1 ? ' documentos' : ' documento') : 'Toque para abrir'}</small></span>
+          <span class="nc-card-st${pronto ? ' ok' : ''}">${pronto ? '✓' : aberto ? '▾' : '▸'}</span></button>
+        ${aberto ? donoSel + `<div class="nc-subs">${subs}</div>` : ''}
+      </div>`;
+    }
+    const itens = fotos.map(itemHtml).join('');
     return `<div class="nc-card${fotos.length ? ' tem' : ''}">
       <button type="button" class="nc-card-cab" onclick="ncFoto('${c.k}')"><span class="nc-card-ic">${c.ic}</span><span class="nc-card-tx"><b>${c.rot}</b><small>${fotos.length ? fotos.length + (fotos.length > 1 ? ' fotos' : ' foto') : c.sub}</small></span>
         <span class="nc-card-st${pronto ? ' ok' : ''}">${pronto ? '✓' : fotos.length ? '…' : '📷'}</span></button>
@@ -4397,7 +4435,12 @@ function _ncLeitura(f, civil) {
   if (f.grupo === 'casa') return { tipo: 'endereco', dados: d ? { de: 'casa', ...(d.endereco || {}), titular: d.titular || null, concessionaria: d.concessionaria || null, codigo_cliente: d.codigo_cliente || null, tipo_conta: d.tipo_comprovante || null, fonte: 'comprovante da casa',
     ...(f.div ? { divergencia_gps: f.div, observacoes: `⚠️ ${f.div.cidade ? 'Cidade' : 'Rua'} do comprovante diferente da localização do celular (${[f.div.logradouro_gps, f.div.cidade_gps].filter(Boolean).join(', ') || 'sem endereço pelo mapa'}).` } : {}) } : { de: 'casa', fonte: 'comprovante da casa' }, ia };
   if (f.grupo === 'fachada') return { tipo: 'outro', dados: null, ia: false };
-  if (!d) return { tipo: 'documento', dados: null, ia: false };   // sem internet: o escritório lê e classifica
+  if (!d) {   // sem internet: o tipo sai do lugar onde a foto foi colocada; o escritório lê
+    if (f.sub === 'cnpj') return { tipo: 'cnpj', dados: null, ia: false };
+    if (f.sub === 'end') return { tipo: 'endereco', dados: { de: 'dono' }, ia: false };
+    if (f.sub === 'conjuge') return { tipo: 'documento', dados: { de: 'conjuge' }, ia: false };
+    return { tipo: 'documento', dados: null, ia: false };
+  }
   if (f.cat === 'identidade') { const x = _ncPegar(d, _NC_DOC_CAMPOS); if (f.conjuge) x.de = 'conjuge'; else if (civil) x.estado_civil = civil; return { tipo: 'documento', dados: x, ia }; }
   if (f.cat === 'cnpj') return { tipo: 'cnpj', dados: _ncPegar(d, ['razao_social', 'nome_fantasia', 'cnpj', 'situacao_cadastral', 'endereco', 'campos_incertos', 'observacoes']), ia };
   if (f.cat === 'comprovante_residencia') return { tipo: 'endereco', dados: { ...(d.endereco || {}), titular: d.titular || null, concessionaria: d.concessionaria || null, de: 'dono' }, ia };
