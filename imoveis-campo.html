@@ -272,7 +272,16 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .nc-foto-item b{flex:1;font-size:13px;}
   .nc-foto-item button{border:0;background:transparent;color:var(--err-txt);font-size:18px;cursor:pointer;}
   .nc-mapa{height:230px;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin:4px 0 0;}
+  .nc-mapa{position:relative;}
   .nc-mapa #nc-mapa{height:100%;width:100%;}
+  .nc-mapa-toque{position:absolute;inset:0;z-index:500;border:0;background:transparent;display:flex;align-items:flex-end;justify-content:center;padding-bottom:10px;cursor:pointer;font-family:inherit;}
+  .nc-mapa-toque{font-size:0;}
+  .nc-mapa-toque::after{content:'✏️ Tocar para ajustar';font-size:12.5px;font-weight:700;color:#111;background:rgba(255,255,255,.92);padding:6px 12px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+  .nc-mapa-ed{position:fixed;inset:0;z-index:3000;background:var(--navy);flex-direction:column;}
+  .nc-mapa-ed-top{padding:14px 16px;font-weight:700;font-size:15px;text-align:center;padding-top:calc(14px + env(safe-area-inset-top));}
+  .nc-mapa-ed #nc-mapa-ed-l{flex:1;}
+  .nc-mapa-ed-bts{display:flex;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));}
+  .nc-mapa-ed-bts .btn{flex:1;margin:0;}
   .nc-pin{width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#F97316;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;}
   .nc-pin{font-size:0;}
   .nc-pin::after{content:'🏠';font-size:15px;transform:rotate(45deg);}
@@ -824,7 +833,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
     <span class="rotulo">Localização</span>
     <button type="button" class="btn btn-secundario" id="nc-gps-btn" onclick="ncPegarGps()">📍 Pegar a localização</button>
     <div class="dica" id="nc-gps-info" style="margin:6px 0 8px">Fique na frente da casa.</div>
-    <div class="nc-mapa" id="nc-mapa-box" style="display:none"><div id="nc-mapa"></div></div>
+    <div class="nc-mapa" id="nc-mapa-box" style="display:none"><div id="nc-mapa"></div><button type="button" class="nc-mapa-toque" id="nc-mapa-toque" onclick="_ncEditorAbrir()">✏️ Ajustar o ponto</button></div>
     <div class="dica" id="nc-mapa-dica" style="display:none;margin:4px 0 12px"></div>
     <details class="nc-det" id="nc-end-det"><summary>Endereço da casa <small id="nc-end-origem" style="font-weight:500;color:var(--text3);margin-left:6px"></small></summary>
       <div class="campo" style="margin-top:8px"><span class="rotulo">Rua</span><input type="text" id="nc-logradouro" autocomplete="address-line1"/></div>
@@ -1754,7 +1763,7 @@ function _sgcAlerta(m) {
 // ════════════════ SIGECON CHAT v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v21 · 03/11';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v22 · 03/11';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -4055,7 +4064,7 @@ let _ncOrigem = {};   // campo → 'gps' | 'doc' | 'mao'
 function _ncPor(id, v, origem) {   // GPS só preenche vazio; comprovante sobrescreve GPS (não o que a pessoa digitou)
   const el = document.getElementById(id); if (!el || !v) return;
   const atual = _ncOrigem[id], vazio = !el.value.trim();
-  if (origem === 'gps' ? vazio : (vazio || atual !== 'mao')) { el.value = v; _ncOrigem[id] = origem; }
+  if (origem === 'gps' ? (vazio || atual === 'gps') : (vazio || atual !== 'mao')) { el.value = v; _ncOrigem[id] = origem; }
 }
 function _ncSelo() {
   const s = document.getElementById('nc-end-origem'); if (!s) return;
@@ -4063,7 +4072,7 @@ function _ncSelo() {
   s.textContent = doc ? '📄 pelo comprovante' : gps ? '📍 pelo GPS' : '';
 }
 document.addEventListener('input', ev => { if (ev.target && NC_END.includes(ev.target.id)) { _ncOrigem[ev.target.id] = 'mao'; _ncSelo(); } });
-function _ncLimparMapa() { try { if (_ncMapa) _ncMapa.remove(); } catch (e) { } _ncMapa = null; _ncMarc = null; document.getElementById('nc-mapa-box').style.display = 'none'; document.getElementById('nc-mapa-dica').style.display = 'none'; }
+function _ncLimparMapa() { _ncEditorFechar(); try { if (_ncMapa) _ncMapa.remove(); } catch (e) { } _ncMapa = null; _ncMarc = null; document.getElementById('nc-mapa-box').style.display = 'none'; document.getElementById('nc-mapa-dica').style.display = 'none'; }
 async function abrirNovaCasa() {
   _ncEditId = null; _ncFotos = []; _ncGps = null; _ncGpsOrig = null; _ncTravada = false;
   ['nc-apelido', 'nc-logradouro', 'nc-numero', 'nc-bairro', 'nc-cidade', 'nc-uf', 'nc-cep', 'nc-capacidade'].forEach(id => { document.getElementById(id).value = ''; });
@@ -4145,33 +4154,62 @@ function _carregarLeaflet() {
 const _ncDist = (a, b) => { const R = 6371000, r = x => x * Math.PI / 180, dLa = r(b.lat - a.lat), dLo = r(b.lng - a.lng);
   const h = Math.sin(dLa / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLo / 2) ** 2; return Math.round(2 * R * Math.asin(Math.sqrt(h))); };
 const _ncLimite = () => Math.max(100, Math.min((_ncGpsOrig && _ncGpsOrig.precisao_m) || 0, 300));
+// mapinha só para ver; tocar nele abre o mapa grande para ajustar (Sair ou Salvar)
+const _ncBases = () => { const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+  return { 'Ruas': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }),
+           'Satélite': L.tileLayer(ESRI + 'World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 18, attribution: '&copy; Esri' }) }; };
+const _ncPinIcon = () => L.divIcon({ className: '', html: '<div class="nc-pin">🏠</div>', iconSize: [34, 34], iconAnchor: [17, 34] });
 async function _ncMostrarMapa(lat, lng, editavel) {
   const box = document.getElementById('nc-mapa-box'), dica = document.getElementById('nc-mapa-dica');
   if (!navigator.onLine) { box.style.display = 'none'; dica.style.display = 'none'; return; }
   try { await _carregarLeaflet(); } catch (e) { box.style.display = 'none'; return; }
   box.style.display = '';
   if (!_ncMapa) {
-    const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
-    const ruas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
-    const sat = L.tileLayer(ESRI + 'World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 18, attribution: '&copy; Esri' });
-    _ncMapa = L.map('nc-mapa', { layers: [ruas], zoomControl: true, attributionControl: false }).setView([lat, lng], 18);
-    L.control.layers({ 'Ruas': ruas, 'Satélite': sat }, null, { position: 'topright' }).addTo(_ncMapa);
-    _ncMarc = L.marker([lat, lng], { icon: L.divIcon({ className: '', html: '<div class="nc-pin">🏠</div>', iconSize: [34, 34], iconAnchor: [17, 34] }) }).addTo(_ncMapa);
-    _ncMapa.on('click', ev => _ncAjustar(ev.latlng));
-  } else { _ncMapa.setView([lat, lng], 18); _ncMarc.setLatLng([lat, lng]); }
-  _ncMapa._sgEditavel = !!editavel;
+    const bs = _ncBases();
+    _ncMapa = L.map('nc-mapa', { layers: [bs['Ruas']], zoomControl: false, attributionControl: false, dragging: false, touchZoom: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, tap: false }).setView([lat, lng], 17);
+    _ncMarc = L.marker([lat, lng], { icon: _ncPinIcon(), interactive: false }).addTo(_ncMapa);
+  } else { _ncMapa.setView([lat, lng], 17); _ncMarc.setLatLng([lat, lng]); }
+  _ncMapa._sgEditavel = !!editavel && !_ncTravada;
+  document.getElementById('nc-mapa-toque').style.display = _ncMapa._sgEditavel ? '' : 'none';
   dica.style.display = '';
-  dica.textContent = editavel ? 'O 🏠 não está em cima da casa? Toque no lugar certo.' : '🔒 Localização travada.';
+  dica.textContent = _ncMapa._sgEditavel ? (_ncGps && _ncGps.ajuste_m ? `📍 Ajustado (${_ncGps.ajuste_m} m do celular).` : '') : '🔒 Localização travada.';
+  if (!dica.textContent) dica.style.display = 'none';
   setTimeout(() => _ncMapa && _ncMapa.invalidateSize(), 150);
 }
-function _ncAjustar(ll) {
-  if (!_ncMapa || !_ncMapa._sgEditavel || _ncTravada || !_ncGpsOrig) return;
+let _ncEd = null, _ncEdMarc = null, _ncEdPonto = null;
+function _ncEditorAbrir() {
+  if (!_ncMapa || !_ncMapa._sgEditavel || _ncTravada || !_ncGpsOrig || !window.L) return;
+  const ov = document.getElementById('nc-mapa-ed'); ov.style.display = 'flex';
+  _ncEdPonto = { lat: _ncGps.lat, lng: _ncGps.lng };
+  const bs = _ncBases();
+  _ncEd = L.map('nc-mapa-ed-l', { layers: [bs['Ruas']], zoomControl: true, attributionControl: false }).setView([_ncEdPonto.lat, _ncEdPonto.lng], 18);
+  L.control.layers(bs, null, { position: 'topright' }).addTo(_ncEd);
+  L.circle([_ncGpsOrig.lat, _ncGpsOrig.lng], { radius: _ncLimite(), color: '#F97316', weight: 1.5, fillOpacity: 0.06, interactive: false }).addTo(_ncEd);
+  _ncEdMarc = L.marker([_ncEdPonto.lat, _ncEdPonto.lng], { icon: _ncPinIcon(), interactive: false }).addTo(_ncEd);
+  _ncEd.on('click', ev => _ncAjustar(ev.latlng));
+  setTimeout(() => _ncEd && _ncEd.invalidateSize(), 120);
+}
+function _ncEditorFechar() { try { if (_ncEd) _ncEd.remove(); } catch (e) { } _ncEd = null; _ncEdMarc = null; document.getElementById('nc-mapa-ed').style.display = 'none'; }
+function _ncAjustar(ll) {   // no mapa grande: só move o ponto (dentro do círculo); grava só no Salvar
+  if (!_ncEd || _ncTravada || !_ncGpsOrig) return;
   const novo = { lat: +ll.lat.toFixed(6), lng: +ll.lng.toFixed(6) };
   const d = _ncDist(_ncGpsOrig, novo), lim = _ncLimite();
-  if (d > lim) { mostrarToast(`Longe demais de onde você está (${d} m). Só dá para ajustar até ${lim} m.`, 'erro'); return; }
-  _ncMarc.setLatLng([novo.lat, novo.lng]);
-  _ncGps = { ..._ncGpsOrig, lat: novo.lat, lng: novo.lng, ajuste_m: d };
-  document.getElementById('nc-mapa-dica').textContent = d ? `📍 Ajustado (${d} m do celular). Toque de novo se precisar.` : 'O 🏠 não está em cima da casa? Toque no lugar certo.';
+  if (d > lim) { mostrarToast(`Longe demais de onde você está (${d} m). Só dá para ajustar dentro do círculo (${lim} m).`, 'erro'); return; }
+  _ncEdPonto = novo; _ncEdMarc.setLatLng([novo.lat, novo.lng]);
+}
+async function _ncEditorSalvar() {
+  const p = _ncEdPonto; _ncEditorFechar();
+  if (!p || (p.lat === _ncGps.lat && p.lng === _ncGps.lng)) return;   // não mexeu: só sai
+  const d = _ncDist(_ncGpsOrig, p);
+  _ncGps = { ..._ncGpsOrig, lat: p.lat, lng: p.lng, ajuste_m: d };
+  _ncMostrarMapa(p.lat, p.lng, true);
+  if (!navigator.onLine) return;
+  const e = await _geoEndereco(p.lat, p.lng);   // busca a rua do ponto novo
+  if (!e) return;
+  _ncGeo = e;
+  ['logradouro', 'numero', 'bairro', 'cidade', 'uf', 'cep'].forEach(k => _ncPor('nc-' + k, e[k], 'gps'));
+  _ncSelo(); _ncChecarDivergencia(); _ncRenderFotos();
+  if (!NC_END.some(id => _ncOrigem[id] === 'doc')) document.getElementById('nc-gps-info').innerHTML = `✅ ${esc([e.logradouro, e.bairro, e.cidade].filter(Boolean).join(', ') || 'Localização guardada')} — <b>confira o número</b>.`;
 }
 // endereço pela localização (função sigecon-ia-ler, tipo "geo" → OpenStreetMap)
 let _ncGeo = null;
@@ -7479,5 +7517,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.reenquadrarFoto = () => window.EFoto.abrir();
 })();
 </script>
+<div class="nc-mapa-ed" id="nc-mapa-ed" style="display:none">
+  <div class="nc-mapa-ed-top">Toque no lugar certo da casa</div>
+  <div id="nc-mapa-ed-l"></div>
+  <div class="nc-mapa-ed-bts"><button type="button" class="btn btn-secundario" onclick="_ncEditorFechar()">Sair</button><button type="button" class="btn" onclick="_ncEditorSalvar()">Salvar</button></div>
+</div>
 </body>
 </html>
