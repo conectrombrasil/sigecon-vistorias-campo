@@ -296,6 +296,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   .nc-doc .nc-bts button{border:1px solid var(--border2);background:var(--navy3);color:var(--text);border-radius:9px;padding:6px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
   .nc-x{border:0;background:transparent;color:var(--err-txt);font-size:18px;cursor:pointer;padding:2px 4px;}
   .nc-mais{display:block;width:100%;border:0;border-top:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:600;padding:10px;cursor:pointer;font-family:inherit;}
+  .nc-lnk{border:0;background:transparent;color:#F97316;font-weight:700;font-size:12px;padding:0;cursor:pointer;font-family:inherit;}
   .nc-dono{padding:0 12px 10px;}
   .nc-dono select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--navy3);color:var(--text);font-size:13.5px;font-family:inherit;}
   .nc-det{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--navy2);}
@@ -1746,7 +1747,7 @@ function _sgcAlerta(m) {
 // ════════════════ SIGECON CHAT v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v18 · 03/11';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v20 · 03/11';   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -4249,13 +4250,47 @@ async function ncFotoEscolhida(f) {
   if (foto.estado === 'lendo') _ncLer(foto);
 }
 async function _ncLer(foto) {
+  foto.estado = 'lendo'; foto.aviso = null; _ncRenderFotos();
   try {
-    const r = await sgIaLer(foto.grupo === 'casa' ? 'imovel' : 'dono', foto.arquivo), d = r.dados || {};
+    let d; foto.motivo = null;
+    const tipoNovo = foto.grupo === 'casa' ? 'imovel' : 'dono';
+    try { d = (await _ncIa(tipoNovo, foto.arquivo)).dados || {}; }
+    catch (e1) {
+      // qualquer falha na leitura nova: guarda o motivo (aparece pequeno no card) e lê pelos tipos antigos
+      foto.motivo = (e1 && e1.message) || String(e1);
+      console.warn('[nova casa] leitura "' + tipoNovo + '" falhou:', foto.motivo, e1 && e1.info);
+      d = await _ncLerAntigo(foto);
+    }
     foto.dados = d; foto.estado = 'lida';
     _ncAvaliar(foto);
   } catch (err) { foto.estado = 'erro'; foto.aviso = (err && err.message) || 'Não consegui ler.'; }
   _ncRenderFotos();
 }
+// chama a IA; se o login venceu (401), renova a sessão e tenta mais uma vez
+async function _ncIa(tipo, arquivo) {
+  try { return await sgIaLer(tipo, arquivo); }
+  catch (e) {
+    const st = e && e.info && e.info.status, msg = (e && e.message) || '';
+    if (!(st === 401 || /sess[aã]o expirada|fa[cç]a login|401/i.test(msg))) throw e;
+    try { await sb.auth.refreshSession(); } catch (er) { }
+    return await sgIaLer(tipo, arquivo);
+  }
+}
+// leitura pelos tipos antigos da função (conta / documento / cnpj / endereco), convertida para o formato novo
+async function _ncLerAntigo(foto) {
+  if (foto.grupo === 'casa') {
+    const c = (await _ncIa('conta', foto.arquivo)).dados || {};
+    return { tipo_comprovante: c.tipo_conta || null, concessionaria: c.concessionaria || null, titular: c.titular || null, cpf_cnpj_titular: c.cpf_cnpj_titular || null, codigo_cliente: c.codigo_cliente || null, endereco: c.endereco || null };
+  }
+  const doc = (await _ncIa('documento', foto.arquivo)).dados || {};
+  if (!sgIaConferir('documento', doc)) return { categoria: 'identidade', ...doc };
+  const cn = (await _ncIa('cnpj', foto.arquivo)).dados || {};
+  if (!sgIaConferir('cnpj', cn)) return { categoria: 'cnpj', ...cn };
+  const en = (await _ncIa('endereco', foto.arquivo)).dados || {};
+  if (en.logradouro || en.cidade || en.cep) return { categoria: 'comprovante_residencia', endereco: en };
+  return { categoria: 'outro' };
+}
+function _ncLerDeNovo(k) { const f = _ncFotos[k]; if (f) _ncLer(f); }
 // o que a foto lida é, se bate com o card e se precisa perguntar algo
 function _ncAvaliar(foto) {
   const d = foto.dados || {}; foto.aviso = null; foto.troca = null;
@@ -4336,7 +4371,7 @@ function _ncRenderFotos() {
     const pronto = fotos.length && fotos.every(x => x.f.estado !== 'lendo' && !x.f.troca);
     const donoSel = c.k === 'dono' && !ehPrefeito() ? `<div class="nc-dono" id="nc-dono-box"><select id="nc-dono" onchange="_ncDonoMudou()">${_ncDonoOpts}</select></div>` : '';
     const itens = fotos.map(({ f, k }) => {
-      const st = f.estado === 'lendo' ? '🤖 Lendo…' : f.estado === 'lida' ? `<b>${esc(_ncResumo(f) || 'Lido')}</b>` : f.estado === 'erro' ? '⚠️ Não consegui ler agora. Vai assim mesmo.' : c.ia ? '📴 Sem internet — vai assim mesmo.' : '';
+      const st = f.estado === 'lendo' ? '🤖 Lendo…' : f.estado === 'lida' ? `<b>${esc(_ncResumo(f) || 'Lido')}</b>${f.motivo ? `<br><small style="opacity:.6">ℹ️ leitura nova falhou: ${esc(f.motivo)}</small>` : ''}` : f.estado === 'erro' ? `⚠️ Não consegui ler agora. <button type="button" class="nc-lnk" onclick="_ncLerDeNovo(${k})">🔄 Tentar de novo</button><br><small style="opacity:.7">${esc([f.motivo ? 'nova: ' + f.motivo : '', f.aviso ? (f.motivo ? 'antiga: ' : '') + f.aviso : ''].filter(Boolean).join(' · '))}</small>` : c.ia ? '📴 Sem internet — vai assim mesmo.' : '';
       const P = { p_dono: ['Este endereço não é daqui. É o comprovante de residência do <b>dono</b>?', 'É do dono', 'É desta casa'],
                   p_casa: ['Este endereço é <b>desta casa</b>. É o comprovante da casa?', 'É da casa', 'É do dono'],
                   p_conjuge: [`É de outra pessoa (${esc((f.dados || {}).nome || '')}). É o <b>cônjuge</b> do dono?`, 'É o cônjuge', 'Não'] }[f.troca];
