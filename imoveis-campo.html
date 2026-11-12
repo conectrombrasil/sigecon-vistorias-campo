@@ -1768,7 +1768,8 @@ function _sgcAlerta(m) {
 // ════════════════ SIGECON CHAT v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v25 · 03/11';   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v26 · 12/11';
+const APP_CACHE = 'imoveis-campo-v26';   // igual ao CACHE_NOME do sw.js: se mudar lá, aparece o aviso de versão nova   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -1916,11 +1917,18 @@ async function enfileirar(tipo, payload) {
   tentarSincronizar(); // não espera — dispara em segundo plano
 }
 
+// Registro que já subiu numa tentativa anterior (a resposta se perdeu ou a página fechou antes
+// de tirar da fila): o "já existe" não é erro, é sinal de que deu certo. Evita a fila travar para sempre.
+async function _jaSubiu(tabela, id) {
+  if (!id) return false;
+  const { data } = await sb.from(tabela).select('id').eq('id', id).maybeSingle();
+  return !!data;
+}
 async function processarItemFila(item) {
   const p = item.payload;
   if (item.tipo === 'criar_imovel') {
     const { error } = await sb.from('imoveis').insert(p);
-    if (error) throw error;
+    if (error) { if (error.code === '23505' && await _jaSubiu('imoveis', p.id)) return; throw error; }
     if (!p.logradouro && p.latitude != null && p.longitude != null) {   // cadastrada sem internet: completa o endereço pela localização
       try {
         const e = await _geoEndereco(p.latitude, p.longitude);
@@ -1967,10 +1975,10 @@ async function processarItemFila(item) {
     if (error) throw error;
   } else if (item.tipo === 'criar_contato_fornecedor') {
     const { error } = await sb.from('fornecedor_contatos').insert(p);
-    if (error) throw error;
+    if (error) { if (error.code === '23505' && await _jaSubiu('fornecedor_contatos', p.id)) return; throw error; }
   } else if (item.tipo === 'criar_socio_fornecedor') {
     const { error } = await sb.from('fornecedor_socios').insert(p);
-    if (error) throw error;
+    if (error) { if (error.code === '23505' && await _jaSubiu('fornecedor_socios', p.id)) return; throw error; }
   } else if (item.tipo === 'vincular_categoria_fornecedor') {
     const { error } = await sb.from('fornecedor_categorias_vinculo').insert(p);
     if (error && error.code !== '23505') throw error; // já vinculado = ok
@@ -1978,7 +1986,7 @@ async function processarItemFila(item) {
     await enviarDocumentoFornecedorParaServidor(p);
   } else if (item.tipo === 'criar_vistoria') {
     const { error } = await sb.from('imovel_vistorias').insert(p);
-    if (error) throw error;
+    if (error) { if (error.code === '23505' && await _jaSubiu('imovel_vistorias', p.id)) return; throw error; }
   } else if (item.tipo === 'atualizar_vistoria') {
     // Assinatura: imagens (assinatura/selfie) sobem pro Storage privado antes
     if (p.campos.assinatura && await _subirImagensAssinatura(p.campos.assinatura, p.id)) {
@@ -2008,13 +2016,13 @@ async function processarItemFila(item) {
     }
   } else if (item.tipo === 'criar_comodo') {
     const { error } = await sb.from('vistoria_comodos').insert(p);
-    if (error) throw error;
+    if (error) { if (error.code === '23505' && await _jaSubiu('vistoria_comodos', p.id)) return; throw error; }
   } else if (item.tipo === 'atualizar_comodo') {
     const { error } = await sb.from('vistoria_comodos').update(p.campos).eq('id', p.id);
     if (error) throw error;
   } else if (item.tipo === 'criar_movel') {
     const { error } = await sb.from('vistoria_comodo_moveis').insert(p);
-    if (error) throw error;
+    if (error) { if (error.code === '23505' && await _jaSubiu('vistoria_comodo_moveis', p.id)) return; throw error; }
   } else if (item.tipo === 'atualizar_movel') {
     const { error } = await sb.from('vistoria_comodo_moveis').update(p.campos).eq('id', p.id);
     if (error) throw error;
@@ -2060,6 +2068,35 @@ async function _resolverFornecedorDuplicado(item) {
   return true;
 }
 
+// ── Erro de sincronização: texto completo e aviso ao escritório (tabela campo_sync_erros) ──
+function _textoErro(e) {
+  if (!e) return 'erro desconhecido';
+  return [e.message || String(e), e.code ? 'código ' + e.code : '', e.details || '', e.hint || ''].filter(Boolean).join(' · ').slice(0, 1000);
+}
+const _ROT_FILA = { criar_imovel: 'cadastro do imóvel', atualizar_imovel: 'alteração do imóvel', leitura_imovel: 'leitura de documento', criar_conta_imovel: 'conta do imóvel',
+  mensagem_solicitacao: 'mensagem', criar_fornecedor: 'cadastro do fornecedor', atualizar_fornecedor: 'alteração do fornecedor', criar_contato_fornecedor: 'contato do fornecedor',
+  criar_socio_fornecedor: 'sócio do fornecedor', vincular_categoria_fornecedor: 'categoria do fornecedor', enviar_documento_fornecedor: 'documento do fornecedor',
+  criar_vistoria: 'vistoria', atualizar_vistoria: 'alteração da vistoria', anular_assinatura_vistoria: 'assinatura anulada', criar_comodo: 'cômodo', atualizar_comodo: 'alteração do cômodo',
+  criar_movel: 'mobília', atualizar_movel: 'alteração da mobília', remover_movel: 'mobília removida', remover_comodo: 'cômodo removido', remover_foto: 'foto removida',
+  foto_comodo: 'foto do cômodo', foto_geral: 'foto geral', foto_movel: 'foto da mobília' };
+async function _reportarErroFila(item, e) {
+  try {
+    const t = item.tentativas || 1;
+    if (!(t <= 3 || t % 20 === 0)) return;   // não enche o banco: 3 primeiras tentativas e depois de 20 em 20
+    if (!sessaoAtual || !navigator.onLine) return;
+    const resumo = JSON.stringify(item.payload || {}, (k, v) => (k === 'base64' || (typeof v === 'string' && v.length > 300)) ? '[…]' : v).slice(0, 3000);
+    const pend = (await idbTodos('fila')).length;
+    await sb.from('campo_sync_erros').insert({ usuario_id: sessaoAtual.user.id, tipo: item.tipo, erro: _textoErro(e), codigo: (e && e.code) || null,
+      detalhe: resumo, tentativas: t, pendentes: pend, versao: APP_VERSAO, navegador: navigator.userAgent.slice(0, 300) });
+  } catch (x) { /* sem a tabela ou sem internet: segue a vida */ }
+}
+async function verErroSincronizacao() {
+  const fila = await idbTodos('fila');
+  const it = fila.find(f => f.tentativas > 0) || fila[0];
+  if (!it) return;
+  alert(`Pendências: ${fila.length}\n\nTravado em: ${_ROT_FILA[it.tipo] || it.tipo}\nTentativas: ${it.tentativas || 0}\n\nErro: ${it.ultimoErro || '—'}\n\nNada foi perdido: tudo continua guardado neste aparelho. Mande um print desta mensagem para o escritório.`);
+}
+
 let _sincronizando = false;
 let _seqEmEnvio = null; // item da fila sendo enviado agora (pra apagar foto que está subindo com segurança)
 async function tentarSincronizar() {
@@ -2094,8 +2131,9 @@ async function tentarSincronizar() {
         // ordem certa (não pula pro próximo, senão desrespeita a
         // dependência entre vistoria → cômodo → foto)
         item.tentativas = (item.tentativas || 0) + 1;
-        item.ultimoErro = e.message || String(e);
+        item.ultimoErro = _textoErro(e);
         await idbSalvar('fila', item);
+        _reportarErroFila(item, e);   // avisa o escritório (não trava nada se falhar)
         break;
       } finally { _seqEmEnvio = null; }
       atualizarBarraStatus();
@@ -2208,7 +2246,7 @@ async function atualizarBarraStatus() {
     } else if (pendentes) {
       el.className = 'status-barra pendente';
       el.innerHTML = `${_sincronizando ? '<span class="spinner"></span>' : '🔄'} ${pendentes} pendente${pendentes>1?'s':''} de sincronizar${comErro ? ' (com erro, tentando de novo)' : ''}
-        <button onclick="tentarSincronizar()">Sincronizar agora</button>`;
+        ${comErro ? '<button onclick="verErroSincronizacao()">Ver erro</button>' : ''}<button onclick="tentarSincronizar()">Sincronizar agora</button>`;
     } else {
       el.className = 'status-barra ok';
       el.innerHTML = `✅ Tudo sincronizado`;
@@ -7290,10 +7328,33 @@ async function enviarSolicitacaoContrato() {
 // ══════════════════════════════════════════════════════════════
 // Inicialização
 // ══════════════════════════════════════════════════════════════
+// ── Versão nova publicada: avisa e atualiza com um toque (os dados guardados no aparelho continuam) ──
+let _avisoVersaoMostrado = false;
+async function _verificarVersaoNova() {
+  if (!navigator.onLine || _avisoVersaoMostrado) return;
+  try {
+    const txt = await (await fetch('sw.js?v=' + Date.now(), { cache: 'no-store' })).text();
+    const m = txt.match(/CACHE_NOME\s*=\s*'([^']+)'/);
+    if (!m || m[1] === APP_CACHE) return;
+    _avisoVersaoMostrado = true;
+    const b = document.createElement('div');
+    b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#F97316;color:#fff;border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:13.5px;font-weight:600';
+    b.innerHTML = '<span style="flex:1">Tem uma versão nova do aplicativo. O que está pendente fica guardado.</span><button style="border:0;background:#fff;color:#C2410C;font-weight:700;border-radius:8px;padding:8px 12px;cursor:pointer">Atualizar</button>';
+    b.querySelector('button').onclick = async () => {
+      try { const r = await navigator.serviceWorker?.getRegistration(); if (r) await r.update(); } catch (e) {}
+      location.reload();
+    };
+    document.body.appendChild(b);
+  } catch (e) { /* sem internet: tenta depois */ }
+}
+setInterval(_verificarVersaoNova, 30 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _verificarVersaoNova(); });
+
 window.addEventListener('DOMContentLoaded', async () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+  setTimeout(_verificarVersaoNova, 8000);
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     sessaoAtual = session;
