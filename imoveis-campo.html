@@ -1768,8 +1768,8 @@ function _sgcAlerta(m) {
 // ════════════════ SIGECON CHAT v1 — fim ════════════════
 
 
-const APP_VERSAO = 'v26 · 12/11';
-const APP_CACHE = 'imoveis-campo-v26';   // igual ao CACHE_NOME do sw.js: se mudar lá, aparece o aviso de versão nova   // aparece no login e na tela inicial — muda a cada versão
+const APP_VERSAO = 'v27 · 12/11';
+const APP_CACHE = 'imoveis-campo-v27';   // igual ao CACHE_NOME do sw.js: se mudar lá, aparece o aviso de versão nova   // aparece no login e na tela inicial — muda a cada versão
 
 const COMODOS_COMUNS = ['Quarto', 'Sala', 'Cozinha', 'Banheiro', 'Área de Serviço', 'Varanda', 'Garagem', 'Escritório', 'Corredor/Hall'];
 const TIPO_LABEL = { entrada: 'Entrada', saida: 'Saída', periodica: 'Periódica' };
@@ -1924,6 +1924,59 @@ async function _jaSubiu(tabela, id) {
   const { data } = await sb.from(tabela).select('id').eq('id', id).maybeSingle();
   return !!data;
 }
+// Fornecedor que o item usa não existe no banco (nunca subiu ou foi apagado lá):
+// recria a partir da cópia guardada NESTE aparelho e tenta o item de novo.
+const _CAMPOS_FORNECEDOR = ['id','ativo','criado_por','tipo_pessoa','razao_social','cpf_cnpj','email','telefone','banco_nome','banco_agencia','banco_conta','banco_tipo',
+  'banco_titular','banco_titular_doc','banco_obs','estado_civil','conjuge_nome','conjuge_cpf','conjuge_email','conjuge_telefone','logradouro','numero','complemento','bairro','cidade','estado','cep','nome_fantasia','pix_chaves'];
+function _fornecedorDoItem(item) {
+  const p = item.payload || {};
+  return p.fornecedor_id || p.fornecedorId || (p.campos && p.campos.fornecedor_id) || null;
+}
+async function _recuperarFornecedorAusente(fid, item) {
+  if (!fid || await _jaSubiu('fornecedores', fid)) return 'existe';
+  const loc = await idbPegar('fornecedores', fid);
+  if (!loc) return 'sem_copia';
+  const reg = {};
+  _CAMPOS_FORNECEDOR.forEach(k => { if (loc[k] !== undefined) reg[k] = loc[k]; });
+  if (reg.cpf_cnpj) reg.cpf_cnpj = sgSoDigitos(reg.cpf_cnpj);
+  for (let i = 0; i < 12; i++) {   // campo que o banco não conhece: tira e tenta de novo
+    const { error } = await sb.from('fornecedores').insert(reg);
+    if (!error) break;
+    const col = (String(error.message || '').match(/'([a-z_]+)' column/) || [])[1];
+    if (col && col in reg && col !== 'id') { delete reg[col]; continue; }
+    if (error.code === '23505') {
+      if (await _jaSubiu('fornecedores', fid)) break;
+      // o mesmo CPF/CNPJ já está cadastrado com outro código: usa o existente
+      if (await _resolverFornecedorDuplicado({ seq: -1, tipo: 'criar_fornecedor', payload: reg })) return 'remapeado';
+    }
+    throw error;
+  }
+  // imóveis deste aparelho que ficaram sem dono no banco voltam a apontar para ele
+  try {
+    for (const im of (await idbTodos('imoveis')).filter(x => x.fornecedor_id === fid)) {
+      await sb.from('imoveis').update({ fornecedor_id: fid }).eq('id', im.id).is('fornecedor_id', null);
+    }
+  } catch (e) { }
+  mostrarToast(`Cadastro de "${reg.razao_social || 'fornecedor'}" reenviado ao sistema.`, 'sucesso');
+  return 'recriado';
+}
+async function _processarComRecuperacao(item) {
+  try {
+    await processarItemFila(item);
+  } catch (e) {
+    const fkFornecedor = e && e.code === '23503' && /fornecedor/i.test([e.message, e.details].join(' '));
+    if (!fkFornecedor) throw e;
+    const r = await _recuperarFornecedorAusente(_fornecedorDoItem(item), item);
+    if (r === 'recriado' || r === 'existe') return processarItemFila(item);
+    if (r === 'remapeado') { const atual = await idbPegar('fila', item.seq); return processarItemFila(atual ? { seq: item.seq, ...atual } : item); }
+    // sem cópia do fornecedor neste aparelho: o vínculo/contato não tem a quem se ligar — sai da fila para não travar o resto
+    if (['vincular_categoria_fornecedor', 'criar_contato_fornecedor', 'criar_socio_fornecedor'].includes(item.tipo)) {
+      const x = new Error('Fornecedor não encontrado no sistema — vínculo ignorado. Confira o dono do imóvel.'); x.naoTravarFila = true; throw x;
+    }
+    throw e;
+  }
+}
+
 async function processarItemFila(item) {
   const p = item.payload;
   if (item.tipo === 'criar_imovel') {
@@ -2117,7 +2170,7 @@ async function tentarSincronizar() {
       if (!item) break; // fila vazia
       try {
         _seqEmEnvio = item.seq;
-        await processarItemFila(item);
+        await _processarComRecuperacao(item);
         await idbRemover('fila', item.seq);
       } catch (e) {
         if (e && e.naoTravarFila) {
