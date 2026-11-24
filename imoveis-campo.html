@@ -717,7 +717,7 @@ document.addEventListener('DOMContentLoaded', _aplicarCorBarraCelular);
   <div class="aviso-instalar" style="display:none"><span>📲 Instale o app na tela inicial para abrir mais rápido e usar sem internet.</span><button onclick="instalarApp()">Instalar</button><button class="fechar" aria-label="Agora não" onclick="this.parentElement.remove()">✕</button></div>
   <div class="home-ferramentas">
     <label class="busca"><svg class="ic" style="width:19px;height:19px"><use href="#i-busca"/></svg>
-      <input type="search" id="busca-imovel" placeholder="Buscar endereço, fornecedor ou obra" enterkeyhint="search" oninput="renderizarListaImoveis()"/></label>
+      <input type="search" id="busca-imovel" placeholder="Buscar endereço, locador, contrato ou obra" enterkeyhint="search" oninput="renderizarListaImoveis()"/></label>
     <div class="filtros-status" id="filtros-imoveis"></div>
   </div>
   <div class="conteudo" id="lista-imoveis" style="padding-top:4px"></div>
@@ -2856,11 +2856,19 @@ async function renderizarListaImoveis() {
 
   // Busca por texto (endereço, bairro, cidade, fornecedor, obra) — só no aparelho
   const termo = _normalizar((document.getElementById('busca-imovel') || {}).value);
-  const textoBusca = i => _normalizar([i.logradouro, i.numero, i.complemento, i.bairro, i.cidade, i.cep,
-    (fornPorId.get(i.fornecedor_id) || {}).razao_social, (obraPorId.get(i.obra_id) || {}).nome].filter(Boolean).join(' '));
+  // 24/11 (v26): também nº do contrato ("040" acha "CT 2026.10.040"), nº da solicitação, CPF/CNPJ do locador,
+  // apelido, nº interno e tipo (Alojamento). Sem acento e sem maiúscula. Só números: compara só os dígitos.
+  const _solNum = s => s && s.numero_ano ? `SOL ${s.numero_ano}.${String(s.numero_mes || '').padStart(2, '0')}.${String(s.numero_sequencial || '').padStart(3, '0')}` : '';
+  const textoBusca = (i, e) => {
+    const f = fornPorId.get(i.fornecedor_id) || {}, sol = (e && e.solicitacao) || {};
+    return _normalizar([i.logradouro, i.numero, i.complemento, i.bairro, i.cidade, i.cep, i.apelido, i.numero_interno, i.tipo_interno,
+      f.razao_social, f.cpf_cnpj, (obraPorId.get(i.obra_id) || {}).nome, sol.numero_contrato, _solNum(sol)].filter(Boolean).join(' '));
+  };
+  const _soDig = /^[\d.\-\/ ]+$/.test(termo) ? termo.replace(/\D/g, '') : '';
+  const bate = (i, e) => { const t = textoBusca(i, e); return t.includes(termo) || (_soDig.length >= 3 && t.replace(/\D/g, '').includes(_soDig)); };
 
   const comEstado = imoveis.map(i => ({ i, e: _calcEstado(i, vist, sols, fila) }))
-    .filter(x => !termo || textoBusca(x.i).includes(termo));
+    .filter(x => !termo || bate(x.i, x.e));
   const contagem = {};
   comEstado.forEach(x => { contagem[x.e.filtroChave] = (contagem[x.e.filtroChave] || 0) + 1; });
   const filtrados = _filtroStatusImovelAtual === 'todos' ? comEstado : comEstado.filter(x => x.e.filtroChave === _filtroStatusImovelAtual);
@@ -4048,7 +4056,7 @@ function _ajustarHomePerfil() {
   document.body.classList.toggle('modo-prefeito', pf);
   const tit = document.querySelector('#tela-home .topo-titulo'); if (tit) tit.textContent = pf ? 'Minhas casas' : 'Meus imóveis';
   const fab = document.querySelector('#tela-home .fab'); if (fab) fab.innerHTML = `<svg class="ic"><use href="#i-mais"/></svg>${pf ? 'Nova casa' : 'Novo imóvel'}`;
-  const bus = document.getElementById('busca-imovel'); if (bus) bus.placeholder = pf ? 'Buscar casa' : 'Buscar endereço, fornecedor ou obra';
+  const bus = document.getElementById('busca-imovel'); if (bus) bus.placeholder = pf ? 'Buscar casa' : 'Buscar endereço, locador, contrato ou obra';
   const lv = document.getElementById('login-versao'); if (lv) lv.textContent = APP_VERSAO;
 }
 const _nomeCasa = i => (i && (i.apelido || (i.numero_interno ? `${i.tipo_interno || 'Alojamento'} ${String(i.numero_interno).padStart(2, '0')}` : '') || [i.logradouro, i.numero].filter(Boolean).join(', '))) || 'Casa sem nome';
